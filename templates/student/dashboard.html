@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة الطالب{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="glow glow-b"></div>
+  <h1 class="headline-lg">مرحباً {{ student.name }}، استمر في مسار الإتقان 👋</h1>
+  <p class="body-md muted">{{ student.track }} · {{ student.level }}</p>
+  <div class="progress success" style="margin-top:12px;max-width:420px">
+    <span style="width:{{ (student.completed_lessons / student.total_lessons * 100)|int }}%"></span>
+  </div>
+</section>
+
+<section class="grid-4">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">play_lesson</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">حصص مكتملة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ student.completed_lessons }}</span>
+        <span class="label-md muted">/ {{ student.total_lessons }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>المتبقي في الخطة</span><strong>حصة واحدة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">task_alt</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">واجبات مسلّمة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ student.completed_homework }}</span>
+        <span class="label-md muted">/ {{ student.total_homework }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>نسبة الالتزام</span><strong>100%</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">quiz</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الاختبار القادم</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="headline-md" style="color:var(--tertiary);font-weight:700">هياكل البيانات</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>المدة المقررة</span><strong>90 دقيقة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">emoji_events</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">المعدل التراكمي</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero success">{{ student.overall_grade }}%</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>لوحة الشرف</span><strong>متميز L3</strong></div>
+  </div>
+</section>
+
+<div class="grid-2">
+  <article class="course-card">
+    <div class="course-card-body">
+      <div class="between">
+        <span class="badge badge-info">الدرس الحالي</span>
+        <span class="body-sm muted">{{ lesson_overview.current.lesson_date if lesson_overview.current else '' }}</span>
+      </div>
+      <h3 class="headline-sm">{{ lesson_overview.current.title if lesson_overview.current else 'لا يوجد درس حالي' }}</h3>
+      {% if lesson_overview.current and lesson_overview.current.image_url %}<img src="{{ lesson_overview.current.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover">{% endif %}
+      <div class="wrap" style="margin-top:8px">
+        {% if lesson_overview.current %}<a class="btn btn-primary" href="{{ url_for('student.lesson_detail', lesson_id=lesson_overview.current.id) }}">المادة والملف PDF</a>{% endif %}
+      </div>
+    </div>
+  </article>
+
+  <article class="exam-card">
+    <div class="course-card-body">
+      <div class="between">
+        <span class="badge badge-info">الدرس القادم</span>
+        <span class="body-sm muted">{{ lesson_overview.next.lesson_date if lesson_overview.next else '' }}</span>
+      </div>
+      <h3 class="headline-sm">{{ lesson_overview.next.title if lesson_overview.next else 'لا يوجد درس قادم' }}</h3>
+      {% if lesson_overview.next and lesson_overview.next.image_url %}<img src="{{ lesson_overview.next.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover">{% endif %}
+      <div class="wrap" style="margin-top:8px">
+        {% if lesson_overview.next %}<a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=lesson_overview.next.id) }}">عرض الدرس</a>{% endif %}
+      </div>
+    </div>
+  </article>
+</div>
+
+<section style="margin-top:2rem"><div class="between"><h2 class="headline-md">مواد جميع الدروس</h2><a class="btn btn-ghost" href="{{ url_for('student.lessons') }}">عرض الدروس</a></div><div class="grid-3" style="margin-top:1rem">{% for lesson in lesson_overview.materials %}<article class="card"><span class="badge badge-info">{{ lesson.lesson_date }}</span><h3 class="headline-sm" style="margin-top:.75rem">{{ lesson.title }}</h3>{% if lesson.image_url %}<img src="{{ lesson.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover;margin-top:.75rem">{% endif %}<div class="wrap" style="margin-top:1rem"><a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=lesson.id) }}">المادة والملف PDF</a>{% if lesson.homework_id %}<a class="btn btn-ghost" href="{{ url_for('student.homework') }}">الواجب المرتبط</a>{% endif %}</div></article>{% endfor %}</div></section>
+{% endblock content %}

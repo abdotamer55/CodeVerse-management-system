@@ -1,0 +1,86 @@
+<aside class="sidebar" id="app-sidebar">
+  <div class="sidebar-brand">
+    <img src="{{ url_for('static', filename='icons/logo.svg') }}" alt="كودفيرس" />
+    <div>
+      <div class="brand-title">كودفيرس</div>
+      <div class="brand-sub">نظام الإدارة التعليمية</div>
+    </div>
+  </div>
+  <div class="sidebar-gate">
+    <div class="sidebar-gate-inner">
+      <div class="row">
+        <span class="dot pulse"></span>
+        <span class="label-sm success" style="font-weight:700">
+          {% if user_role == 'admin' %}بوابة المعلم والإدارة{% else %}بوابة الطالب{% endif %}
+        </span>
+      </div>
+      <span class="badge badge-neutral">v2.4</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    {% if user_role == 'admin' %}
+      <a class="nav-link {% if page_id == 'dashboard' %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}" data-nav="dashboard">
+        <span class="material-symbols-outlined">grid_view</span><span>لوحة التحكم</span>
+      </a>
+      <a class="nav-link {% if page_id == 'students' %}is-active{% endif %}" href="{{ url_for('admin.students') }}" data-nav="students">
+        <span class="material-symbols-outlined">group</span><span>إدارة الطلاب</span>
+      </a>
+      <a class="nav-link {% if page_id == 'lessons' %}is-active{% endif %}" href="{{ url_for('admin.lessons') }}" data-nav="lessons">
+        <span class="material-symbols-outlined">play_lesson</span><span>إدارة الحصص والدروس</span>
+      </a>
+      <a class="nav-link {% if page_id == 'homework' %}is-active{% endif %}" href="{{ url_for('admin.homework') }}" data-nav="homework">
+        <span class="material-symbols-outlined">assignment</span><span>الواجبات والتكاليف</span>
+      </a>
+      <a class="nav-link {% if page_id == 'exams' %}is-active{% endif %}" href="{{ url_for('admin.exams') }}" data-nav="exams">
+        <span class="material-symbols-outlined">quiz</span><span>إدارة الامتحانات</span>
+      </a>
+      <a class="nav-link {% if page_id == 'questions' %}is-active{% endif %}" href="{{ url_for('admin.questions') }}" data-nav="questions">
+        <span class="material-symbols-outlined">help_center</span><span>بنك الأسئلة</span>
+      </a>
+      <a class="nav-link {% if page_id == 'results' %}is-active{% endif %}" href="{{ url_for('admin.results') }}" data-nav="results">
+        <span class="material-symbols-outlined">insights</span><span>رصد النتائج والتقارير</span>
+      </a>
+      <a class="nav-link {% if page_id == 'files' %}is-active{% endif %}" href="{{ url_for('admin.files') }}" data-nav="files">
+        <span class="material-symbols-outlined">folder_open</span><span>مكتبة الملفات والمذكرات</span>
+      </a>
+      <a class="nav-link {% if page_id == 'notifications' %}is-active{% endif %}" href="{{ url_for('admin.notifications') }}" data-nav="notifications">
+        <span class="material-symbols-outlined">campaign</span><span>الإشعارات والتعاميم</span>
+      </a>
+      <a class="nav-link {% if page_id == 'settings' %}is-active{% endif %}" href="{{ url_for('admin.settings') }}" data-nav="settings">
+        <span class="material-symbols-outlined">settings</span><span>الإعدادات العامة</span>
+      </a>
+    {% else %}
+      <a class="nav-link {% if page_id == 'dashboard' %}is-active{% endif %}" href="{{ url_for('student.dashboard') }}" data-nav="dashboard">
+        <span class="material-symbols-outlined">grid_view</span><span>لوحة التحكم</span>
+      </a>
+      <a class="nav-link {% if page_id == 'lessons' %}is-active{% endif %}" href="{{ url_for('student.lessons') }}" data-nav="lessons">
+        <span class="material-symbols-outlined">play_lesson</span><span>الحصص والدروس</span>
+      </a>
+      <a class="nav-link {% if page_id == 'homework' %}is-active{% endif %}" href="{{ url_for('student.homework') }}" data-nav="homework">
+        <span class="material-symbols-outlined">assignment</span><span>الواجبات</span>
+      </a>
+      <a class="nav-link {% if page_id == 'exams' %}is-active{% endif %}" href="{{ url_for('student.exams') }}" data-nav="exams">
+        <span class="material-symbols-outlined">quiz</span><span>الامتحانات</span>
+      </a>
+      <a class="nav-link {% if page_id == 'results' %}is-active{% endif %}" href="{{ url_for('student.results') }}" data-nav="results">
+        <span class="material-symbols-outlined">insights</span><span>نتائجي</span>
+      </a>
+      <a class="nav-link {% if page_id == 'files' %}is-active{% endif %}" href="{{ url_for('student.files') }}" data-nav="files">
+        <span class="material-symbols-outlined">folder_open</span><span>الملفات والمذكرات</span>
+      </a>
+      <a class="nav-link {% if page_id == 'notifications' %}is-active{% endif %}" href="{{ url_for('student.notifications') }}" data-nav="notifications">
+        <span class="material-symbols-outlined">notifications</span><span>الإشعارات</span>
+      </a>
+      <a class="nav-link {% if page_id == 'profile' %}is-active{% endif %}" href="{{ url_for('student.profile') }}" data-nav="profile">
+        <span class="material-symbols-outlined">person</span><span>الملف الشخصي</span>
+      </a>
+    {% endif %}
+  </nav>
+  <div class="sidebar-foot">
+    <a class="nav-link logout" href="{{ url_for('auth.logout') }}">
+      <span class="material-symbols-outlined">logout</span>
+      <span>تسجيل الخروج</span>
+    </a>
+  </div>
+</aside>
+<div class="overlay" data-sidebar-close></div>

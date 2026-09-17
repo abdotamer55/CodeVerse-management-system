@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة الطلاب{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">إدارة شؤون الطلاب والمتابعة الأكاديمية</h1>
+    <p class="body-md muted">رصد التفاعل البرمجي، نسب تسليم الأكواد والمشاريع، وسجل الحضور الفوري لطلاب المنصة.</p>
+  </div>
+  <div class="wrap">
+    <button class="btn btn-secondary" type="button" data-open="#generic-modal">
+      <span class="material-symbols-outlined">upload_file</span> استيراد CSV
+    </button>
+    <button class="btn btn-primary" type="button" data-open="#new-student-modal">
+      <span class="material-symbols-outlined">person_add</span> إضافة طالب جديد
+    </button>
+  </div>
+</div>
+
+<section class="grid-4">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">groups</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">إجمالي الطلاب المقيدين</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.total_count }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>{{ summary.seat_capacity }} نشاط</span><strong>+12 هذا الشهر</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">military_tech</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الطلاب المتميزون</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.honor_count }}</span>
+        <span class="label-md muted">معدل ≥ 95%</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>لوحة الشرف</span><strong>مسار تنافسي</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon red"><span class="material-symbols-outlined">warning</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">بحاجة لدعم أكاديمي</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">0{{ summary.at_risk_count }}</span>
+        <span class="label-md muted">تأخر واجبين</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>خطط تعويضية</span><strong>5 طلاب</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">analytics</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">متوسط الحضور التفاعلي</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.attendance_rate }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>42 متصل الآن</span><strong>+3.2%</strong></div>
+  </div>
+</section>
+
+<div class="card">
+  <div class="toolbar">
+    <div class="navbar-search" style="max-width:none;flex:1">
+      <span class="material-symbols-outlined">search</span>
+      <input class="search-input" data-table-search="#students-table" placeholder="بحث باسم الطالب، رقم القيد الأكاديمي، أو البريد..." />
+    </div>
+    <select class="select" data-filter-select="#students-table" style="max-width:220px">
+      <option value="all">الحالة: الكل</option>
+      <option value="online">متصل</option>
+      <option value="active">نشط</option>
+      <option value="risk">متأخر</option>
+    </select>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="data-table" id="students-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>بيانات الطالب</th>
+        <th>المسار</th>
+        <th>إنجاز الحصص</th>
+        <th>الواجبات</th>
+        <th>المعدل</th>
+        <th>الحالة</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in students %}
+      <tr data-filter="{{ s.status }}">
+        <td><input type="checkbox" /></td>
+        <td>
+          <div class="person">
+            <span class="avatar">{{ s.initials }}</span>
+            <div>
+              <strong>{{ s.name }}</strong>
+              <div class="ltr accent">{{ s.code }}</div>
+            </div>
+          </div>
+        </td>
+        <td>{{ s.track }}<br /><span class="body-sm muted">{{ s.level }}</span></td>
+        <td>
+          <div class="progress {% if s.completed_lessons == s.total_lessons %}success{% endif %}">
+            <span style="width:{{ (s.completed_lessons / s.total_lessons * 100)|int }}%"></span>
+          </div>
+          <span class="ltr">{{ s.completed_lessons }}/{{ s.total_lessons }}</span>
+        </td>
+        <td>
+          <span class="badge {% if s.completed_homework == s.total_homework %}badge-success{% else %}badge-warn{% endif %}">
+            {{ s.completed_homework }}/{{ s.total_homework }} مكتمل
+          </span>
+        </td>
+        <td>
+          <span class="badge {% if s.overall_grade >= 90 %}badge-success{% elif s.overall_grade < 70 %}badge-danger{% else %}badge-info{% endif %}">
+            {{ s.overall_grade }}%
+          </span>
+        </td>
+        <td>
+          <span class="badge {% if s.status == 'online' %}badge-success{% elif s.status == 'active' %}badge-info{% else %}badge-danger{% endif %}">
+            {{ s.status_label }}
+          </span>
+        </td>
+        <td>
+          <div class="row" style="gap:0.35rem;align-items:center;justify-content:flex-end">
+            <a class="btn-icon" href="{{ url_for('admin.student_detail', student_id=s.id) }}" aria-label="عرض الملف الأكاديمي" title="الملف الأكاديمي">
+              <span class="material-symbols-outlined">badge</span>
+            </a>
+            <button class="btn-icon" type="button" data-open="#edit-student-modal-{{ s.id }}" title="تعديل الطالب">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <form method="POST" action="{{ url_for('admin.delete_student', student_id=s.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف الطالب {{ s.name }} نهائياً؟ سيتم مسح كافة سجلاته.');" style="display:inline">
+              <button class="btn-icon" type="submit" style="color:var(--red, #ef4444)" title="حذف الطالب">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+
+  <!-- Student Drawer -->
+  <div class="drawer-backdrop" id="student-drawer">
+    <aside class="drawer">
+      <div class="modal-header">
+        <div>
+          <h3 class="headline-sm" id="drawer-name">زياد حسام الدين</h3>
+          <span class="ltr accent" id="drawer-id">#ST-2024-089</span>
+        </div>
+        <button class="btn-icon" type="button" data-close="#student-drawer"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="modal-body">
+        <span class="badge badge-success">نشط ومتصل الآن</span>
+        <p class="body-sm muted">هندسة برمجيات الأنظمة · المستوى المتقدم</p>
+        <p class="ltr">ziad.h@codeverse.dev</p>
+        <div class="stat-foot"><span>المعدل</span><strong class="success">98.4%</strong></div>
+        <a class="btn btn-primary" href="{{ url_for('admin.student_detail', student_id=1) }}">فتح الملف الأكاديمي</a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Add Student Modal -->
+  <div class="modal-backdrop" id="new-student-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">إضافة طالب جديد</h2>
+        <button class="btn-icon" data-close="#new-student-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_student') }}">
+        <div class="form-grid">
+          <div class="field">
+            <label>الاسم الكامل</label>
+            <input class="input" name="name" required placeholder="مثال: زياد حسام الدين" />
+          </div>
+          <div class="field">
+            <label>البريد الأكاديمي</label>
+            <input class="input" name="email" type="email" required placeholder="student@codeverse.edu" />
+          </div>
+          <div class="field">
+            <label>المسار الأكاديمي</label>
+            <select class="select" name="track">
+              <option value="هندسة برمجيات الأنظمة">هندسة برمجيات الأنظمة</option>
+              <option value="تطوير واجهات React">تطوير واجهات React</option>
+              <option value="تطوير الخوادم Node.js">تطوير الخوادم Node.js</option>
+              <option value="تطبيقات الجوال Flutter">تطبيقات الجوال Flutter</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>المستوى الدراسي</label>
+            <select class="select" name="level">
+              <option value="المستوى الأول">المستوى الأول</option>
+              <option value="المستوى الثاني">المستوى الثاني</option>
+              <option value="المستوى المتقدم L3">المستوى المتقدم L3</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#new-student-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ وإضافة الطالب</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Student Modals -->
+  {% for s in students %}
+  <div class="modal-backdrop" id="edit-student-modal-{{ s.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تعديل بيانات الطالب</h2>
+          <span class="ltr accent">{{ s.code }} · {{ s.email }}</span>
+        </div>
+        <button class="btn-icon" data-close="#edit-student-modal-{{ s.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_student', student_id=s.id) }}">
+        <div class="form-grid">
+          <div class="field">
+            <label>الاسم الكامل</label>
+            <input class="input" name="name" value="{{ s.name }}" required />
+          </div>
+          <div class="field">
+            <label>البريد الأكاديمي</label>
+            <input class="input" name="email" type="email" value="{{ s.email }}" required />
+          </div>
+          <div class="field">
+            <label>المسار</label>
+            <select class="select" name="track">
+              <option value="هندسة برمجيات الأنظمة" {% if s.track == 'هندسة برمجيات الأنظمة' %}selected{% endif %}>هندسة برمجيات الأنظمة</option>
+              <option value="تطوير واجهات React" {% if s.track == 'تطوير واجهات React' %}selected{% endif %}>تطوير واجهات React</option>
+              <option value="تطوير الخوادم Node.js" {% if s.track == 'تطوير الخوادم Node.js' %}selected{% endif %}>تطوير الخوادم Node.js</option>
+              <option value="تطبيقات الجوال Flutter" {% if s.track == 'تطبيقات الجوال Flutter' %}selected{% endif %}>تطبيقات الجوال Flutter</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>المستوى</label>
+            <select class="select" name="level">
+              <option value="المستوى الأول" {% if 'الأول' in s.level %}selected{% endif %}>المستوى الأول</option>
+              <option value="المستوى الثاني" {% if 'الثاني' in s.level %}selected{% endif %}>المستوى الثاني</option>
+              <option value="المستوى المتقدم L3" {% if 'المتقدم' in s.level %}selected{% endif %}>المستوى المتقدم L3</option>
+            </select>
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label>الحالة الأكاديمية</label>
+            <select class="select" name="status">
+              <option value="active" {% if s.status == 'active' %}selected{% endif %}>نشط ومنتظم</option>
+              <option value="online" {% if s.status == 'online' %}selected{% endif %}>متصل الآن</option>
+              <option value="risk" {% if s.status == 'risk' %}selected{% endif %}>متأخر دراسياً</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#edit-student-modal-{{ s.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock modals %}

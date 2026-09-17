@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>قاعة الاختبار | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-role="student" data-page="exams">
+  <div id="sidebar-root"></div>
+  <div class="app-frame">
+    <div id="navbar-root"></div>
+    <main class="page stack">
+
+<div class="between"><h1 class="headline-lg">اختبار هياكل البيانات</h1><div class="timer" data-exam-timer="5400">90:00</div></div>
+<div class="exam-layout">
+  <section class="card card-lg stack">
+    <article data-question-panel="1">
+      <p class="label-sm muted">سؤال 1 من 4</p>
+      <h2 class="headline-sm">ما هو أفضل تعقيد زمني للبحث الثنائي على مصفوفة مرتبة؟</h2>
+      <div class="stack" style="margin-top:12px">
+        <button class="option" data-option type="button">O(n)</button>
+        <button class="option is-selected" data-option type="button">O(log n)</button>
+        <button class="option" data-option type="button">O(n log n)</button>
+        <button class="option" data-option type="button">O(1)</button>
+      </div>
+    </article>
+    <article class="hidden" data-question-panel="2">
+      <p class="label-sm muted">سؤال 2 من 4</p>
+      <h2 class="headline-sm">أي هيكل بيانات يناسب سياسة LIFO؟</h2>
+      <div class="stack" style="margin-top:12px">
+        <button class="option" data-option type="button">الطابور Queue</button>
+        <button class="option" data-option type="button">المكدس Stack</button>
+        <button class="option" data-option type="button">الشجرة Tree</button>
+      </div>
+    </article>
+    <article class="hidden" data-question-panel="3">
+      <p class="label-sm muted">سؤال 3 من 4</p>
+      <h2 class="headline-sm">Hash Table تستخدم بشكل أساسي لـ:</h2>
+      <div class="stack" style="margin-top:12px">
+        <button class="option" data-option type="button">البحث بالترتيب</button>
+        <button class="option" data-option type="button">الوصول السريع بالمفتاح</button>
+      </div>
+    </article>
+    <article class="hidden" data-question-panel="4">
+      <p class="label-sm muted">سؤال 4 من 4</p>
+      <h2 class="headline-sm">القائمة المرتبطة Linked List تتميز بـ:</h2>
+      <div class="stack" style="margin-top:12px">
+        <button class="option" data-option type="button">حجم ثابت في الذاكرة</button>
+        <button class="option" data-option type="button">إدراج مرن دون إزاحة العناصر</button>
+      </div>
+    </article>
+    <div class="between">
+      <button class="btn btn-secondary" data-exam-nav="prev" type="button">السابق</button>
+      <button class="btn btn-primary" data-exam-nav="next" type="button">التالي</button>
+    </div>
+  </section>
+  <aside class="card stack">
+    <h3 class="headline-sm">خريطة الأسئلة</h3>
+    <div class="q-nav">
+      <button class="current" data-question="1" type="button">1</button>
+      <button data-question="2" type="button">2</button>
+      <button data-question="3" type="button">3</button>
+      <button data-question="4" type="button">4</button>
+    </div>
+    <p class="body-sm muted">التسليم هنا للمعاينة فقط ولن يُحفظ في خادم.</p>
+    <button class="btn btn-primary" type="button" data-open="#generic-modal">إنهاء الاختبار</button>
+  </aside>
+</div>
+
+    </main>
+    <div id="footer-root"></div>
+  </div>
+<div class="modal-backdrop" id="generic-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="headline-sm">نافذة الإجراء</h2>
+      <button class="btn-icon" type="button" data-close="#generic-modal" aria-label="إغلاق">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="body-md muted">هذه نافذة مشتركة للمعاينة الأمامية فقط، دون رفع أو حفظ خلفي.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" type="button" data-close="#generic-modal">إلغاء</button>
+      <button class="btn btn-primary" type="button" data-close="#generic-modal">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

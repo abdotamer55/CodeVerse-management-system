@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}الواجبات والتكاليف البرمجية{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الواجبات والتكاليف البرمجية</h1>
+    <p class="body-md muted">قائمة المشاريع المطلوب تسليمها مع رصد نتائج الفحص الآلي للـ Unit Tests والملاحظات.</p>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" style="margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:{% if category=='success' %}var(--green-alpha){% else %}var(--red-alpha){% endif %};color:{% if category=='success' %}var(--green){% else %}var(--red){% endif %};">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>التكليف البرمجي</th>
+        <th>المسار</th>
+        <th>الموعد النهائي</th>
+        <th>نتيجتي</th>
+        <th>حالة التسليم</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in homework %}
+      <tr>
+        <td>
+          <strong>{{ h.title }}</strong>
+          <div class="ltr muted">{{ h.code }}</div>
+        </td>
+        <td>{{ h.track }}</td>
+        <td>{{ h.due_date }}</td>
+        <td>
+          {% if h.my_submission and h.my_submission.grade %}
+            <span class="headline-sm success">{{ h.my_submission.grade }}</span>
+          {% elif h.my_submission %}
+            <span class="body-sm muted">قيد المراجعة</span>
+          {% else %}
+            <span class="body-sm muted">لم يُسلَّم</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if h.my_submission %}
+            <span class="badge badge-success">تم التسليم</span>
+          {% else %}
+            <span class="badge {% if h.status == 'completed' %}badge-success{% elif h.status == 'grading' %}badge-warn{% else %}badge-info{% endif %}">
+              {{ h.status_label or h.status }}
+            </span>
+          {% endif %}
+        </td>
+        <td>
+          <button class="btn btn-secondary" type="button"
+            data-open="#submit-hw-modal-{{ h.id }}"
+            {% if h.status == 'completed' and not h.my_submission %}disabled{% endif %}>
+            {% if h.my_submission %}تعديل التسليم{% elif h.status == 'completed' %}منتهي{% else %}تسليم الواجب{% endif %}
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+  {% for h in homework %}
+  <div class="modal-backdrop" id="submit-hw-modal-{{ h.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تسليم التكليف البرمجي</h2>
+          <span class="ltr accent">{{ h.code }}</span>
+        </div>
+        <button class="btn-icon" data-close="#submit-hw-modal-{{ h.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('student.submit_homework_route') }}">
+        <input type="hidden" name="homework_id" value="{{ h.id }}" />
+        {% if h.my_submission %}
+        <div class="card" style="background:var(--surface-lowest);padding:0.75rem;margin-bottom:1rem;">
+          <span class="label-sm muted">آخر تسليم</span>
+          <div class="ltr accent" style="margin-top:4px;">{{ h.my_submission.repo_url }}</div>
+          <div class="body-sm muted" style="margin-top:4px;">{{ h.my_submission.submitted_at }}</div>
+          {% if h.my_submission.tests_summary %}
+            <div class="badge badge-success" style="margin-top:4px;">{{ h.my_submission.tests_summary }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="field">
+          <label>رابط مستودع GitHub</label>
+          <input class="input ltr" name="repo_url" required placeholder="https://github.com/username/project"
+            value="{{ h.my_submission.repo_url if h.my_submission else '' }}" />
+        </div>
+        <div class="field">
+          <label>ملاحظات إضافية للمصحح</label>
+          <textarea class="textarea" name="notes" placeholder="اذكر أي مكتبات إضافية قمت بتثبيتها أو تعليمات تشغيل...">{{ h.my_submission.code_snippet if h.my_submission and h.my_submission.code_snippet else '' }}</textarea>
+        </div>
+        <p class="body-sm muted">سيتم إرسال الكود فورياً إلى سيرفر الاختبارات الآلية لفحص الـ CI/CD Pipeline.</p>
+        <div class="modal-footer" style="padding:0">
+          <button class="btn btn-ghost" type="button" data-close="#submit-hw-modal-{{ h.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">{{ 'تحديث التسليم' if h.my_submission else 'تأكيد التسليم الرسمي' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock modals %}

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}بنك الأسئلة الأكاديمي{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">مستودع بنك الأسئلة الأكاديمي</h1>
+    <p class="body-md muted">إدارة وتصنيف أسئلة الاختيار من متعدد، صح/خطأ، والمسائل البرمجية وتتبع نسب الصعوبة وتعديلها أو حذفها.</p>
+  </div>
+  <button class="btn btn-primary" type="button" data-open="#q-modal">
+    <span class="material-symbols-outlined">add_circle</span> إضافة سؤال جديد
+  </button>
+</div>
+
+<div class="tabs">
+  <button class="tab is-active" data-tab-group="q" data-tab="mcq" type="button">اختيار من متعدد (MCQ)</button>
+  <button class="tab" data-tab-group="q" data-tab="code" type="button">مسائل برمجية وكود</button>
+</div>
+
+<!-- MCQ Panel -->
+<section data-tab-panel-group="q" data-tab-panel="mcq" class="stack" style="gap:1rem">
+  {% for q in questions if q.category == 'mcq' %}
+  <article class="card">
+    <div class="between">
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <span class="badge {{ q.difficulty_badge }}">{{ q.difficulty }}</span>
+        <span class="body-sm muted">{{ q.track }}</span>
+      </div>
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <button class="btn btn-secondary" type="button" data-open="#edit-q-modal-{{ q.id }}" style="padding:4px 12px;font-size:13px">
+          <span class="material-symbols-outlined" style="font-size:16px">edit</span> تعديل
+        </button>
+        <form method="POST" action="{{ url_for('admin.delete_question', question_id=q.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا السؤال نهائياً من بنك الأسئلة؟');" style="display:inline">
+          <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:4px 12px;font-size:13px">
+            <span class="material-symbols-outlined" style="font-size:16px">delete</span> حذف
+          </button>
+        </form>
+      </div>
+    </div>
+    <h3 class="headline-sm" style="margin-top:10px">{{ q.prompt }}</h3>
+    <div class="card" style="background:var(--surface-lowest);margin-top:10px;padding:0.75rem">
+      <span class="label-sm muted">الإجابة المعتمدة:</span>
+      <strong class="ltr accent" style="display:block;margin-top:4px">{{ q.answer_preview }}</strong>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<!-- Code Panel -->
+<section class="hidden stack" data-tab-panel-group="q" data-tab-panel="code" style="gap:1rem">
+  {% for q in questions if q.category == 'code' %}
+  <article class="card">
+    <div class="between">
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <span class="badge {{ q.difficulty_badge }}">{{ q.difficulty }}</span>
+        <span class="body-sm muted">{{ q.track }}</span>
+      </div>
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <button class="btn btn-secondary" type="button" data-open="#edit-q-modal-{{ q.id }}" style="padding:4px 12px;font-size:13px">
+          <span class="material-symbols-outlined" style="font-size:16px">edit</span> تعديل
+        </button>
+        <form method="POST" action="{{ url_for('admin.delete_question', question_id=q.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا السؤال البرمجي نهائياً؟');" style="display:inline">
+          <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:4px 12px;font-size:13px">
+            <span class="material-symbols-outlined" style="font-size:16px">delete</span> حذف
+          </button>
+        </form>
+      </div>
+    </div>
+    <h3 class="headline-sm" style="margin-top:10px">{{ q.prompt }}</h3>
+    <pre class="code-block" style="background:var(--surface-lowest);padding:1rem;border-radius:var(--radius-md);margin-top:10px;direction:ltr;text-align:left;overflow-x:auto"><code>{{ q.answer_preview }}</code></pre>
+  </article>
+  {% endfor %}
+</section>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+
+  <!-- Add Question Modal -->
+  <div class="modal-backdrop" id="q-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">إضافة سؤال للبنك المركزي</h2>
+        <button class="btn-icon" data-close="#q-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_question') }}">
+        <div class="field">
+          <label>نص السؤال الأكاديمي</label>
+          <textarea class="textarea" name="prompt" required placeholder="اكتب نص السؤال بدقة..."></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>نوع السؤال</label>
+            <select class="select" name="category">
+              <option value="mcq">اختيار من متعدد (MCQ)</option>
+              <option value="code">مسألة كود برمجي</option>
+              <option value="boolean">صح / خطأ</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>مستوى الصعوبة</label>
+            <select class="select" name="difficulty">
+              <option value="مبتدئ">مبتدئ</option>
+              <option value="متوسط" selected>متوسط</option>
+              <option value="متقدم">متقدم</option>
+              <option value="تحدي برمجي">تحدي برمجي</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>المسار الأكاديمي</label>
+          <input class="input" name="track" value="الخوارزميات" placeholder="مثال: هياكل البيانات، هندسة الويب..." />
+        </div>
+        <div class="field">
+          <label>الإجابة النموذجية أو الكود المتوقع</label>
+          <input class="input" name="correct_answer" required placeholder="الناتج المتوقع أو الكود النموذجي..." />
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#q-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">إضافة للبنك</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Question Modals -->
+  {% for q in questions %}
+  <div class="modal-backdrop" id="edit-q-modal-{{ q.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">تعديل السؤال #{{ q.id }}</h2>
+        <button class="btn-icon" data-close="#edit-q-modal-{{ q.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_question', question_id=q.id) }}">
+        <div class="field">
+          <label>نص السؤال الأكاديمي</label>
+          <textarea class="textarea" name="prompt" required rows="3">{{ q.prompt }}</textarea>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>نوع السؤال</label>
+            <select class="select" name="category">
+              <option value="mcq" {% if q.category == 'mcq' %}selected{% endif %}>اختيار من متعدد (MCQ)</option>
+              <option value="code" {% if q.category == 'code' %}selected{% endif %}>مسألة كود برمجي</option>
+              <option value="boolean" {% if q.category == 'boolean' %}selected{% endif %}>صح / خطأ</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>مستوى الصعوبة</label>
+            <select class="select" name="difficulty">
+              <option value="مبتدئ" {% if q.difficulty == 'مبتدئ' %}selected{% endif %}>مبتدئ</option>
+              <option value="متوسط" {% if q.difficulty == 'متوسط' %}selected{% endif %}>متوسط</option>
+              <option value="متقدم" {% if q.difficulty == 'متقدم' %}selected{% endif %}>متقدم</option>
+              <option value="تحدي برمجي" {% if q.difficulty == 'تحدي برمجي' %}selected{% endif %}>تحدي برمجي</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>المسار الأكاديمي</label>
+          <input class="input" name="track" value="{{ q.track }}" />
+        </div>
+        <div class="field">
+          <label>الإجابة النموذجية أو الكود المتوقع</label>
+          <textarea class="textarea" name="correct_answer" rows="2">{{ q.answer_preview or q.correct_answer }}</textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#edit-q-modal-{{ q.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock modals %}

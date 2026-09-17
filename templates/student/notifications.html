@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}الإشعارات والتنبيهات{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الإشعارات والتنبيهات</h1>
+    <p class="body-md muted">تنبيهات مواعيد الاختبارات القادمة، فتح التكاليف البرمجية، وتحديثات المعامل.</p>
+  </div>
+</div>
+
+<div class="stack" style="gap:1rem">
+  <article class="notif-item unread">
+    <span class="material-symbols-outlined">quiz</span>
+    <div>
+      <strong>تذكير مهم: قاعة اختبار هياكل البيانات والخوارزميات مفتوحة الآن</strong>
+      <p class="body-sm muted">المؤقت: 90 دقيقة · ينتهي الموعد غداً في تمام 11:59 م · منذ ساعتين</p>
+    </div>
+  </article>
+
+  <article class="notif-item">
+    <span class="material-symbols-outlined">task_alt</span>
+    <div>
+      <strong>تم رصد نتيجة تقييم مشروع REST API و Redis بنجاح</strong>
+      <p class="body-sm muted">الدرجة: 38 / 40 · اجتياز فحص الـ CI/CD بنسبة 100% · أمس</p>
+    </div>
+  </article>
+
+  <article class="notif-item">
+    <span class="material-symbols-outlined">live_tv</span>
+    <div>
+      <strong>تذكير بالبث المباشر لمعمل البرمجة الديناميكية #14</strong>
+      <p class="body-sm muted">اليوم الساعة 07:00 مساءً مع د. طارق الحارثي · قبل يومين</p>
+    </div>
+  </article>
+</div>
+{% endblock content %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}قاعة الاختبار | {{ exam.short_title }}{% endblock %}
+
+{% block content %}
+<div class="between" style="flex-wrap:wrap">
+  <div>
+    <span class="badge badge-info">قاعة الاختبار المركزية التفاعلية</span>
+    <h1 class="headline-lg" style="margin-top:4px">{{ exam.title }}</h1>
+  </div>
+  <div class="timer" data-exam-timer="{{ exam.duration_seconds }}">90:00</div>
+</div>
+
+{% if attempt %}
+<div class="alert" style="margin-top:1rem"><p>تم تسليم هذه المحاولة وهي مقفلة. النتيجة: {{ attempt.score }} / {{ attempt.total_score }} ({{ attempt.percentage }}%).</p></div>
+{% else %}
+<form method="POST" action="{{ url_for('student.submit_exam', exam_id=exam.id) }}" class="exam-layout" style="margin-top:1.5rem">
+  <!-- Active Questions Deck -->
+  <section class="card card-lg stack" style="gap:1.5rem">
+    {% for q in exam.questions %}
+    <article class="{% if not loop.first %}hidden{% endif %}" data-question-panel="{{ loop.index }}">
+      <div class="between">
+        <span class="label-sm muted">سؤال {{ loop.index }} من {{ exam.questions|length }}</span>
+        <span class="badge badge-neutral">درجة السؤال: {{ q.points|default(1) }}</span>
+      </div>
+      <h2 class="headline-sm" style="margin-top:8px">{{ q.prompt }}</h2>
+      <div class="stack" style="gap:8px;margin-top:1rem">
+        {% for opt in q.options %}
+        <label class="option"><input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" required> {{ opt }}</label>
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+
+    <div class="between" style="padding-top:1rem;border-top:1px solid rgba(66,71,84,.3)">
+      <button class="btn btn-secondary" data-exam-nav="prev" type="button">السؤال السابق</button>
+      <button class="btn btn-primary" data-exam-nav="next" type="button">السؤال التالي</button>
+    </div>
+  </section>
+
+  <!-- Question Map & Submission Sidebar -->
+  <aside class="card stack" style="gap:1rem;height:fit-content">
+    <h3 class="headline-sm">خريطة الأسئلة</h3>
+    <div class="q-nav">
+      {% for q in exam.questions %}
+      <button class="{% if loop.first %}current{% endif %}" data-question="{{ loop.index }}" type="button">{{ loop.index }}</button>
+      {% endfor %}
+    </div>
+    <div class="alert" style="background:var(--surface-lowest);padding:0.75rem;border-radius:var(--radius-md)">
+      <p class="body-sm muted" style="margin:0">يمكنك مراجعة أي سؤال قبل تسليم المحاولة النهائية.</p>
+    </div>
+    <button class="btn btn-primary" type="submit" style="width:100%">
+      إنهاء وتسليم الاختبار
+    </button>
+  </aside>
+</form>
+{% endif %}
+{% endblock content %}

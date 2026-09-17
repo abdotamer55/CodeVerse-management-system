@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ملف الطالب | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-role="admin" data-page="students">
+  <div id="sidebar-root"></div>
+  <div class="app-frame">
+    <div id="navbar-root"></div>
+    <main class="page stack">
+
+<nav class="crumb"><a href="students.html">الطلاب</a><span class="material-symbols-outlined">chevron_left</span><span>زياد حسام الدين</span></nav>
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap">
+    <div class="person">
+      <span class="avatar" style="width:64px;height:64px">ز.ح</span>
+      <div>
+        <h1 class="headline-lg">زياد حسام الدين</h1>
+        <p class="ltr accent">#ST-2024-089 · ziad.h@codeverse.dev</p>
+        <div class="wrap" style="margin-top:8px"><span class="badge badge-success">نشط ومتصل</span><span class="badge badge-warn">لوحة الشرف</span></div>
+      </div>
+    </div>
+    <div class="wrap">
+      <button class="btn btn-secondary" type="button" data-open="#generic-modal">إرسال تنبيه</button>
+      <button class="btn btn-primary" type="button" data-open="#generic-modal">تعديل السجل</button>
+    </div>
+  </div>
+</section>
+<section class="grid-4">
+  <div class="card"><span class="label-sm muted">المعدل</span><div class="headline-lg success">98.4%</div></div>
+  <div class="card"><span class="label-sm muted">الحصص</span><div class="headline-lg">27/28</div></div>
+  <div class="card"><span class="label-sm muted">الواجبات</span><div class="headline-lg">14/14</div></div>
+  <div class="card"><span class="label-sm muted">المسار</span><div class="headline-sm">هندسة برمجيات الأنظمة</div></div>
+</section>
+<section class="card card-lg">
+  <h2 class="headline-sm">سجل النشاط الأخير</h2>
+  <div class="stack" style="margin-top:12px">
+    <div class="notif-item"><span class="material-symbols-outlined">quiz</span><div><strong>اجتاز اختبار هياكل البيانات</strong><p class="body-sm muted">درجة 96% · أمس 09:40 م</p></div></div>
+    <div class="notif-item"><span class="material-symbols-outlined">assignment</span><div><strong>تسليم مشروع REST API</strong><p class="body-sm muted">قبل 2 ساعة</p></div></div>
+  </div>
+</section>
+
+    </main>
+    <div id="footer-root"></div>
+  </div>
+<div class="modal-backdrop" id="generic-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="headline-sm">نافذة الإجراء</h2>
+      <button class="btn-icon" type="button" data-close="#generic-modal" aria-label="إغلاق">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="body-md muted">هذه نافذة مشتركة للمعاينة الأمامية فقط، دون رفع أو حفظ خلفي.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" type="button" data-close="#generic-modal">إلغاء</button>
+      <button class="btn btn-primary" type="button" data-close="#generic-modal">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

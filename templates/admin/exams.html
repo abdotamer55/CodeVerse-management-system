@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة الامتحانات{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="glow glow-a"></div>
+  <div class="between" style="flex-wrap:wrap;position:relative;z-index:1">
+    <div>
+      <span class="badge badge-info">نظام الاختبارات المركزية الذكي</span>
+      <h1 class="headline-xl">إدارة الامتحانات وبنك الأسئلة التفاعلي</h1>
+      <p class="body-md muted">بناء قاعات الاختبارات، ضبط المؤقتات، وإدارة بنوك الأسئلة الأكاديمية مع معاينة واجهة الطالب.</p>
+    </div>
+    <div class="wrap">
+      <button class="btn btn-primary" type="button" data-open="#exam-modal">
+        <span class="material-symbols-outlined">add_circle</span> إنشاء امتحان جديد
+      </button>
+      <a class="btn btn-secondary" href="{{ url_for('student.exam_detail', exam_id=1) }}">معاينة كطالب</a>
+      <a class="btn btn-primary" href="{{ url_for('admin.questions') }}">بنك الأسئلة</a>
+    </div>
+  </div>
+</section>
+
+<section class="grid-4">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">timer</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">امتحانات نشطة ومجدولة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.active_exams }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>اليوم</span><strong>3 قاعات جارية</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">groups</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">إجمالي المشاركين اليوم</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.total_participants }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>القاعات</span><strong>متصلة بنجاح</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">hourglass</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">بانتظار الرصد النهائي</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.awaiting_grading }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>مراجعة مقالية</span><strong>مطلوبة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">help_center</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">أسئلة البنك المعتمدة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.question_bank_count }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>مستودع جاهز</span><strong>للاستخدام</strong></div>
+  </div>
+</section>
+
+<div class="grid-2">
+  {% for e in exams %}
+  <article class="exam-card">
+    <div class="exam-card-body">
+      <div class="between">
+        <span class="badge {% if e.status == 'active' %}badge-success{% else %}badge-info{% endif %}">
+          {{ e.status_label }}
+        </span>
+        <span class="body-sm muted">{{ e.duration_minutes }} دقيقة</span>
+      </div>
+      <h3 class="headline-sm">{{ e.title }}</h3>
+      <p class="body-sm muted">{{ e.scheduled_date }} · {{ e.total_questions }} سؤالاً · نظام فحص النزاهة مفعّل</p>
+      <div class="wrap" style="margin-top:12px">
+        {% if e.status == 'active' %}
+          <div class="progress"><span style="width:{{ e.progress }}%"></span></div>
+          <a class="btn btn-primary" href="{{ url_for('admin.results') }}">رصد النتائج الحية</a>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('admin.exam_builder', exam_id=e.id) }}">إدارة الأسئلة</a>
+        <a class="btn btn-ghost" href="{{ url_for('admin.review_exam', exam_id=e.id) }}">مراجعة الاختبار</a>
+        <button class="btn btn-ghost" type="button" data-open="#edit-exam-modal-{{ e.id }}">
+          <span class="material-symbols-outlined">edit</span> تعديل
+        </button>
+        <form method="POST" action="{{ url_for('admin.delete_exam', exam_id=e.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف الاختبار ({{ e.title }}) نهائياً؟');" style="display:inline">
+          <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444)">
+            <span class="material-symbols-outlined">delete</span> حذف
+          </button>
+        </form>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+  <!-- Create Exam Modal -->
+  <div class="modal-backdrop" id="exam-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">إنشاء قاعة اختبار مجدولة</h2>
+        <button class="btn-icon" data-close="#exam-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_exam') }}">
+        <div class="field">
+          <label>عنوان الاختبار</label>
+          <input class="input" name="title" required placeholder="مثال: الاختبار النصفي لهياكل البيانات" />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>المدة بالدقائق</label>
+            <input class="input" name="duration_minutes" type="number" value="90" />
+          </div>
+          <div class="field">
+            <label>عدد الأسئلة</label>
+            <input class="input" name="total_questions" type="number" value="20" />
+          </div>
+        </div>
+        <div class="field">
+          <label>تاريخ ووقت البدء</label>
+          <input class="input" name="scheduled_date" placeholder="مثال: 22 سبتمبر 2024 · 08:00 م" />
+        </div>
+        <div class="field">
+          <label>الحالة</label>
+          <select class="select" name="status">
+            <option value="scheduled">مجدول</option>
+            <option value="active">جارٍ الآن</option>
+            <option value="completed">منتهي</option>
+          </select>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#exam-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ وجدولة الاختبار</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Exam Modals -->
+  {% for e in exams %}
+  <div class="modal-backdrop" id="edit-exam-modal-{{ e.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تعديل الاختبار</h2>
+          <span class="ltr accent">ID: #{{ e.id }}</span>
+        </div>
+        <button class="btn-icon" data-close="#edit-exam-modal-{{ e.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_exam', exam_id=e.id) }}">
+        <div class="field">
+          <label>عنوان الاختبار</label>
+          <input class="input" name="title" value="{{ e.title }}" required />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>المدة بالدقائق</label>
+            <input class="input" name="duration_minutes" type="number" value="{{ e.duration_minutes }}" />
+          </div>
+          <div class="field">
+            <label>عدد الأسئلة</label>
+            <input class="input" name="total_questions" type="number" value="{{ e.total_questions }}" />
+          </div>
+        </div>
+        <div class="field">
+          <label>تاريخ ووقت البدء</label>
+          <input class="input" name="scheduled_date" value="{{ e.scheduled_date or '' }}" />
+        </div>
+        <div class="field">
+          <label>الحالة</label>
+          <select class="select" name="status">
+            <option value="scheduled" {% if e.status == 'scheduled' %}selected{% endif %}>مجدول</option>
+            <option value="active" {% if e.status == 'active' %}selected{% endif %}>جارٍ الآن</option>
+            <option value="completed" {% if e.status == 'completed' %}selected{% endif %}>منتهي</option>
+          </select>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#edit-exam-modal-{{ e.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock modals %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}الإعدادات العامة للمنصة{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الإعدادات العامة للمنصة</h1>
+    <p class="body-md muted">تخصيص هوية البيئة الأكاديمية، ضبط الفصل الدراسي، وإدارة التنبيهات وصلاحيات الوصول.</p>
+  </div>
+</div>
+
+<form class="card card-lg stack" data-validate style="gap:1.5rem">
+  <div class="form-grid">
+    <div class="field">
+      <label>اسم المنصة أو الأكاديمية</label>
+      <input class="input" value="كودفيرس (CodeVerse LMS)" required />
+    </div>
+    <div class="field">
+      <label>رمز ومعرف الفصل الدراسي</label>
+      <input class="input ltr" value="CV-FA24-MTR" required />
+    </div>
+    <div class="field">
+      <label>لغة الواجهة الافتراضية</label>
+      <select class="select">
+        <option selected>العربية (Arabic RTL)</option>
+        <option>English (LTR)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>المنطقة الزمنية</label>
+      <select class="select">
+        <option selected>Asia/Riyadh (GMT+3)</option>
+        <option>Africa/Cairo (GMT+2)</option>
+        <option>Asia/Dubai (GMT+4)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stack" style="gap:0.75rem;padding-top:1rem;border-top:1px solid rgba(66,71,84,.3)">
+    <div class="between">
+      <div>
+        <strong>تفعيل الإشعارات والتنبيهات الفورية</strong>
+        <p class="body-sm muted">عرض إشارات التنبيه التفاعلية في الشريط العلوي لكل من الطالب والمعلم.</p>
+      </div>
+      <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--primary)" />
+    </div>
+
+    <div class="between">
+      <div>
+        <strong>نظام النزاهة التلقائي للامتحانات (Proctoring Engine)</strong>
+        <p class="body-sm muted">قفل التبويبات وتسجيل محاولات الخروج من شاشة الاختبار للطلاب.</p>
+      </div>
+      <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--primary)" />
+    </div>
+
+    <div class="between">
+      <div>
+        <strong>الفحص الآلي لتسليمات الكود (CI/CD Pipeline)</strong>
+        <p class="body-sm muted">تشغيل اختبارات الـ Unit Tests تلقائياً عبر حاويات معزولة فور رفع الواجب.</p>
+      </div>
+      <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--primary)" />
+    </div>
+  </div>
+
+  <div class="hero-actions" style="margin-top:0.5rem">
+    <button class="btn btn-primary" type="submit">
+      <span class="material-symbols-outlined">save</span> حفظ الإعدادات
+    </button>
+  </div>
+</form>
+{% endblock content %}

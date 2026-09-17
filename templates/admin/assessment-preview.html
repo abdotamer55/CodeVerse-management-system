@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}معاينة الطالب | {{ assessment.title }}{% endblock %}
+{% block content %}
+<section class="page-hero">
+  <span class="badge badge-info">وضع معاينة الطالب</span>
+  <h1 class="headline-lg">{{ assessment.title }}</h1>
+  <p class="body-md muted">هذه المعاينة مطابقة لشكل الاختبار عند الطالب. لا يتم حفظ إجابات أو إنشاء محاولة.</p>
+</section>
+<div class="card" style="margin-bottom:1rem; padding:1rem;">
+  <div class="between" style="flex-wrap:wrap; gap:1rem;">
+    <span><strong>المدة:</strong> {{ assessment.duration_minutes|default(90) }} دقيقة</span>
+    <span><strong>عدد الأسئلة:</strong> {{ assessment.questions|length }}</span>
+    <span><strong>موعد البدء:</strong> {{ assessment.scheduled_date|default('غير محدد') }}</span>
+  </div>
+</div>
+{% set show_answers=false %}
+{% include 'components/assessment-questions.html' %}
+<div class="wrap">
+  <a class="btn btn-secondary" href="{{ builder_url }}">العودة للتعديل</a>
+  <button class="btn btn-primary" type="button" disabled>تسليم الاختبار (المعاينة فقط)</button>
+</div>
+{% endblock %}

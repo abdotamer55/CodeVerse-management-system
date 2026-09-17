@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}ملف الطالب | {{ student.name }}{% endblock %}
+
+{% block content %}
+<nav class="crumb">
+  <a href="{{ url_for('admin.students') }}">الطلاب</a>
+  <span class="material-symbols-outlined">chevron_left</span>
+  <span>{{ student.name }}</span>
+</nav>
+
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap">
+    <div class="person">
+      <span class="avatar" style="width:64px;height:64px;font-size:18px">{{ student.initials }}</span>
+      <div>
+        <h1 class="headline-lg">{{ student.name }}</h1>
+        <p class="ltr accent">{{ student.code }} · {{ student.email }}</p>
+        <div class="wrap" style="margin-top:8px">
+          <span class="badge {% if student.status == 'online' %}badge-success{% elif student.status == 'active' %}badge-info{% else %}badge-danger{% endif %}">
+            {{ student.status_label }}
+          </span>
+          {% if student.is_honor %}
+            <span class="badge badge-warn">لوحة الشرف</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <button class="btn btn-secondary" type="button" data-open="#edit-profile-modal">
+        <span class="material-symbols-outlined">edit</span> تعديل السجل الأكاديمي
+      </button>
+      <form method="POST" action="{{ url_for('admin.delete_student', student_id=student.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف الطالب نهائياً من النظام؟ لا يمكن التراجع.');" style="display:inline">
+        <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);border:1px solid rgba(239,68,68,0.3)">
+          <span class="material-symbols-outlined">delete</span> حذف الطالب
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="grid-4">
+  <div class="card">
+    <span class="label-sm muted">المعدل العام</span>
+    <div class="headline-lg {% if student.overall_grade >= 90 %}success{% endif %}">{{ student.overall_grade }}%</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الحصص المكتملة</span>
+    <div class="headline-lg">{{ student.completed_lessons }}/{{ student.total_lessons }}</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الواجبات المسلمة</span>
+    <div class="headline-lg">{{ student.completed_homework }}/{{ student.total_homework }}</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">المسار التدريبي</span>
+    <div class="headline-sm" style="margin-top:8px">{{ student.track }}</div>
+  </div>
+</section>
+
+<section class="card card-lg">
+  <h2 class="headline-sm">سجل النشاط الأكاديمي الأخير</h2>
+  <div class="stack" style="margin-top:12px">
+    <div class="notif-item">
+      <span class="material-symbols-outlined">quiz</span>
+      <div>
+        <strong>اجتاز اختبار هياكل البيانات والخوارزميات</strong>
+        <p class="body-sm muted">الدرجة: 96% · أمس 09:40 م</p>
+      </div>
+    </div>
+    <div class="notif-item">
+      <span class="material-symbols-outlined">assignment</span>
+      <div>
+        <strong>تسليم مشروع REST API و Redis</strong>
+        <p class="body-sm muted">تم التحقق عبر الـ CI/CD بنجاح · قبل 2 ساعة</p>
+      </div>
+    </div>
+    <div class="notif-item">
+      <span class="material-symbols-outlined">play_lesson</span>
+      <div>
+        <strong>حضور معمل البرمجة الديناميكية الحي</strong>
+        <p class="body-sm muted">اكتمال الحصة 100% · قبل 3 أيام</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+  <div class="modal-backdrop" id="edit-profile-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تعديل بيانات الطالب</h2>
+          <span class="ltr accent">{{ student.code }} · {{ student.email }}</span>
+        </div>
+        <button class="btn-icon" data-close="#edit-profile-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_student', student_id=student.id) }}">
+        <div class="form-grid">
+          <div class="field">
+            <label>الاسم الكامل</label>
+            <input class="input" name="name" value="{{ student.name }}" required />
+          </div>
+          <div class="field">
+            <label>البريد الأكاديمي</label>
+            <input class="input" name="email" type="email" value="{{ student.email }}" required />
+          </div>
+          <div class="field">
+            <label>المسار</label>
+            <select class="select" name="track">
+              <option value="هندسة برمجيات الأنظمة" {% if student.track == 'هندسة برمجيات الأنظمة' %}selected{% endif %}>هندسة برمجيات الأنظمة</option>
+              <option value="تطوير واجهات React" {% if student.track == 'تطوير واجهات React' %}selected{% endif %}>تطوير واجهات React</option>
+              <option value="تطوير الخوادم Node.js" {% if student.track == 'تطوير الخوادم Node.js' %}selected{% endif %}>تطوير الخوادم Node.js</option>
+              <option value="تطبيقات الجوال Flutter" {% if student.track == 'تطبيقات الجوال Flutter' %}selected{% endif %}>تطبيقات الجوال Flutter</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>المستوى</label>
+            <select class="select" name="level">
+              <option value="المستوى الأول" {% if 'الأول' in student.level %}selected{% endif %}>المستوى الأول</option>
+              <option value="المستوى الثاني" {% if 'الثاني' in student.level %}selected{% endif %}>المستوى الثاني</option>
+              <option value="المستوى المتقدم L3" {% if 'المتقدم' in student.level %}selected{% endif %}>المستوى المتقدم L3</option>
+            </select>
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label>الحالة الأكاديمية</label>
+            <select class="select" name="status">
+              <option value="active" {% if student.status == 'active' %}selected{% endif %}>نشط ومنتظم</option>
+              <option value="online" {% if student.status == 'online' %}selected{% endif %}>متصل الآن</option>
+              <option value="risk" {% if student.status == 'risk' %}selected{% endif %}>متأخر دراسياً</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#edit-profile-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock modals %}
+

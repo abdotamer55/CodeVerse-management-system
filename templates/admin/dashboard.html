@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة التحكم{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="glow glow-a"></div>
+  <div class="between" style="flex-wrap:wrap;position:relative;z-index:1">
+    <div class="stack" style="gap:8px">
+      <div class="wrap">
+        <span class="pill"><span class="dot pulse"></span> الفصل الدراسي الأول 2024 / 2025</span>
+        <span class="badge badge-neutral ltr">TERM-ID: CV-FA24-MTR</span>
+      </div>
+      <h1 class="headline-lg">أهلاً بك، {{ current_user.name if current_user else 'أستاذ د. طارق الحارثي' }} 👋</h1>
+      <p class="body-md muted">لوحة المتابعة الإدارية والأكاديمية الموحدة لمنصة كودفيرس | رصد فوري للنشاط الصفي، تصحيح الاختبارات التفاعلية، وتحليل مستويات الإتقان البرمجي للطلاب.</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('admin.lessons') }}"><span class="material-symbols-outlined">add_circle</span> إضافة حصة جديدة</a>
+      <a class="btn btn-secondary" href="{{ url_for('admin.exams') }}"><span class="material-symbols-outlined">quiz</span> إنشاء اختبار جديد</a>
+      <a class="btn btn-ghost" href="{{ url_for('admin.files') }}"><span class="material-symbols-outlined">upload_file</span> رفع مذكرة/ملف</a>
+    </div>
+  </div>
+</section>
+
+<!-- Stats Grid -->
+<section class="grid-4">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">groups</span></div>
+      <span class="badge badge-success"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span> +12 هذا الأسبوع</span>
+    </div>
+    <div>
+      <span class="label-sm muted">إجمالي الطلاب المسجلين</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.total_count }}</span>
+        <span class="label-md muted">طالباً معتمداً</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>نسبة السعة المقعدية</span><strong>{{ summary.seat_capacity }} من إجمالي السيرفر</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">bolt</span></div>
+      <span class="badge badge-success">92.4% تفاعل نشط</span>
+    </div>
+    <div>
+      <span class="label-sm muted">الطلاب النشطون حالياً</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.active_today }}</span>
+        <span class="label-md muted">متواجد اليوم</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>في المختبر البرمجي</span><strong>64 جلسة فورية</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">video_library</span></div>
+      <span class="badge badge-warn">4 مسارات تدريبية</span>
+    </div>
+    <div>
+      <span class="label-sm muted">إجمالي الحصص المنشورة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">84</span>
+        <span class="label-md muted">حصة ومحاضرة</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>إجمالي الساعات</span><strong>142 ساعة مسجلة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">assignment_turned_in</span></div>
+      <span class="badge badge-info">معدل عام: 87.6%</span>
+    </div>
+    <div>
+      <span class="label-sm muted">الامتحانات والواجبات المنفذة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">32</span>
+        <span class="label-md muted">تقييماً رسمياً</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>واجبات قيد الرصد</span><strong class="danger">14 تسليم جديد</strong></div>
+  </div>
+</section>
+
+<!-- Attendance Chart & Next Live Lecture -->
+<div class="grid-12">
+  <section class="card card-lg span-8">
+    <h2 class="headline-sm">معدل الحضور وتسليم التكاليف البرمجية</h2>
+    <p class="body-sm muted">مقارنة نسب حضور المحاضرات الرقمية ومعدل تسليم كود الواجبات خلال الأسابيع الستة السابقة</p>
+    <div class="chart-bars">
+      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:62%"></span><span class="bar secondary" style="height:48%"></span></div><span class="label-sm muted">أ1</span></div>
+      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:70%"></span><span class="bar secondary" style="height:55%"></span></div><span class="label-sm muted">أ2</span></div>
+      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:66%"></span><span class="bar secondary" style="height:72%"></span></div><span class="label-sm muted">أ3</span></div>
+      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:80%"></span><span class="bar secondary" style="height:68%"></span></div><span class="label-sm muted">أ4</span></div>
+      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:74%"></span><span class="bar secondary" style="height:81%"></span></div><span class="label-sm muted">أ5</span></div>
+      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:88%"></span><span class="bar secondary" style="height:79%"></span></div><span class="label-sm muted">أ6</span></div>
+    </div>
+  </section>
+
+  <section class="card card-lg span-4">
+    <span class="badge badge-info">مباشر اليوم 07:00 م</span>
+    <h2 class="headline-sm" style="margin:8px 0">البث القادم</h2>
+    <div class="live-card" style="position:relative;border-radius:12px;overflow:hidden;background:var(--surface-lowest)">
+      <div class="video-stage" style="min-height:140px">
+        <span class="material-symbols-outlined" style="font-size:40px;color:var(--primary)">live_tv</span>
+        <strong>معمل الخوارزميات الحي #14</strong>
+        <p class="body-sm muted">حل معضلات البرمجة الديناميكية Dynamic Programming</p>
+      </div>
+    </div>
+    <div class="between" style="margin-top:12px">
+      <span class="body-sm muted">المسجلون في البث: 184 طالب</span>
+      <button class="btn btn-primary" type="button" data-open="#generic-modal">تجهيز الغرفة</button>
+    </div>
+  </section>
+</div>
+
+<!-- Recent Students Table -->
+<section class="card card-lg">
+  <div class="toolbar">
+    <div>
+      <h2 class="headline-md">أحدث الطلاب المنضمين والتسجيلات الأكاديمية</h2>
+      <p class="body-sm muted">متابعة مستمرة لمعدل تقدم الطلاب في المسار البرمجي وتسليم المهام الحسابية</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin.students') }}">إدارة الدليل الكامل</a>
+  </div>
+  <div class="table-wrap" style="margin-top:1rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>اسم الطالب</th>
+          <th>المعرف</th>
+          <th>المسار</th>
+          <th>الحصص</th>
+          <th>تسليم الواجبات</th>
+          <th>الحالة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>
+            <div class="person">
+              <span class="avatar">{{ s.initials }}</span>
+              <div>
+                <strong>{{ s.name }}</strong>
+                <div class="body-sm muted">{{ s.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="ltr">{{ s.code }}</td>
+          <td><span class="badge {% if 'الخلفية' in s.track %}badge-success{% elif 'React' in s.track %}badge-info{% else %}badge-neutral{% endif %}">{{ s.track }}</span></td>
+          <td class="ltr">{{ s.completed_lessons }} / {{ s.total_lessons }}</td>
+          <td>
+            <div class="progress {% if s.overall_grade >= 90 %}success{% elif s.overall_grade < 70 %}danger{% endif %}" style="max-width:100px">
+              <span style="width:{{ (s.completed_homework / s.total_homework * 100)|int }}%"></span>
+            </div>
+          </td>
+          <td>
+            <span class="badge {% if s.status == 'online' %}badge-success{% elif s.status == 'active' %}badge-info{% else %}badge-danger{% endif %}">
+              {{ s.status_label }}
+            </span>
+          </td>
+          <td>
+            <a class="btn-icon" href="{{ url_for('admin.student_detail', student_id=s.id) }}" aria-label="عرض الملف">
+              <span class="material-symbols-outlined">badge</span>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock content %}

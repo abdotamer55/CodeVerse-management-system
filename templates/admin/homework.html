@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}الواجبات والتكاليف{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap">
+    <div>
+      <h1 class="headline-lg">إدارة وتصحيح التكاليف والواجبات البرمجية</h1>
+      <p class="body-md muted">متابعة تسليمات أكواد الطلاب، مراجعة المشاريع، ورصد درجات الفحص الآلي للـ CI/CD Pipeline.</p>
+    </div>
+    <button class="btn btn-primary" type="button" data-open="#hw-modal">
+      <span class="material-symbols-outlined">add_task</span> إنشاء تكليف جديد
+    </button>
+  </div>
+</section>
+
+<section class="grid-4">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">code_blocks</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">التكاليف النشطة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.active_count }}</span>
+        <span class="label-md muted">واجب مفتوح</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>المسارات</span><strong>جميعها مغطاة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">pending_actions</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">تنتظر التصحيح</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.pending_reviews }}</span>
+        <span class="label-md muted">مشروعاً</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>مراجعة يدوية</span><strong>مطلوبة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">flaky</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">تصحيح آلي ناجح</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.auto_evaluated }}</span>
+        <span class="label-md muted">تسليم</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>Unit Tests</span><strong>جاهزة</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon red"><span class="material-symbols-outlined">event_busy</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">تجاوز الموعد النهائي</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.overdue_count }}</span>
+        <span class="label-md muted">تسليم</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>متابعة أكاديمية</span><strong>عاجلة</strong></div>
+  </div>
+</section>
+
+<div class="table-wrap">
+  <table class="data-table" id="hw-table">
+    <thead>
+      <tr>
+        <th>التكليف البرمجي</th>
+        <th>المسار</th>
+        <th>التسليمات</th>
+        <th>الموعد النهائي</th>
+        <th>الفحص الآلي</th>
+        <th>الحالة</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in homework %}
+      <tr>
+        <td>
+          <strong>{{ h.title }}</strong>
+          <div class="ltr muted">{{ h.code }}</div>
+        </td>
+        <td>{{ h.track }}</td>
+        <td class="ltr">{{ h.submissions_count }} / {{ h.total_students }}</td>
+        <td>{{ h.due_date }}</td>
+        <td><span class="badge badge-success">{{ h.auto_tests_pass_rate or '—' }}</span></td>
+        <td>
+          <span class="badge {% if h.status == 'open' %}badge-info{% elif h.status == 'grading' %}badge-warn{% else %}badge-success{% endif %}">
+            {{ h.status_label or h.status }}
+          </span>
+        </td>
+        <td>
+          <div class="row" style="gap:0.35rem;align-items:center;justify-content:flex-end">
+            <a class="btn btn-secondary" href="{{ url_for('admin.homework_builder', hw_id=h.id) }}" style="padding:4px 10px;font-size:13px">إدارة الأسئلة</a>
+            <a class="btn btn-ghost" href="{{ url_for('admin.review_homework', hw_id=h.id) }}" style="padding:4px 10px;font-size:13px">مراجعة</a>
+            <button class="btn btn-ghost" type="button" data-open="#edit-hw-modal-{{ h.id }}" style="padding:4px 8px" title="تعديل التكليف">
+              <span class="material-symbols-outlined" style="font-size:18px">edit</span>
+            </button>
+            <form method="POST" action="{{ url_for('admin.delete_homework', hw_id=h.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف التكليف البرمجي ({{ h.title }}) وكافة تسليماته؟');" style="display:inline">
+              <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:4px 8px" title="حذف التكليف">
+                <span class="material-symbols-outlined" style="font-size:18px">delete</span>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if submissions %}
+<div class="table-wrap" style="margin-top:2rem">
+  <div class="between" style="margin-bottom:1rem">
+    <h2 class="headline-sm">التسليمات الواردة</h2>
+    <a class="btn btn-ghost" href="{{ url_for('admin.homework') }}">عرض الكل</a>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>الطالب</th>
+        <th>التكليف</th>
+        <th>مستودع الكود</th>
+        <th>نتيجة CI/CD</th>
+        <th>الدرجة</th>
+        <th>الحالة</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sub in submissions %}
+      <tr>
+        <td>
+          <div class="person">
+            <span class="avatar">{{ sub.student_initials or sub.student_name[:2] if sub.student_name else '??' }}</span>
+            <div>
+              <strong>{{ sub.student_name }}</strong>
+              <div class="ltr accent">{{ sub.student_code }}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <strong>{{ sub.homework_title }}</strong>
+          <div class="ltr muted">{{ sub.homework_code }}</div>
+        </td>
+        <td>
+          <a class="ltr accent" href="https://{{ sub.repo_url }}" target="_blank" rel="noopener">{{ sub.repo_url }}</a>
+          <div class="body-sm muted">{{ sub.submitted_at }}</div>
+        </td>
+        <td>
+          {% if sub.tests_summary %}
+            <span class="badge {% if sub.pipeline_passed %}badge-success{% else %}badge-warn{% endif %}">{{ sub.tests_summary }}</span>
+          {% else %}
+            <span class="badge badge-info">قيد الفحص</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if sub.grade %}
+            <span class="headline-sm success">{{ sub.grade }}</span>
+          {% else %}
+            <span class="body-sm muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge {% if sub.status == 'graded' %}badge-success{% elif sub.status == 'grading' %}badge-warn{% else %}badge-info{% endif %}">
+            {% if sub.status == 'graded' %}تم الرصد{% elif sub.status == 'grading' %}قيد التصحيح{% elif sub.status == 'late' %}متأخر{% else %}مستلم{% endif %}
+          </span>
+        </td>
+        <td>
+          <div class="row" style="gap:0.35rem;align-items:center;justify-content:flex-end">
+            <button class="btn btn-secondary" type="button" data-open="#grade-modal-{{ sub.id }}" style="padding:4px 10px;font-size:13px">رصد الدرجة</button>
+            <form method="POST" action="{{ url_for('admin.delete_submission', submission_id=sub.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا التسليم؟');" style="display:inline">
+              <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:4px 8px" title="حذف التسليم">
+                <span class="material-symbols-outlined" style="font-size:18px">delete</span>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="margin-top:2rem;text-align:center;padding:2rem">
+  <span class="material-symbols-outlined" style="font-size:2.5rem;opacity:0.3">inbox</span>
+  <p class="body-md muted" style="margin-top:0.5rem">لا توجد تسليمات بعد — اختر تكليفاً لعرض التسليمات الواردة.</p>
+</div>
+{% endif %}
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+
+  {% if submissions %}
+  {% for sub in submissions %}
+  <!-- Grade Modal for submission {{ sub.id }} -->
+  <div class="modal-backdrop" id="grade-modal-{{ sub.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 class="headline-sm">رصد الدرجة</h3>
+          <span class="ltr accent">{{ sub.homework_code }} · {{ sub.student_name }}</span>
+        </div>
+        <button class="btn-icon" type="button" data-close="#grade-modal-{{ sub.id }}"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.grade_submission') }}">
+        <input type="hidden" name="submission_id" value="{{ sub.id }}" />
+        <div class="card" style="background:var(--surface-lowest);padding:0.75rem;margin-bottom:1rem">
+          <span class="label-sm muted">مستودع الكود</span>
+          <div class="ltr accent" style="margin-top:4px">{{ sub.repo_url }}</div>
+          {% if sub.tests_summary %}
+            <div class="badge {% if sub.pipeline_passed %}badge-success{% else %}badge-warn{% endif %}" style="margin-top:8px">{{ sub.tests_summary }}</div>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label>الدرجة (مثال: 38 / 40)</label>
+          <input class="input ltr" name="grade" required placeholder="38 / 40" value="{{ sub.grade or '' }}" />
+        </div>
+        <div class="field">
+          <label>ملاحظات التقييم البرمجي</label>
+          <textarea class="textarea" name="feedback" rows="3" placeholder="ملاحظات التقييم...">{{ sub.feedback or '' }}</textarea>
+        </div>
+        <div class="modal-footer" style="padding:0">
+          <button class="btn btn-ghost" type="button" data-close="#grade-modal-{{ sub.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">اعتماد النتيجة والرصد</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- Create Homework Modal -->
+  <div class="modal-backdrop" id="hw-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">إنشاء تكليف برمجي جديد</h2>
+        <button class="btn-icon" data-close="#hw-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_homework') }}">
+        <div class="field">
+          <label>عنوان التكليف</label>
+          <input class="input" name="title" required placeholder="مثال: بناء معمارية Microservices" />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>كود التكليف</label>
+            <input class="input ltr" name="code" placeholder="HW-130" />
+          </div>
+          <div class="field">
+            <label>تاريخ التسليم</label>
+            <input class="input" name="due_date" placeholder="مثال: 25 سبتمبر 2024" />
+          </div>
+        </div>
+        <div class="field">
+          <label>المسار</label>
+          <input class="input" name="track" value="هندسة برمجيات الأنظمة" />
+        </div>
+        <div class="field">
+          <label>التعليمات ومعايير الاختبارات الآلية</label>
+          <textarea class="textarea" name="instructions" rows="3" placeholder="حدد شروط القبول ومتطلبات الاختبار الآلي Unit Tests..."></textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#hw-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ ونشر التكليف</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Homework Modals -->
+  {% for h in homework %}
+  <div class="modal-backdrop" id="edit-hw-modal-{{ h.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تعديل التكليف</h2>
+          <span class="ltr accent">{{ h.code }}</span>
+        </div>
+        <button class="btn-icon" data-close="#edit-hw-modal-{{ h.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_homework', hw_id=h.id) }}">
+        <div class="field">
+          <label>عنوان التكليف</label>
+          <input class="input" name="title" value="{{ h.title }}" required />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>كود التكليف</label>
+            <input class="input ltr" name="code" value="{{ h.code }}" />
+          </div>
+          <div class="field">
+            <label>تاريخ التسليم</label>
+            <input class="input" name="due_date" value="{{ h.due_date }}" />
+          </div>
+        </div>
+        <div class="field">
+          <label>المسار</label>
+          <input class="input" name="track" value="{{ h.track }}" />
+        </div>
+        <div class="field">
+          <label>الحالة</label>
+          <select class="select" name="status">
+            <option value="open" {% if h.status == 'open' %}selected{% endif %}>مفتوح للتسليم</option>
+            <option value="grading" {% if h.status == 'grading' %}selected{% endif %}>قيد المراجعة والتصحيح</option>
+            <option value="completed" {% if h.status == 'completed' %}selected{% endif %}>مكتمل ومغلق</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>التعليمات</label>
+          <textarea class="textarea" name="instructions" rows="3">{{ h.instructions or '' }}</textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#edit-hw-modal-{{ h.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock modals %}

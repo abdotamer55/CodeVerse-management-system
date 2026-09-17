@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}الحصص والمحاضرات الدراسية{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الحصص والمحاضرات الدراسية</h1>
+    <p class="body-md muted">مسارك الأكاديمي الشامل في هندسة البرمجيات مرتباً حسب خطة التعلم المعتمدة.</p>
+  </div>
+</div>
+
+<div class="grid-2">
+  {% for l in lessons %}
+  <article class="course-card">
+    <div class="course-card-media video-stage" style="min-height:140px">
+      <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary)">
+        {% if l.is_live %}live_tv{% else %}play_circle{% endif %}
+      </span>
+      {% if l.is_live %}
+        <span class="badge badge-warn" style="position:absolute;top:12px;left:12px">مباشر الآن</span>
+      {% endif %}
+    </div>
+    <div class="course-card-body">
+      <div class="between">
+        <span class="ltr accent">{{ l.code }}</span>
+        <span class="body-sm muted">{{ l.duration_text }}</span>
+      </div>
+      <h3 class="headline-sm">{{ l.title }}</h3>
+      <p class="body-sm muted">{{ l.track }}</p>
+      <div class="progress {% if l.progress == 100 %}success{% endif %}">
+        <span style="width:{{ l.progress }}%"></span>
+      </div>
+      <div class="between" style="margin-top:8px">
+        <span class="label-sm muted">نسبة الإنجاز: {{ l.progress }}%</span>
+        <a class="btn {% if l.progress == 100 %}btn-secondary{% else %}btn-primary{% endif %}" href="{{ url_for('student.lesson_detail', lesson_id=l.id) }}">
+          {% if l.progress == 100 %}مراجعة المحتوى{% else %}متابعة الحصة{% endif %}
+        </a>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock content %}

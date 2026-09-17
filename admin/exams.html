@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الامتحانات | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-role="admin" data-page="exams">
+  <div id="sidebar-root"></div>
+  <div class="app-frame">
+    <div id="navbar-root"></div>
+    <main class="page stack">
+
+<section class="page-hero">
+  <div class="glow glow-a"></div>
+  <div class="between" style="flex-wrap:wrap;position:relative;z-index:1">
+    <div>
+      <span class="badge badge-info">نظام الاختبارات المركزية الذكي</span>
+      <h1 class="headline-xl">إدارة الامتحانات وبنك الأسئلة التفاعلي</h1>
+      <p class="body-md muted">بناء قاعات الاختبارات، ضبط المؤقتات، وإدارة بنوك الأسئلة الأكاديمية.</p>
+    </div>
+    <div class="wrap">
+      <a class="btn btn-secondary" href="../student/exam.html">معاينة كطالب</a>
+      <a class="btn btn-primary" href="questions.html">بنك الأسئلة</a>
+    </div>
+  </div>
+</section>
+<section class="grid-4">
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon blue"><span class="material-symbols-outlined">timer</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">امتحانات نشطة</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">8</span>
+      <span class="label-md muted"></span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>اليوم</span><strong>3 جارية</strong></div>
+</div>
+
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon green"><span class="material-symbols-outlined">groups</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">مشاركون</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">312</span>
+      <span class="label-md muted"></span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>قاعات</span><strong>2</strong></div>
+</div>
+
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon amber"><span class="material-symbols-outlined">hourglass</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">بانتظار الرصد</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">5</span>
+      <span class="label-md muted"></span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>يدوي</span><strong>نعم</strong></div>
+</div>
+
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon blue"><span class="material-symbols-outlined">help_center</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">أسئلة البنك</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">640</span>
+      <span class="label-md muted"></span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>جاهزة</span><strong>للاستخدام</strong></div>
+</div>
+
+</section>
+<div class="grid-2">
+  <article class="exam-card"><div class="exam-card-body"><span class="badge badge-success">جارٍ</span><h3 class="headline-sm">اختبار هياكل البيانات</h3><p class="body-sm muted">90 دقيقة · 40 سؤالاً · نزاهة مفعّلة</p><div class="progress"><span style="width:55%"></span></div><a class="btn btn-secondary" href="results.html">رصد النتائج</a></div></article>
+  <article class="exam-card"><div class="exam-card-body"><span class="badge badge-info">مجدول</span><h3 class="headline-sm">نهائي مسار الويب</h3><p class="body-sm muted">120 دقيقة · 22 سبتمبر 08:00 م</p><button class="btn btn-primary" type="button" data-open="#exam-modal">ضبط القاعة</button></div></article>
+</div>
+
+    </main>
+    <div id="footer-root"></div>
+  </div>
+
+<div class="modal-backdrop" id="exam-modal"><div class="modal"><div class="modal-header"><h2 class="headline-sm">إنشاء اختبار</h2><button class="btn-icon" data-close="#exam-modal" type="button"><span class="material-symbols-outlined">close</span></button></div>
+<form class="modal-body" data-validate data-close-on-submit="#exam-modal">
+  <div class="field"><label>عنوان الاختبار</label><input class="input" required /></div>
+  <div class="form-grid"><div class="field"><label>المدة بالدقائق</label><input class="input" type="number" value="90" /></div><div class="field"><label>عدد الأسئلة</label><input class="input" type="number" value="20" /></div></div>
+  <button class="btn btn-primary" type="submit">حفظ الجدول</button>
+</form></div></div>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

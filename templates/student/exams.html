@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}الامتحانات والاختبارات التفاعلية{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الامتحانات والاختبارات التفاعلية</h1>
+    <p class="body-md muted">قاعات الاختبارات المجدولة، مؤقت الامتحان الصارم، ونظام فحص النزاهة التلقائي.</p>
+  </div>
+</div>
+
+<div class="grid-2">
+  {% for e in exams %}
+  <article class="exam-card">
+    <div class="exam-card-body">
+      <div class="between">
+        <span class="badge {% if e.status == 'active' %}badge-success{% else %}badge-info{% endif %}">
+          {{ e.status_label }}
+        </span>
+        <span class="body-sm muted">{{ e.duration_minutes }} دقيقة</span>
+      </div>
+      <h3 class="headline-sm">{{ e.title }}</h3>
+      <p class="body-sm muted">{{ e.scheduled_date }} · {{ e.total_questions }} سؤالاً</p>
+      <div class="wrap" style="margin-top:8px">
+        {% if e.status == 'active' %}
+          <a class="btn btn-primary" href="{{ url_for('student.exam_detail', exam_id=e.id) }}">دخول قاعة الاختبار الآن</a>
+        {% else %}
+          <button class="btn btn-secondary" type="button" disabled>يبدأ في الموعد المحدد</button>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock content %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lesson.short_title }}{% endblock %}
+
+{% block content %}
+<nav class="crumb">
+  <a href="{{ url_for('student.lessons') }}">الحصص والدروس</a>
+  <span class="material-symbols-outlined">chevron_left</span>
+  <span>{{ lesson.code }}: {{ lesson.short_title }}</span>
+</nav>
+
+<div class="card card-lg" style="padding:0;overflow:hidden">
+  <div class="video-stage" style="min-height:220px;position:relative;background:#050914;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+    <div class="glow glow-a"></div>
+    {% if lesson.image_url %}<img src="{{ lesson.image_url }}" alt="{{ lesson.title }}" style="max-height:200px;max-width:100%;object-fit:cover">{% else %}<span class="material-symbols-outlined" style="font-size:64px;color:var(--primary)">menu_book</span>{% endif %}
+    <span class="headline-sm">{{ lesson.title }}</span>
+    <span class="body-sm muted">المحاضر: {{ lesson.instructor }} · المدة: {{ lesson.duration_text }}</span>
+  </div>
+
+  <div style="padding:1.5rem">
+    <div class="between" style="flex-wrap:wrap">
+      <div>
+        <span class="ltr accent">{{ lesson.code }}</span>
+        <h1 class="headline-md" style="margin-top:4px">{{ lesson.title }}</h1>
+        <p class="body-sm muted">{{ lesson.track }}</p>
+        <p class="body-sm muted">{{ lesson.lesson_date or 'التاريخ يحدده المسؤول' }}</p>
+      </div>
+      {% if lesson.homework_id %}<a class="btn btn-ghost" href="{{ url_for('student.homework_detail', hw_id=lesson.homework_id) }}">الواجب المرتبط</a>{% endif %}
+      <div class="wrap">
+        <a class="btn btn-secondary" href="{{ lesson.material_url or '#' }}">
+          <span class="material-symbols-outlined">picture_as_pdf</span> تحميل مذكرة الشرح
+        </a>
+      </div>
+    </div>
+
+    <div class="card card-lg" style="margin-top:1.5rem;background:var(--surface-low)">
+      <h2 class="headline-sm">وصف الحصة والأهداف التعليمية</h2>
+      <p class="body-md muted" style="margin-top:8px;line-height:1.8">{{ lesson.description }}</p>
+
+      <h3 class="headline-sm" style="margin-top:1.25rem">محاور الدرس والتمارين المعملية:</h3>
+      <ul class="stack" style="gap:8px;margin-top:8px;padding-right:1.25rem;list-style:disc">
+        {% for topic in lesson.topics %}
+        <li class="body-sm muted">{{ topic }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock content %}

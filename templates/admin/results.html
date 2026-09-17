@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}رصد النتائج والتقارير{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">رصد النتائج والتقارير الأكاديمية</h1>
+    <p class="body-md muted">تحليل درجات الاختبارات والواجبات حسب المسار ورصد مستويات الإتقان لكل دفعة.</p>
+  </div>
+  <button class="btn btn-secondary" type="button" data-open="#generic-modal">
+    <span class="material-symbols-outlined">download</span> تصدير تقرير الإكسل
+  </button>
+</div>
+
+<section class="grid-4">
+  <div class="card">
+    <span class="label-sm muted">متوسط درجات الدفعة</span>
+    <div class="headline-lg">{{ summary.cohort_average }}</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">نسبة النجاح العامة</span>
+    <div class="headline-lg success">{{ summary.pass_rate }}</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">طلاب بحاجة لإعادة التقييم</span>
+    <div class="headline-lg warning">{{ summary.needs_repeat }}</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">إجمالي التقييمات المرصودة</span>
+    <div class="headline-lg">{{ summary.graded_exams_count }}</div>
+  </div>
+</section>
+
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>الطالب</th>
+        <th>المعرف</th>
+        <th>الاختبار أو التكليف</th>
+        <th>الدرجة</th>
+        <th>التاريخ</th>
+        <th>التقييم</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td><strong>{{ r.student_name }}</strong></td>
+        <td class="ltr accent">{{ r.student_code }}</td>
+        <td>{{ r.assessment }}</td>
+        <td><strong class="headline-sm {% if r.score_percent >= 90 %}success{% elif r.score_percent < 70 %}danger{% endif %}">{{ r.score_display }}</strong></td>
+        <td>{{ r.date }}</td>
+        <td><span class="badge {{ r.grade_badge }}">{{ r.grade_label }}</span></td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.delete_result', result_id=r.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل الأكاديمي؟');" style="display:inline">
+            <button class="btn-icon" type="submit" style="color:var(--red, #ef4444)" title="حذف النتيجة">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock content %}

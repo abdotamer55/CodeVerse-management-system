@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>إدارة الطلاب | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-role="admin" data-page="students">
+  <div id="sidebar-root"></div>
+  <div class="app-frame">
+    <div id="navbar-root"></div>
+    <main class="page stack">
+
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">إدارة شؤون الطلاب والمتابعة الأكاديمية</h1>
+    <p class="body-md muted">رصد التفاعل البرمجي، نسب تسليم الأكواد والمشاريع، وسجل الحضور الفوري لطلاب المنصة.</p>
+  </div>
+  <div class="wrap">
+    <button class="btn btn-secondary" type="button" data-open="#generic-modal"><span class="material-symbols-outlined">upload_file</span> استيراد CSV</button>
+    <button class="btn btn-primary" type="button" data-open="#new-student-modal"><span class="material-symbols-outlined">person_add</span> إضافة طالب جديد</button>
+  </div>
+</div>
+<section class="grid-4">
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon blue"><span class="material-symbols-outlined">groups</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">إجمالي الطلاب المقيدين</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">348</span>
+      <span class="label-md muted"></span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>82% نشاط</span><strong>+12 هذا الشهر</strong></div>
+</div>
+
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon green"><span class="material-symbols-outlined">military_tech</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">الطلاب المتميزون</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">14</span>
+      <span class="label-md muted">معدل ≥ 95%</span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>لوحة الشرف</span><strong>مسار تنافسي</strong></div>
+</div>
+
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon red"><span class="material-symbols-outlined">warning</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">بحاجة لدعم أكاديمي</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">08</span>
+      <span class="label-md muted">تأخر واجبين</span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>خطط تعويضية</span><strong>5 طلاب</strong></div>
+</div>
+
+
+<div class="card stat-card">
+  <div class="between">
+    <div class="stat-icon amber"><span class="material-symbols-outlined">analytics</span></div>
+    
+  </div>
+  <div>
+    <span class="label-sm muted">متوسط الحضور التفاعلي</span>
+    <div class="row" style="align-items:baseline;margin-top:6px">
+      <span class="display-hero">91.4%</span>
+      <span class="label-md muted"></span>
+    </div>
+  </div>
+  <div class="stat-foot"><span>42 متصل الآن</span><strong>+3.2%</strong></div>
+</div>
+
+</section>
+<div class="card">
+  <div class="toolbar">
+    <div class="navbar-search" style="max-width:none;flex:1">
+      <span class="material-symbols-outlined">search</span>
+      <input class="search-input" data-table-search="#students-table" placeholder="بحث باسم الطالب، رقم القيد الأكاديمي، أو البريد..." />
+    </div>
+    <select class="select" data-filter-select="#students-table" style="max-width:220px">
+      <option value="all">الحالة: الكل</option>
+      <option value="online">متصل</option>
+      <option value="active">نشط</option>
+      <option value="risk">متأخر</option>
+    </select>
+  </div>
+</div>
+<div class="table-wrap">
+  <table class="data-table" id="students-table">
+    <thead><tr><th></th><th>بيانات الطالب</th><th>المسار</th><th>إنجاز الحصص</th><th>الواجبات</th><th>المعدل</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>
+      <tr data-filter="online">
+        <td><input type="checkbox" /></td>
+        <td><div class="person"><span class="avatar">ز.ح</span><div><strong>زياد حسام الدين</strong><div class="ltr accent">#ST-2024-089</div></div></div></td>
+        <td>هندسة برمجيات الأنظمة<br /><span class="body-sm muted">المتقدم L3</span></td>
+        <td><div class="progress success"><span style="width:96%"></span></div><span class="ltr">27/28</span></td>
+        <td><span class="badge badge-success">14/14 مكتمل</span></td>
+        <td><span class="badge badge-success">98.4%</span></td>
+        <td><span class="badge badge-success">متصل الآن</span></td>
+        <td><a class="btn-icon" href="student-profile.html"><span class="material-symbols-outlined">badge</span></a></td>
+      </tr>
+      <tr data-filter="active">
+        <td><input type="checkbox" /></td>
+        <td><div class="person"><span class="avatar">س.م</span><div><strong>سارة طارق المنصور</strong><div class="ltr accent">#ST-2024-114</div></div></div></td>
+        <td>تطوير واجهات React<br /><span class="body-sm muted">الثاني</span></td>
+        <td><div class="progress"><span style="width:85%"></span></div><span class="ltr">24/28</span></td>
+        <td><span class="badge badge-success">13/14 مكتمل</span></td>
+        <td><span class="badge badge-info">93.0%</span></td>
+        <td><span class="badge badge-info">نشط</span></td>
+        <td><a class="btn-icon" href="student-profile.html"><span class="material-symbols-outlined">badge</span></a></td>
+      </tr>
+      <tr data-filter="risk">
+        <td><input type="checkbox" /></td>
+        <td><div class="person"><span class="avatar">ع.د</span><div><strong>عمر خالد الدوسري</strong> <span class="badge badge-danger">إنذار</span><div class="ltr danger">#ST-2024-032</div></div></div></td>
+        <td>تطوير الخوادم Node.js<br /><span class="body-sm muted">الأول</span></td>
+        <td><div class="progress danger"><span style="width:50%"></span></div><span class="ltr">14/28</span></td>
+        <td><span class="badge badge-danger">6/14 متأخر</span></td>
+        <td><span class="badge badge-danger">64.2%</span></td>
+        <td><span class="badge badge-danger">متأخر دراسياً</span></td>
+        <td><a class="btn-icon" href="student-profile.html"><span class="material-symbols-outlined">badge</span></a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+    </main>
+    <div id="footer-root"></div>
+  </div>
+
+<div class="drawer-backdrop" id="student-drawer">
+  <aside class="drawer">
+    <div class="modal-header">
+      <div>
+        <h3 class="headline-sm" id="drawer-name">زياد حسام الدين</h3>
+        <span class="ltr accent" id="drawer-id">#ST-2024-089</span>
+      </div>
+      <button class="btn-icon" type="button" data-close="#student-drawer"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <span class="badge badge-success">نشط ومتصل الآن</span>
+      <p class="body-sm muted">هندسة برمجيات الأنظمة · المستوى المتقدم</p>
+      <p class="ltr">ziad.h@codeverse.dev</p>
+      <div class="stat-foot"><span>المعدل</span><strong class="success">98.4%</strong></div>
+      <a class="btn btn-primary" href="student-profile.html">فتح الملف الأكاديمي</a>
+    </div>
+  </aside>
+</div>
+<div class="modal-backdrop" id="new-student-modal">
+  <div class="modal">
+    <div class="modal-header"><h2 class="headline-sm">إضافة طالب جديد</h2><button class="btn-icon" data-close="#new-student-modal" type="button"><span class="material-symbols-outlined">close</span></button></div>
+    <form class="modal-body" data-validate data-close-on-submit="#new-student-modal">
+      <div class="form-grid">
+        <div class="field"><label>الاسم الكامل</label><input class="input" required placeholder="مثال: زياد حسام الدين" /></div>
+        <div class="field"><label>البريد الأكاديمي</label><input class="input" required placeholder="student@codeverse.edu" /></div>
+        <div class="field"><label>المسار</label><select class="select"><option>هندسة برمجيات الأنظمة</option><option>تطوير واجهات React</option><option>تطوير الخوادم Node.js</option></select></div>
+        <div class="field"><label>المستوى</label><select class="select"><option>الأول</option><option>الثاني</option><option>المتقدم</option></select></div>
+      </div>
+      <div class="modal-footer" style="padding:0">
+        <button class="btn btn-ghost" type="button" data-close="#new-student-modal">إلغاء</button>
+        <button class="btn btn-primary" type="submit">حفظ السجل</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="modal-backdrop" id="generic-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="headline-sm">نافذة الإجراء</h2>
+      <button class="btn-icon" type="button" data-close="#generic-modal" aria-label="إغلاق">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="body-md muted">هذه نافذة مشتركة للمعاينة الأمامية فقط، دون رفع أو حفظ خلفي.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" type="button" data-close="#generic-modal">إلغاء</button>
+      <button class="btn btn-primary" type="button" data-close="#generic-modal">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

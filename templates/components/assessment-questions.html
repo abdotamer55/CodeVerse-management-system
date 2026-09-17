@@ -1,0 +1,14 @@
+{% for q in assessment.questions %}
+<article class="card" style="margin-bottom:1rem">
+  <div class="between"><span class="badge badge-info">سؤال {{ loop.index }}</span><span class="badge badge-neutral">{{ q.points|default(1) }} درجة</span></div>
+  <h2 class="headline-sm" style="margin-top:.75rem">{{ q.prompt }}</h2>
+  <div class="stack" style="gap:.5rem;margin-top:1rem">
+  {% for option in q.options %}
+    <label class="option {% if show_answers and loop.index0 == q.correct_index %}is-selected{% endif %}">
+      {% if not show_answers %}<input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" required>{% endif %}
+      {{ option }} {% if show_answers and loop.index0 == q.correct_index %}<span class="badge badge-success">الإجابة الصحيحة</span>{% endif %}
+    </label>
+  {% endfor %}
+  </div>
+</article>
+{% endfor %}

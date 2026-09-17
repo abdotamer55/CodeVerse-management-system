@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الإشعارات | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-role="admin" data-page="notifications">
+  <div id="sidebar-root"></div>
+  <div class="app-frame">
+    <div id="navbar-root"></div>
+    <main class="page stack">
+
+<div class="toolbar">
+  <h1 class="headline-lg">الإشعارات والتعاميم</h1>
+  <button class="btn btn-primary" data-open="#generic-modal" type="button">تعميم جديد</button>
+</div>
+<div class="stack">
+  <article class="notif-item unread"><span class="material-symbols-outlined">campaign</span><div><strong>تذكير بموعد اختبار هياكل البيانات</strong><p class="body-sm muted">أُرسل إلى 348 طالباً · اليوم 11:20 ص</p></div></article>
+  <article class="notif-item"><span class="material-symbols-outlined">assignment</span><div><strong>فتح تكليف مشروع REST API</strong><p class="body-sm muted">أمس</p></div></article>
+</div>
+
+    </main>
+    <div id="footer-root"></div>
+  </div>
+<div class="modal-backdrop" id="generic-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="headline-sm">نافذة الإجراء</h2>
+      <button class="btn-icon" type="button" data-close="#generic-modal" aria-label="إغلاق">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="body-md muted">هذه نافذة مشتركة للمعاينة الأمامية فقط، دون رفع أو حفظ خلفي.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" type="button" data-close="#generic-modal">إلغاء</button>
+      <button class="btn btn-primary" type="button" data-close="#generic-modal">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

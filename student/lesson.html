@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تفاصيل الحصة | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-role="student" data-page="lessons">
+  <div id="sidebar-root"></div>
+  <div class="app-frame">
+    <div id="navbar-root"></div>
+    <main class="page stack">
+
+<nav class="crumb"><a href="lessons.html">الحصص</a><span class="material-symbols-outlined">chevron_left</span><span>LES-014</span></nav>
+<div class="grid-12">
+  <section class="span-8 stack">
+    <div class="video-stage">
+      <span class="material-symbols-outlined" style="font-size:64px;color:var(--primary)">play_circle</span>
+      <h1 class="headline-md">حل معضلات Dynamic Programming</h1>
+      <p class="body-sm muted">معمل الخوارزميات الحي #14</p>
+    </div>
+    <article class="card"><h2 class="headline-sm">وصف الحصة</h2><p class="body-md muted">تطبيق أمثلة Memoization وTabulation مع تمارين قصيرة داخل المختبر.</p></article>
+    <pre class="code-block">function fib(n, memo = {}) {
+  if (n in memo) return memo[n];
+  if (n <= 1) return n;
+  return memo[n] = fib(n - 1, memo) + fib(n - 2, memo);
+}</pre>
+  </section>
+  <aside class="span-4 stack">
+    <div class="card"><h3 class="headline-sm">محتويات المسار</h3><a class="nav-link is-active" href="lesson.html">1. Memoization</a><a class="nav-link" href="lesson.html">2. Tabulation</a><a class="nav-link" href="homework.html">3. واجب الأسبوع</a></div>
+    <a class="btn btn-secondary" href="files.html">تحميل المذكرة PDF</a>
+  </aside>
+</div>
+
+    </main>
+    <div id="footer-root"></div>
+  </div>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

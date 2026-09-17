@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}تسجيل الدخول{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block body_layout %}
+<main class="login-card">
+  <div class="login-inner">
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
+
+    <div class="between" style="position:relative;z-index:1;margin-bottom:1rem">
+      <span class="pill"><span class="dot pulse"></span> النظام متصل 99.9%</span>
+      <button class="btn btn-ghost label-sm" type="button"><span class="material-symbols-outlined">language</span> English</button>
+    </div>
+
+    <div class="brand-lockup" style="position:relative;z-index:1">
+      <div class="brand-icon"><span class="material-symbols-outlined icon-fill" style="font-size:32px">terminal</span></div>
+      <div class="row"><span class="headline-sm">كودفيرس</span><span class="badge badge-info">النسخة الخاصة</span></div>
+      <h1 class="headline-md">تسجيل الدخول إلى المنصة</h1>
+      <p class="body-sm muted">أدخل بيانات حسابك المعتمدة للوصول إلى بيئتك التعليمية التفاعلية</p>
+    </div>
+
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="position:relative;z-index:1;margin-top:1rem">
+          {% for category, message in messages %}
+            <div class="alert {% if category == 'error' %}alert-danger{% else %}alert-info{% endif %}" style="border:1px solid var(--error);background:rgba(255,180,171,0.1);padding:0.65rem 1rem;border-radius:var(--radius-md);display:flex;align-items:center;gap:8px">
+              <span class="material-symbols-outlined" style="color:var(--error)">error</span>
+              <p class="body-sm" style="color:var(--error);margin:0">{{ message }}</p>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form id="login-form" method="POST" action="{{ url_for('auth.login') }}" class="stack" style="gap:1rem;position:relative;z-index:1;margin-top:1.25rem">
+      <div class="field">
+        <label for="identifier">اسم المستخدم</label>
+        <div class="input-wrap">
+          <span class="leading-icon material-symbols-outlined">alternate_email</span>
+          <input class="input" id="identifier" name="identifier" value="{{ identifier|default('') }}" required placeholder="أدخل اسم المستخدم" style="padding-right:2.5rem" />
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="between">
+          <label for="password">كلمة المرور</label>
+          <a class="label-sm accent" href="#">نسيت كلمة المرور؟</a>
+        </div>
+        <div class="input-wrap">
+          <span class="leading-icon material-symbols-outlined">lock</span>
+          <input class="input" id="password" name="password" type="password" required placeholder="••••••••••••" style="padding:0.65rem 2.5rem" />
+          <button class="trailing-btn" type="button" data-password-toggle aria-label="إظهار كلمة المرور">
+            <span class="material-symbols-outlined" id="password-toggle-icon">visibility_off</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="between">
+        <label class="row"><input type="checkbox" name="remember" /> <span class="label-md muted">تذكرني في هذا الجهاز الموثوق</span></label>
+        <span class="label-sm success row"><span class="material-symbols-outlined" style="font-size:14px">shield</span> اتصال مشفر</span>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="width:100%;padding:0.85rem">
+        <span>تسجيل الدخول</span> <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+    </form>
+  </div>
+</main>
+{% endblock body_layout %}

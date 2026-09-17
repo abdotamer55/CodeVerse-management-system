@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}خطأ في الخادم 500{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block body_layout %}
+<main class="login-card" style="max-width:540px">
+  <div class="login-inner stack" style="text-align:center;align-items:center;padding:2.5rem 1.5rem">
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
+
+    <div class="stat-icon red" style="width:64px;height:64px;margin-bottom:1rem">
+      <span class="material-symbols-outlined" style="font-size:36px">dns</span>
+    </div>
+
+    <span class="pill"><span class="dot" style="background:var(--error)"></span> رمز الخطأ 500</span>
+    <h1 class="headline-lg" style="margin-top:12px">حدث خطأ داخلي في الخادم</h1>
+    <p class="body-md muted" style="max-width:380px">نواجه صعوبة مؤقتة في معالجة طلبك البرمجي، تم تسجيل الخطأ لدى فريق الدعم الفني.</p>
+
+    <div class="hero-actions" style="margin-top:1.5rem;justify-content:center">
+      <a class="btn btn-primary" href="{{ url_for('index') }}">العودة للرئيسية</a>
+      <a class="btn btn-secondary" href="javascript:location.reload()">إعادة المحاولة</a>
+    </div>
+  </div>
+</main>
+{% endblock body_layout %}

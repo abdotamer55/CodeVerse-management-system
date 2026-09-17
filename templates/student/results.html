@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}سجل نتائجي الأكاديمية{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">سجل نتائجي الأكاديمية</h1>
+    <p class="body-md muted">رصد الدرجات التفصيلية للاختبارات والمشاريع البرمجية التراكمية.</p>
+  </div>
+</div>
+
+<section class="grid-4">
+  <div class="card">
+    <span class="label-sm muted">المعدل التراكمي العام</span>
+    <div class="headline-lg success" style="margin-top:4px">98.4%</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">درجة آخر تقييم</span>
+    <div class="headline-lg" style="margin-top:4px">96%</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الترتيب في الدفعة</span>
+    <div class="headline-lg" style="margin-top:4px">الأول L3</div>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الشهادات المكتسبة</span>
+    <div class="headline-lg" style="margin-top:4px">2 شهادات</div>
+  </div>
+</section>
+
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>التقييم الأكاديمي</th>
+        <th>الدرجة المرصودة</th>
+        <th>التاريخ</th>
+        <th>التقدير العام</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td><strong>{{ r.assessment }}</strong></td>
+        <td><strong class="headline-sm success">{{ r.score_display }}</strong></td>
+        <td>{{ r.date }}</td>
+        <td><span class="badge {{ r.grade_badge }}">{{ r.grade_label }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock content %}

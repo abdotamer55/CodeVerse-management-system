@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}مكتبة الملفات والمذكرات{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <span class="label-sm accent">Cloud Repository Engine v2.4</span>
+    <h1 class="headline-xl">مكتبة الملفات والمذكرات الدراسية</h1>
+    <p class="body-md muted">المستودع السحابي الموحد للمذكرات PDF، أكواد المشاريع الأولية، وحزم البرمجيات.</p>
+  </div>
+  <div class="wrap">
+    <button class="btn btn-primary" data-open="#upload-modal" type="button">
+      <span class="material-symbols-outlined">cloud_upload</span> رفع ملف جديد
+    </button>
+    <button class="btn btn-secondary" data-open="#generic-modal" type="button">
+      <span class="material-symbols-outlined">create_new_folder</span> مجلد جديد
+    </button>
+  </div>
+</div>
+
+<section class="grid-4">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">folder_copy</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">إجمالي الملفات النشطة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.total_files }}</span>
+        <span class="label-md muted">ملف</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>المسارات المعتمدة</span><strong>4</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">cloud</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">المساحة السحابية المستخدمة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.storage_used }}</span>
+        <span class="label-md muted">/ {{ summary.storage_total }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>المستهلك</span><strong>{{ summary.storage_percent }}</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">downloading</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">تنزيلات الطلاب</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.student_downloads }}</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>هذا الشهر</span><strong>+18% نمو</strong></div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">fiber_new</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">منشور حديثاً</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ summary.recent_count }}</span>
+        <span class="label-md muted">هذا الأسبوع</span>
+      </div>
+    </div>
+    <div class="stat-foot"><span>آخر إضافة</span><strong>قبل 40 دقيقة</strong></div>
+  </div>
+</section>
+
+<div class="grid-2">
+  {% for f in files %}
+  <article class="file-card">
+    <div class="file-card-body">
+      <div class="between">
+        <span class="stat-icon blue" style="width:40px;height:40px">
+          <span class="material-symbols-outlined">{{ f.icon }}</span>
+        </span>
+        <span class="badge badge-neutral ltr">{{ f.size_display }}</span>
+      </div>
+      <h3 class="headline-sm" style="margin-top:8px">{{ f.name }}</h3>
+      <p class="body-sm muted">{{ f.description }}</p>
+      <div class="between" style="margin-top:8px">
+        <span class="body-sm muted">{{ f.downloads_count }} تنزيلاً</span>
+        <div class="wrap">
+          {% if f.file_url and f.file_url != '#' %}
+            <a class="btn btn-secondary" href="{{ f.file_url }}" target="_blank">تحميل</a>
+          {% else %}
+            <button class="btn btn-secondary" type="button" data-open="#generic-modal">تحميل</button>
+          {% endif %}
+          <form method="POST" action="{{ url_for('admin.delete_file', file_id=f.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف الملف ({{ f.name }}) نهائياً؟');" style="display:inline">
+            <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444)" title="حذف الملف">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+  <div class="modal-backdrop" id="upload-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">رفع ملف جديد إلى المكتبة السحابية</h2>
+        <button class="btn-icon" data-close="#upload-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_file') }}">
+        <div class="field">
+          <label>عنوان أو اسم الملف</label>
+          <input class="input" name="name" required placeholder="مثال: مذكرة معمارية النظم الموزعة" />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>نوع الملف والتصنيف</label>
+            <select class="select" name="category">
+              <option value="pdf">مذكرة دراسية (PDF)</option>
+              <option value="zip">مشروع برمجي مضغوط (ZIP)</option>
+              <option value="slides">شريحة عرض (Slides)</option>
+              <option value="video">فيديو تعليمي (Video)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>الحجم التقديري</label>
+            <input class="input" name="size_display" value="3.5 MB" />
+          </div>
+        </div>
+        <div class="field">
+          <label>وصف الملف الأكاديمي</label>
+          <textarea class="textarea" name="description" rows="2" placeholder="وصف محتوى الملف ومصادره..."></textarea>
+        </div>
+        <div class="field">
+          <label>رابط الملف السحابي (URL)</label>
+          <input class="input ltr" name="file_url" placeholder="https://..." />
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#upload-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ وإضافة الملف</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock modals %}

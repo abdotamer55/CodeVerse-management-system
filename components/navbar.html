@@ -1,0 +1,23 @@
+<!-- Jinja-ready partial: {% include 'components/navbar.html' %} -->
+<header class="navbar">
+  <button class="menu-toggle" type="button" data-sidebar-toggle aria-label="القائمة">
+    <span class="material-symbols-outlined">menu</span>
+  </button>
+  <div class="navbar-search">
+    <span class="material-symbols-outlined">search</span>
+    <input class="search-input" type="search" placeholder="بحث عن طالب، حصة، امتحان..." data-global-search />
+  </div>
+  <div class="navbar-actions">
+    <span class="gate-badge">{{ role_badge }}</span>
+    <a class="btn-icon" href="notifications.html" aria-label="الإشعارات">
+      <span class="material-symbols-outlined">notifications</span>
+    </a>
+    <a class="row" href="{{ profile_href }}">
+      <div class="user-meta">
+        <div class="label-md">{{ user_name }}</div>
+        <div class="label-sm muted">{{ user_title }}</div>
+      </div>
+      <span class="avatar"><span class="material-symbols-outlined">person</span></span>
+    </a>
+  </div>
+</header>

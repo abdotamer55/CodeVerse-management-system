@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}الملفات والمذكرات الأكاديمية{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الملفات والمذكرات الأكاديمية</h1>
+    <p class="body-md muted">المستودع السحابي للمذكرات الدراسية PDF، كود المشاريع، والحزم التطبيقية.</p>
+  </div>
+</div>
+
+<div class="grid-2">
+  {% for f in files %}
+  <article class="file-card">
+    <div class="file-card-body">
+      <div class="between">
+        <span class="stat-icon blue" style="width:40px;height:40px">
+          <span class="material-symbols-outlined">{{ f.icon }}</span>
+        </span>
+        <span class="badge badge-neutral ltr">{{ f.size_display }}</span>
+      </div>
+      <h3 class="headline-sm" style="margin-top:8px">{{ f.name }}</h3>
+      <p class="body-sm muted">{{ f.description }}</p>
+      <div class="between" style="margin-top:8px">
+        <span class="body-sm muted">{{ f.downloads_count }} تنزيلاً</span>
+        <button class="btn btn-secondary" type="button" data-open="#generic-modal">
+          <span class="material-symbols-outlined">download</span> تنزيل الملف
+        </button>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock content %}

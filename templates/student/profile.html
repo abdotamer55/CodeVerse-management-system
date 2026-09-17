@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}الملف الشخصي والإعدادات{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الملف الشخصي والإعدادات الأكاديمية</h1>
+    <p class="body-md muted">إدارة بيانات حسابك الأكاديمي، خيارات التنبيهات، والبريد المسجل.</p>
+  </div>
+</div>
+
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap">
+    <div class="person">
+      <span class="avatar" style="width:64px;height:64px;font-size:20px">{{ student.initials }}</span>
+      <div>
+        <h2 class="headline-md">{{ student.name }}</h2>
+        <p class="ltr muted">{{ student.email }} · {{ student.code }}</p>
+        <div class="wrap" style="margin-top:6px">
+          <span class="badge badge-success">طالب نشط معتمد</span>
+          <span class="badge badge-warn">لوحة الشرف</span>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <span class="badge badge-neutral ltr">ROLE: STUDENT_ACCESS</span>
+    </div>
+  </div>
+</section>
+
+<form class="card card-lg stack" data-validate style="gap:1.5rem">
+  <div class="form-grid">
+    <div class="field">
+      <label>الاسم الكامل</label>
+      <input class="input" value="{{ student.name }}" required />
+    </div>
+    <div class="field">
+      <label>البريد الأكاديمي المعتمد</label>
+      <input class="input ltr" value="{{ student.email }}" required />
+    </div>
+    <div class="field">
+      <label>المسار البرمجي المقيد به</label>
+      <input class="input" value="{{ student.track }}" readonly style="opacity:0.8" />
+    </div>
+    <div class="field">
+      <label>المستوى الأكاديمي</label>
+      <input class="input" value="{{ student.level }}" readonly style="opacity:0.8" />
+    </div>
+  </div>
+
+  <div class="stack" style="gap:0.75rem;padding-top:1rem;border-top:1px solid rgba(66,71,84,.3)">
+    <div class="between">
+      <div>
+        <strong>إشعارات الامتحانات المجدولة</strong>
+        <p class="body-sm muted">تلقي تذكير قبل فتح قاعة الاختبار بساعة واحدة عبر المنصة.</p>
+      </div>
+      <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--primary)" />
+    </div>
+
+    <div class="between">
+      <div>
+        <strong>تنبيهات رصد درجات الواجبات البرمجية</strong>
+        <p class="body-sm muted">إشعار فوري عند اكتمال تصحيح التكليف وملاحظات المصحح.</p>
+      </div>
+      <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--primary)" />
+    </div>
+  </div>
+
+  <div class="hero-actions" style="margin-top:0.5rem">
+    <button class="btn btn-primary" type="submit">
+      <span class="material-symbols-outlined">save</span> حفظ التعديلات
+    </button>
+  </div>
+</form>
+{% endblock content %}

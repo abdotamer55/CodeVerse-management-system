@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}المنصة التعليمية{% endblock %}
+
+{% block body_layout %}
+<header class="landing-nav">
+  <div class="row">
+    <img src="{{ url_for('static', filename='icons/logo.svg') }}" alt="كودفيرس" style="height:36px" />
+  </div>
+  <div class="wrap">
+    <a class="btn btn-ghost" href="{{ url_for('auth.login') }}">تسجيل الدخول</a>
+    <a class="btn btn-primary" href="{{ url_for('auth.login') }}">ابدأ الآن</a>
+  </div>
+</header>
+<section class="landing-hero stack">
+  <div class="page-hero">
+    <div class="glow glow-a"></div>
+    <span class="badge badge-info">الفصل الدراسي الأول 2024 / 2025</span>
+    <h1 class="headline-xl" style="margin-top:12px">بيئة تعلم هندسة البرمجيات بواجهة عربية احترافية</h1>
+    <p class="body-lg muted" style="max-width:48rem">رصد فوري للنشاط الصفي، اختبارات مؤقتة، بنك أسئلة، ومكتبة ملفات سحابية — بنفس الهوية البصرية الداكنة لتصاميم كودفيرس.</p>
+    <div class="hero-actions" style="margin-top:1rem">
+      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">دخول تجريبي للمنصة</a>
+      <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">لوحة الإدارة</a>
+      <a class="btn btn-secondary" href="{{ url_for('student.dashboard') }}">لوحة الطالب</a>
+    </div>
+  </div>
+  <div class="landing-grid">
+    <article class="card"><div class="stat-icon blue"><span class="material-symbols-outlined">play_lesson</span></div><h3 class="headline-sm" style="margin-top:12px">حصص ومسارات</h3><p class="body-sm muted">محاضرات مسجلة ومباشرة مع مذكرات PDF وروابط فيديو.</p></article>
+    <article class="card"><div class="stat-icon amber"><span class="material-symbols-outlined">quiz</span></div><h3 class="headline-sm" style="margin-top:12px">امتحانات ذكية</h3><p class="body-sm muted">مؤقت صارم، تنقل بين الأسئلة، ومعاينة واجهة الطالب.</p></article>
+    <article class="card"><div class="stat-icon green"><span class="material-symbols-outlined">insights</span></div><h3 class="headline-sm" style="margin-top:12px">نتائج وتقارير</h3><p class="body-sm muted">معدلات الإنجاز، لوحة الشرف، وتنبيهات الدعم الأكاديمي.</p></article>
+  </div>
+</section>
+{% endblock body_layout %}

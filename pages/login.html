@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html class="dark" dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول | كودفيرس</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/responsive.css" />
+</head>
+<body data-root="../" data-login-role="student" class="auth-body">
+
+<main class="login-card">
+  <div class="login-inner">
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
+    <div class="between" style="position:relative;z-index:1;margin-bottom:1rem">
+      <span class="pill"><span class="dot pulse"></span> النظام متصل 99.9%</span>
+      <button class="btn btn-ghost label-sm" type="button"><span class="material-symbols-outlined">language</span> English</button>
+    </div>
+    <div class="brand-lockup" style="position:relative;z-index:1">
+      <div class="brand-icon"><span class="material-symbols-outlined icon-fill" style="font-size:32px">terminal</span></div>
+      <div class="row"><span class="headline-sm">كودفيرس</span><span class="badge badge-info">النسخة الخاصة</span></div>
+      <h1 class="headline-md">تسجيل الدخول إلى المنصة</h1>
+      <p class="body-sm muted">أدخل بيانات حسابك المعتمدة للوصول إلى بيئتك التعليمية التفاعلية</p>
+    </div>
+    <div class="role-tabs" style="position:relative;z-index:1">
+      <button class="role-btn is-active" type="button" data-role="student"><span class="material-symbols-outlined">school</span> طالب (Student)</button>
+      <button class="role-btn" type="button" data-role="staff"><span class="material-symbols-outlined">verified_user</span> معلم / إدارة (Admin)</button>
+    </div>
+    <form id="login-form" class="stack" style="gap:1rem;position:relative;z-index:1;margin-top:1.25rem">
+      <div class="field">
+        <label for="identifier">اسم المستخدم أو البريد الأكاديمي</label>
+        <div class="input-wrap">
+          <span class="leading-icon material-symbols-outlined">alternate_email</span>
+          <input class="input" id="identifier" required placeholder="مثال: student@codeverse.edu أو الاسم التعريفي" style="padding-right:2.5rem" />
+        </div>
+      </div>
+      <div class="field">
+        <div class="between"><label for="password">كلمة المرور الأمنية</label><a class="label-sm accent" href="#">نسيت كلمة المرور؟</a></div>
+        <div class="input-wrap">
+          <span class="leading-icon material-symbols-outlined">lock</span>
+          <input class="input" id="password" type="password" required placeholder="••••••••••••" style="padding:0.65rem 2.5rem" />
+          <button class="trailing-btn" type="button" data-password-toggle aria-label="إظهار كلمة المرور"><span class="material-symbols-outlined" id="password-toggle-icon">visibility_off</span></button>
+        </div>
+      </div>
+      <div class="between">
+        <label class="row"><input type="checkbox" /> <span class="label-md muted">تذكرني في هذا الجهاز الموثوق</span></label>
+        <span class="label-sm success row"><span class="material-symbols-outlined" style="font-size:14px">shield</span> اتصال مشفر</span>
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%;padding:0.85rem">تسجيل الدخول إلى حسابي <span class="material-symbols-outlined">arrow_back</span></button>
+    </form>
+    <div style="margin-top:1.5rem;position:relative;z-index:1">
+      <p class="label-sm muted" style="text-align:center;margin-bottom:8px">جلسات تجريبية سريعة للمعاينة</p>
+      <div class="demo-grid">
+        <button class="btn btn-secondary" type="button" data-demo="student"><span class="material-symbols-outlined">code</span> دخول تجريبي كطالب</button>
+        <button class="btn btn-secondary" type="button" data-demo="staff"><span class="material-symbols-outlined">dashboard_customize</span> دخول كمعلم / مسؤول</button>
+      </div>
+      <div class="alert" style="margin-top:12px"><span class="material-symbols-outlined">gavel</span><p>هذه المنصة خاصة بالطلاب والمعلمين المسجلين رسمياً. الواجهة الحالية للعرض فقط دون مصادقة خلفية.</p></div>
+    </div>
+  </div>
+</main>
+
+  <script src="../js/components.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/forms.js"></script>
+  <script src="../js/exams.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

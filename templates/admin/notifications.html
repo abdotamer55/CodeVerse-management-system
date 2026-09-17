@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}الإشعارات والتعاميم الأكاديمية{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">الإشعارات والتعاميم الأكاديمية</h1>
+    <p class="body-md muted">إرسال التنبيهات الفورية للطلاب، مواعيد الاختبارات القادمة، والرسائل الإدارية العاجلة مع إمكانية حذفها وإدارتها.</p>
+  </div>
+  <button class="btn btn-primary" data-open="#broadcast-modal" type="button">
+    <span class="material-symbols-outlined">add_alert</span> إرسال تعميم جديد
+  </button>
+</div>
+
+<div class="stack" style="gap:1rem">
+  {% for n in notifications %}
+  <article class="notif-item {% if not n.is_read %}unread{% endif %}">
+    <span class="material-symbols-outlined">{{ n.icon or 'campaign' }}</span>
+    <div style="flex:1">
+      <strong>{{ n.title }}</strong>
+      <p class="body-sm muted">{{ n.content }} · {{ n.created_at }}</p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.delete_notification', notification_id=n.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا الإشعار نهائياً؟');" style="display:inline">
+      <button class="btn-icon" type="submit" style="color:var(--red, #ef4444)" title="حذف الإشعار">
+        <span class="material-symbols-outlined">delete</span>
+      </button>
+    </form>
+  </article>
+  {% else %}
+  <div class="card" style="text-align:center;padding:2rem">
+    <span class="material-symbols-outlined" style="font-size:2.5rem;opacity:0.3">notifications_off</span>
+    <p class="body-md muted" style="margin-top:0.5rem">لا توجد إشعارات أو تعاميم مسجلة حالياً.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+  <div class="modal-backdrop" id="broadcast-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">إرسال تعميم أو إشعار للطلاب</h2>
+        <button class="btn-icon" data-close="#broadcast-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_notification') }}">
+        <div class="field">
+          <label>عنوان التعميم</label>
+          <input class="input" name="title" required placeholder="مثال: تنبيه بخصوص موعد الاختبار النصفي" />
+        </div>
+        <div class="field">
+          <label>نوع التعميم / التصنيف</label>
+          <select class="select" name="type">
+            <option value="announcement">تعميم أكاديمي عام</option>
+            <option value="exam">تنبيه باختبار</option>
+            <option value="assignment">تكليف برمجي</option>
+            <option value="live">جلسة بث مباشر</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>نص الرسالة أو التعميم</label>
+          <textarea class="textarea" name="content" required rows="3" placeholder="اكتب تفاصيل التنبيه أو التوجيه للطلاب..."></textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#broadcast-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">إرسال التعميم الفوري</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock modals %}

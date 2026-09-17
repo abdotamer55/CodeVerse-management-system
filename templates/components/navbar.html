@@ -1,0 +1,36 @@
+<header class="navbar">
+  <button class="menu-toggle" type="button" data-sidebar-toggle aria-label="القائمة">
+    <span class="material-symbols-outlined">menu</span>
+  </button>
+  <div class="navbar-search">
+    <span class="material-symbols-outlined">search</span>
+    <input class="search-input" type="search" placeholder="بحث عن طالب، حصة، امتحان..." data-global-search />
+  </div>
+  <div class="navbar-actions">
+    <span class="gate-badge">
+      <span class="material-symbols-outlined">
+        {% if user_role == 'admin' %}shield_person{% else %}school{% endif %}
+      </span>
+      {% if user_role == 'admin' %}لوحة المعلم والإدارة{% else %}لوحة الطالب{% endif %}
+    </span>
+
+    <a class="btn-icon" href="{% if user_role == 'admin' %}{{ url_for('admin.notifications') }}{% else %}{{ url_for('student.notifications') }}{% endif %}" aria-label="الإشعارات" style="position:relative">
+      <span class="material-symbols-outlined">notifications</span>
+      <span class="dot" style="position:absolute;top:8px;right:8px;background:var(--error);width:8px;height:8px"></span>
+    </a>
+
+    <a class="row" href="{% if user_role == 'admin' %}{{ url_for('admin.settings') }}{% else %}{{ url_for('student.profile') }}{% endif %}" style="padding-right:8px;border-right:1px solid rgba(66,71,84,.4);gap:8px">
+      <div class="user-meta">
+        <div class="label-md" style="font-weight:700">
+          {{ current_user.name if current_user else ('أستاذ د. طارق الحارثي' if user_role == 'admin' else 'زياد حسام الدين') }}
+        </div>
+        <div class="label-sm muted">
+          {{ current_user.title if current_user else ('مشرف المنصة الأكاديمية' if user_role == 'admin' else 'طالب مسار هندسة البرمجيات') }}
+        </div>
+      </div>
+      <span class="avatar">
+        {{ current_user.initials if current_user else ('ط.ح' if user_role == 'admin' else 'ز.ح') }}
+      </span>
+    </a>
+  </div>
+</header>
