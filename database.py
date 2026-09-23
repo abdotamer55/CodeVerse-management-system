@@ -154,7 +154,7 @@ def check_connection(force: bool = False, ttl: float = 5.0):
     sanitized_host = f"{diag['host']}:{diag['port']}"
 
     try:
-        conn = get_connection(timeout=5)
+        conn = get_connection(timeout=3)
         with conn.cursor() as cur:
             cur.execute("SELECT 1;")
             cur.execute("""
@@ -172,7 +172,7 @@ def check_connection(force: bool = False, ttl: float = 5.0):
         err_type = type(exc).__name__
         err_msg = str(exc).strip().split("\n")[0]
         _cached_check = (False, sanitized_host, [], f"{err_type}: {err_msg}")
-        _cached_time = now
+        _cached_time = now + 25.0  # Keep failure cached for 30s to prevent repeated delays
         return _cached_check
 
 

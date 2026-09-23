@@ -8,17 +8,33 @@
     <h1 class="headline-lg">الحصص والمحاضرات الدراسية</h1>
     <p class="body-md muted">مسارك الأكاديمي الشامل في هندسة البرمجيات مرتباً حسب خطة التعلم المعتمدة.</p>
   </div>
+  <div class="wrap">
+    <span class="badge badge-success" style="font-size:14px;padding:8px 14px;display:flex;align-items:center;gap:6px">
+      <span class="material-symbols-outlined" style="font-size:18px">task_alt</span>
+      إنجاز الحصص: {{ completed_lessons_count|default(0) }} / {{ lessons|length }} مكتملة
+    </span>
+  </div>
 </div>
 
 <div class="grid-2">
   {% for l in lessons %}
+  {% set is_done = (completed_lesson_ids and l.id in completed_lesson_ids) %}
   <article class="course-card">
     <div class="course-card-media video-stage" style="min-height:140px">
-      <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary)">
-        {% if l.is_live %}live_tv{% else %}play_circle{% endif %}
-      </span>
+      {% if l.image_url %}
+        <img src="{{ l.image_url }}" alt="{{ l.title }}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" />
+      {% else %}
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary)">
+          {% if l.is_live %}live_tv{% else %}play_circle{% endif %}
+        </span>
+      {% endif %}
       {% if l.is_live %}
         <span class="badge badge-warn" style="position:absolute;top:12px;left:12px">مباشر الآن</span>
+      {% endif %}
+      {% if is_done %}
+        <span class="badge badge-success" style="position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:4px">
+          <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> تم إكمال المشاهدة
+        </span>
       {% endif %}
     </div>
     <div class="course-card-body">
@@ -28,14 +44,22 @@
       </div>
       <h3 class="headline-sm">{{ l.title }}</h3>
       <p class="body-sm muted">{{ l.track }}</p>
-      <div class="progress {% if l.progress == 100 %}success{% endif %}">
-        <span style="width:{{ l.progress }}%"></span>
+      <div class="progress {% if is_done or l.progress == 100 %}success{% endif %}">
+        <span style="width:{{ 100 if is_done else (l.progress or 0) }}%"></span>
       </div>
-      <div class="between" style="margin-top:8px">
-        <span class="label-sm muted">نسبة الإنجاز: {{ l.progress }}%</span>
-        <a class="btn {% if l.progress == 100 %}btn-secondary{% else %}btn-primary{% endif %}" href="{{ url_for('student.lesson_detail', lesson_id=l.id) }}">
-          {% if l.progress == 100 %}مراجعة المحتوى{% else %}متابعة الحصة{% endif %}
-        </a>
+      <div class="between" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+        <span class="label-sm muted">الحالة: {% if is_done %}تم الإكمال 100%{% else %}غير مكتملة بعد{% endif %}</span>
+        <div class="row" style="gap:8px;align-items:center">
+          <form method="post" action="{{ url_for('student.complete_lesson', lesson_id=l.id) }}" style="margin:0">
+            <button class="btn {% if is_done %}btn-secondary{% else %}btn-primary{% endif %}" type="submit" title="{% if is_done %}إلغاء التحديد{% else %}تحديد كحصة تم مشاهدتها{% endif %}" style="padding:6px 12px;font-size:13px;gap:4px">
+              <span class="material-symbols-outlined" style="font-size:16px">{% if is_done %}task_alt{% else %}check{% endif %}</span>
+              {% if is_done %}مكتملة ✓{% else %}إكمال المشاهدة{% endif %}
+            </button>
+          </form>
+          <a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=l.id) }}" style="padding:6px 12px;font-size:13px">
+            عرض الحصة
+          </a>
+        </div>
       </div>
     </div>
   </article>

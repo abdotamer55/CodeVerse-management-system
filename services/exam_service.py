@@ -147,17 +147,17 @@ def _validate_questions(questions):
 
 
 def save_exam_questions(exam_id: int, questions: list):
-    """Replace an unpublished exam's ordered questions as one validated unit."""
+    """Replace an exam's ordered questions as one validated unit (allows admin editing anytime)."""
     questions = _validate_questions(questions)
     exam = get_exam_by_id(exam_id)
-    if exam.get("status") in ("active", "published"):
-        raise ValueError("لا يمكن تعديل اختبار منشور.")
     if is_db_active():
         execute_query("DELETE FROM exam_questions WHERE exam_id = %s;", (exam_id,), fetch=False)
         for q in questions:
             question_id = _ensure_question_record(q)
             execute_query("""INSERT INTO exam_questions (exam_id, question_id, question_order, points)
                 VALUES (%s, %s, %s, %s);""", (exam_id, question_id, q["order_index"], q["points"]), fetch=False)
+        execute_query("UPDATE exams SET total_questions = %s, max_score = %s WHERE id = %s;",
+                      (len(questions), sum(q["points"] for q in questions), exam_id), fetch=False)
     else:
         exam["questions"] = questions
         exam["total_questions"] = len(questions)
@@ -304,36 +304,69 @@ def submit_exam(exam_id: int, student_id, answers: dict):
     if exam.get("status") not in ("active", "published"):
         raise ValueError("هذا الاختبار غير منشور للطلاب.")
     questions = _validate_questions(exam.get("questions", []))
-    correct = sum(1 for q in questions if str(answers.get(str(q["id"]), "")) == str(q["correct_index"]))
-    score = sum(q["points"] for q in questions if str(answers.get(str(q["id"]), "")) == str(q["correct_index"]))
+    has_essay = any(q.get("type") == "essay" for q in questions)
+    mcq_questions = [q for q in questions if q.get("type") != "essay"]
+
+    correct = sum(1 for q in mcq_questions if str(answers.get(str(q["id"]), "")) == str(q.get("correct_index")))
+    score = sum(q["points"] for q in mcq_questions if str(answers.get(str(q["id"]), "")) == str(q.get("correct_index")))
+    mcq_total = sum(q["points"] for q in mcq_questions)
     total = sum(q["points"] for q in questions)
-    attempt = {"assessment_type": "exam", "assessment_id": int(exam_id), "student_id": str(student_id),
-               "answers": answers, "score": score, "total_score": total, "correct_count": correct,
-               "total_questions": len(questions), "percentage": round(score * 100 / total, 2), "locked": True,
-               "status": "submitted", "submitted_answers": answers,
-               "submit_time": datetime.now(timezone.utc).isoformat()}
+    attempt_status = "pending_essay_grading" if has_essay else "submitted"
+    percentage = round(score * 100 / total, 2) if total > 0 else 0
+
+    attempt = {
+        "assessment_type": "exam", "assessment_id": int(exam_id), "student_id": str(student_id),
+        "answers": answers, "score": score, "total_score": total, "correct_count": correct,
+        "total_questions": len(questions), "percentage": percentage, "locked": True,
+        "status": attempt_status, "has_essay": has_essay, "mcq_score": score, "mcq_total": mcq_total,
+        "submitted_answers": answers, "submit_time": datetime.now(timezone.utc).isoformat()
+    }
     if is_db_active() and _attempts_table_available():
         if existing_attempt and existing_attempt.get("status") in ("in_progress", "expired"):
             rows = execute_query("""UPDATE assessment_attempts
                 SET answers=%s, submitted_answers=%s, score=%s, total_score=%s,
                     correct_count=%s, total_questions=%s, locked=TRUE,
-                    status='submitted', submit_time=CURRENT_TIMESTAMP,
+                    status=%s, submit_time=CURRENT_TIMESTAMP,
                     submitted_at=CURRENT_TIMESTAMP
                 WHERE id=%s AND status IN ('in_progress', 'expired') RETURNING *;""", (
                 json.dumps(answers), json.dumps(answers), score, total,
-                correct, len(questions), existing_attempt["id"]
+                correct, len(questions), attempt_status, existing_attempt["id"]
             ), fetch=True)
         else:
             rows = execute_query("""INSERT INTO assessment_attempts
                 (assessment_type, assessment_id, student_id, answers, score, total_score,
                  correct_count, total_questions, locked, status, submit_time, submitted_answers)
-                VALUES ('exam',%s,%s,%s,%s,%s,%s,%s,TRUE,'submitted',CURRENT_TIMESTAMP,%s)
+                VALUES ('exam',%s,%s,%s,%s,%s,%s,%s,TRUE,%s,CURRENT_TIMESTAMP,%s)
                 RETURNING *;""", (
                 exam_id, student_id, json.dumps(answers), score, total, correct,
-                len(questions), json.dumps(answers)
+                len(questions), attempt_status, json.dumps(answers)
             ), fetch=True)
         saved_attempt = dict(rows[0])
         _save_student_answers(saved_attempt["id"], questions, answers)
+        saved_attempt["has_essay"] = has_essay
+        saved_attempt["mcq_score"] = score
+        saved_attempt["mcq_total"] = mcq_total
+
+        # If purely MCQ (no essay), record in results table immediately
+        if not has_essay:
+            try:
+                from services import student_service
+                student = student_service.get_student_by_id(str(student_id))
+                if student:
+                    grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 70 else "فرصة إعادة"))
+                    grade_badge = "badge-success" if percentage >= 70 else "badge-danger"
+                    res_sql = """
+                        INSERT INTO results (student_id, student_name, student_code, exam_id, assessment, score_percent, score_display, date, status, grade_badge, grade_label)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_DATE::text, 'passed', %s, %s);
+                    """
+                    execute_query(res_sql, (
+                        student["id"], student["name"], student["student_code"],
+                        exam["id"], exam["title"], percentage, f"{score} / {total}",
+                        grade_badge, grade_label
+                    ), fetch=False, commit=True)
+            except Exception as re:
+                logger.warning(f"Could not auto-insert finalized MCQ result into results table: {re}")
+
         return saved_attempt
     _ATTEMPTS_DB[("exam", int(exam_id), str(student_id))] = attempt
     return attempt
@@ -348,27 +381,47 @@ def is_db_active():
 
 
 def get_exams_summary():
-    """Aggregated exam metrics."""
+    """Aggregated exam metrics dynamically linked to database and active exams."""
+    from services import student_service
+    students_count = student_service.get_students_summary().get("total_count", 8)
+
     if is_db_active():
         try:
-            sql_exams = "SELECT COUNT(*) FROM exams WHERE status = 'active';"
-            sql_q = "SELECT COUNT(*) FROM questions;"
-            active_cnt = execute_query(sql_exams, fetch=True)[0]["count"]
-            q_cnt = execute_query(sql_q, fetch=True)[0]["count"]
+            sql_all_exams = "SELECT COUNT(*) as total, COUNT(CASE WHEN status = 'active' THEN 1 END) as active FROM exams;"
+            sql_q = "SELECT COUNT(*) as cnt FROM questions;"
+            sql_pending = "SELECT COUNT(*) as cnt FROM assessment_attempts WHERE status = 'pending_essay_grading';"
+
+            exam_res = execute_query(sql_all_exams, fetch=True)
+            total_exams = exam_res[0]["total"] if exam_res else len(_EXAMS_DB)
+            active_cnt = exam_res[0]["active"] if exam_res else sum(1 for e in _EXAMS_DB if e.get("status") == "active")
+
+            q_res = execute_query(sql_q, fetch=True)
+            q_cnt = q_res[0]["cnt"] if q_res else len(_QUESTION_BANK)
+
+            pending_res = execute_query(sql_pending, fetch=True)
+            pending_cnt = pending_res[0]["cnt"] if pending_res else 0
+
             return {
-                "active_exams": active_cnt or 8,
-                "total_participants": 312,
-                "awaiting_grading": 5,
-                "question_bank_count": q_cnt or 640,
+                "active_exams": total_exams or len(_EXAMS_DB),
+                "today_active_halls": active_cnt,
+                "total_participants": students_count,
+                "awaiting_grading": pending_cnt,
+                "question_bank_count": q_cnt or (len(_QUESTION_BANK) + sum(len(e.get("questions", [])) for e in _EXAMS_DB)),
             }
         except Exception as e:
             logger.warning(f"Error querying exam summary: {e}")
 
+    total_exams = len(_EXAMS_DB)
+    active_cnt = sum(1 for e in _EXAMS_DB if e.get("status") == "active")
+    q_cnt = len(_QUESTION_BANK) + sum(len(e.get("questions", [])) for e in _EXAMS_DB)
+    pending_cnt = sum(1 for a in _ATTEMPTS_DB.values() if isinstance(a, dict) and a.get("status") == "pending_essay_grading")
+
     return {
-        "active_exams": 8,
-        "total_participants": 312,
-        "awaiting_grading": 5,
-        "question_bank_count": 640,
+        "active_exams": total_exams,
+        "today_active_halls": active_cnt,
+        "total_participants": students_count,
+        "awaiting_grading": pending_cnt,
+        "question_bank_count": q_cnt,
     }
 
 
@@ -536,11 +589,20 @@ def create_question(data: dict):
         except Exception:
             options = [opt.strip() for opt in options.split("\n") if opt.strip()]
 
+    if category == "boolean":
+        options = ["True", "False"]
+    elif category == "essay":
+        options = []
+    elif category == "mcq" and len(options) < 2:
+        raise ValueError("أسئلة الاختيار من متعدد تحتاج خيارين على الأقل.")
+
     unit_id = data.get("unit_id")
     points = int(data.get("points") or 1)
     if points < 1:
         raise ValueError("درجة السؤال يجب أن تكون موجبة.")
     correct_index = None if category == "essay" else int(data.get("correct_index", 0))
+    if correct_index is not None and (correct_index < 0 or correct_index >= len(options)):
+        raise ValueError("الإجابة الصحيحة يجب أن تشير إلى أحد الخيارات.")
 
     if is_db_active():
         try:
@@ -592,6 +654,19 @@ def update_question(question_id: int, data: dict):
     answer_preview = (data.get("answer_preview") or data.get("correct_answer") or "").strip()
     correct_answer = (data.get("correct_answer") or answer_preview).strip()
 
+    options = data.get("options")
+    if isinstance(options, str):
+        try:
+            options = json.loads(options)
+        except Exception:
+            options = [opt.strip() for opt in options.split("\n") if opt.strip()]
+
+    points = int(data.get("points") or 1) if "points" in data and data.get("points") is not None else None
+    if points is not None and points < 1:
+        raise ValueError("درجة السؤال يجب أن تكون موجبة.")
+
+    correct_index = None if category == "essay" else (int(data.get("correct_index", 0)) if "correct_index" in data and data.get("correct_index") is not None else None)
+
     if is_db_active():
         try:
             sql = """
@@ -602,13 +677,18 @@ def update_question(question_id: int, data: dict):
                     difficulty_badge = %s,
                     track = %s,
                     answer_preview = %s,
-                    correct_answer = %s
+                    correct_answer = %s,
+                    options = %s,
+                    correct_index = %s,
+                    points = COALESCE(%s, points)
                 WHERE id = %s
                 RETURNING *;
             """
             rows = execute_query(
                 sql,
-                (prompt, category, difficulty, difficulty_badge, track, answer_preview, correct_answer, int(question_id)),
+                (prompt, category, difficulty, difficulty_badge, track, answer_preview, correct_answer,
+                 json.dumps(options, ensure_ascii=False) if options is not None else None,
+                 correct_index, points, int(question_id)),
                 fetch=True
             )
             if rows:
@@ -627,6 +707,9 @@ def update_question(question_id: int, data: dict):
             if track: q["track"] = track
             if answer_preview: q["answer_preview"] = answer_preview
             if correct_answer: q["correct_answer"] = correct_answer
+            if options is not None: q["options"] = options
+            if correct_index is not None: q["correct_index"] = correct_index
+            if points is not None: q["points"] = points
             return q
     return None
 

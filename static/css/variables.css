@@ -70,6 +70,13 @@
   --font-latin: "Inter", "Cairo", sans-serif;
   --font-mono: "Inter", ui-monospace, monospace;
 
+  --glass-bg: rgba(23, 31, 51, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(173, 198, 255, 0.25);
+  --glass-blur: blur(14px);
+  --card-gradient: linear-gradient(180deg, rgba(23, 31, 51, 0.85) 0%, rgba(19, 27, 46, 0.95) 100%);
+  --focus-ring: 0 0 0 3px rgba(77, 142, 255, 0.3);
+
   --z-sidebar: 50;
   --z-navbar: 40;
   --z-overlay: 45;

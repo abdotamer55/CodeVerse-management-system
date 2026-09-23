@@ -109,20 +109,34 @@ def get_lessons_summary():
             rows = execute_query(sql, fetch=True)
             if rows:
                 r = rows[0]
+                # Fetch lessons for chart data
+                lesson_rows = execute_query(
+                    "SELECT id, code, title, track, attendees, progress, is_live, live_time FROM lessons ORDER BY order_num ASC;",
+                    fetch=True
+                )
+                lessons_data = [dict(lr) for lr in (lesson_rows or [])]
+                # Find next live lesson
+                live_lesson = next((l for l in lessons_data if l.get("is_live")), None)
                 return {
                     "published_count": r["published_count"],
                     "training_hours": int(r["training_hours"]),
                     "live_this_week": r["live_this_week"],
                     "pdf_count": r["pdf_count"],
+                    "lessons_data": lessons_data,
+                    "live_lesson": live_lesson,
                 }
         except Exception as e:
             logger.warning(f"Error querying lesson summary: {e}")
 
+    lessons_data = _LESSONS_DB
+    live_lesson = next((l for l in lessons_data if l.get("is_live")), None)
     return {
-        "published_count": 84,
-        "training_hours": 142,
-        "live_this_week": 6,
-        "pdf_count": 52,
+        "published_count": len(_LESSONS_DB),
+        "training_hours": sum(l.get("duration_minutes", 0) for l in _LESSONS_DB) // 60,
+        "live_this_week": sum(1 for l in _LESSONS_DB if l.get("is_live")),
+        "pdf_count": sum(1 for l in _LESSONS_DB if l.get("pdf_name")),
+        "lessons_data": lessons_data,
+        "live_lesson": live_lesson,
     }
 
 
@@ -219,18 +233,22 @@ def create_lesson(data: dict):
     image_url = (data.get("image_url") or "").strip()
     material_url = (data.get("material_url") or "").strip()
     homework_id = data.get("homework_id") or None
+    is_live = bool(data.get("is_live", False))
+    live_time = (data.get("live_time") or ("اليوم 07:00 م" if is_live else "مسجلة")).strip()
+    video_url = (data.get("video_url") or "").strip()
+    live_url = (data.get("live_url") or "").strip()
     short_title = title[:50]
 
     if is_db_active():
         try:
             sql = """
-                INSERT INTO lessons (code, title, short_title, track, track_slug, duration_minutes, duration_text, attendees, progress, instructor, order_num, lesson_date, image_url, material_url, homework_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, 'د. طارق الحارثي', 10, NULLIF(%s, '')::date, %s, %s, %s)
+                INSERT INTO lessons (code, title, short_title, track, track_slug, duration_minutes, duration_text, attendees, progress, instructor, order_num, lesson_date, image_url, material_url, homework_id, is_live, live_time, video_url, live_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, 'د. طارق الحارثي', 10, NULLIF(%s, '')::date, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *;
             """
             rows = execute_query(
                 sql,
-                (code, title, short_title, track, track_slug, duration_minutes, duration_text, lesson_date, image_url, material_url, homework_id),
+                (code, title, short_title, track, track_slug, duration_minutes, duration_text, lesson_date, image_url, material_url, homework_id, is_live, live_time, video_url, live_url),
                 fetch=True
             )
             if rows:
@@ -250,7 +268,10 @@ def create_lesson(data: dict):
         "duration_text": duration_text,
         "attendees": 0,
         "progress": 0,
-        "is_live": False,
+        "is_live": is_live,
+        "live_time": live_time,
+        "video_url": video_url,
+        "live_url": live_url,
         "instructor": "د. طارق الحارثي",
         "lesson_date": lesson_date, "image_url": image_url, "material_url": material_url, "homework_id": homework_id,
     }
@@ -265,32 +286,52 @@ def update_lesson(lesson_id: int, data: dict):
     track = (data.get("track") or "").strip()
     duration_minutes = int(data.get("duration_minutes") or 60)
     duration_text = f"{duration_minutes} دقيقة"
-    lesson_date = (data.get("lesson_date") or "").strip()
+    # Pass None when date is empty — avoids PostgreSQL ::date cast error
+    _raw_date = (data.get("lesson_date") or "").strip()
+    lesson_date = _raw_date if _raw_date else None
     image_url = (data.get("image_url") or "").strip()
     material_url = (data.get("material_url") or "").strip()
     homework_id = data.get("homework_id") or None
+    is_live = bool(data.get("is_live", False)) if "is_live" in data else None
+    live_time = data.get("live_time")
+    video_url = data.get("video_url")
+    live_url = data.get("live_url")
 
     if is_db_active():
         try:
-            sql = """
+            fields = [
+                "title = COALESCE(NULLIF(%s, ''), title)",
+                "code = COALESCE(NULLIF(%s, ''), code)",
+                "track = COALESCE(NULLIF(%s, ''), track)",
+                "duration_minutes = %s",
+                "duration_text = %s",
+                "lesson_date = %s",
+                "image_url = %s",
+                "material_url = %s",
+                "homework_id = %s",
+            ]
+            params = [title, code, track, duration_minutes, duration_text, lesson_date, image_url, material_url, homework_id]
+            if is_live is not None:
+                fields.append("is_live = %s")
+                params.append(is_live)
+            if live_time is not None:
+                fields.append("live_time = %s")
+                params.append(live_time.strip())
+            if video_url is not None:
+                fields.append("video_url = %s")
+                params.append(video_url.strip())
+            if live_url is not None:
+                fields.append("live_url = %s")
+                params.append(live_url.strip())
+
+            params.append(int(lesson_id))
+            sql = f"""
                 UPDATE lessons
-                SET title = COALESCE(NULLIF(%s, ''), title),
-                    code = COALESCE(NULLIF(%s, ''), code),
-                    track = COALESCE(NULLIF(%s, ''), track),
-                    duration_minutes = %s,
-                    duration_text = %s,
-                    lesson_date = NULLIF(%s, '')::date,
-                    image_url = %s,
-                    material_url = %s,
-                    homework_id = %s
+                SET {', '.join(fields)}
                 WHERE id = %s
                 RETURNING *;
             """
-            rows = execute_query(
-                sql,
-                (title, code, track, duration_minutes, duration_text, lesson_date, image_url, material_url, homework_id, int(lesson_id)),
-                fetch=True
-            )
+            rows = execute_query(sql, tuple(params), fetch=True)
             if rows:
                 return dict(rows[0])
         except Exception as e:
@@ -308,6 +349,10 @@ def update_lesson(lesson_id: int, data: dict):
             l["image_url"] = image_url
             l["material_url"] = material_url
             l["homework_id"] = homework_id
+            if is_live is not None: l["is_live"] = is_live
+            if live_time is not None: l["live_time"] = live_time
+            if video_url is not None: l["video_url"] = video_url
+            if live_url is not None: l["live_url"] = live_url
             return l
     return None
 
@@ -332,3 +377,114 @@ def delete_lesson(lesson_id: int):
     if len(_LESSONS_DB) < before:
         deleted = True
     return deleted
+
+
+# In-memory tracking of completed lessons per student: student_id -> set(lesson_ids)
+_COMPLETED_LESSONS_CACHE = {}
+
+
+def get_completed_lesson_ids(student_id):
+    """Return set of completed lesson IDs for this student."""
+    if not student_id:
+        return set()
+    sid_str = str(student_id).strip()
+
+    if is_db_active():
+        try:
+            execute_query("""
+                CREATE TABLE IF NOT EXISTS lesson_completions (
+                    student_id TEXT NOT NULL,
+                    lesson_id INTEGER NOT NULL,
+                    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY(student_id, lesson_id)
+                );
+            """, fetch=False, commit=True)
+
+            rows = execute_query(
+                "SELECT lesson_id FROM lesson_completions WHERE student_id = %s;",
+                (sid_str,), fetch=True
+            )
+            if rows is not None:
+                return {int(r["lesson_id"]) for r in rows}
+        except Exception as e:
+            logger.warning(f"Error querying completed lessons from DB: {e}")
+
+    return set(_COMPLETED_LESSONS_CACHE.get(sid_str, set()))
+
+
+def is_lesson_completed(lesson_id: int, student_id) -> bool:
+    if not lesson_id or not student_id:
+        return False
+    return int(lesson_id) in get_completed_lesson_ids(student_id)
+
+
+def get_completed_lessons_count(student_id) -> int:
+    return len(get_completed_lesson_ids(student_id))
+
+
+def toggle_lesson_completion(lesson_id: int, student_id) -> bool:
+    """Toggle lesson completion state. Returns True if now completed, False if unmarked."""
+    if not lesson_id or not student_id:
+        return False
+    lid = int(lesson_id)
+    sid_str = str(student_id).strip()
+
+    completed_now = True
+    if is_db_active():
+        try:
+            execute_query("""
+                CREATE TABLE IF NOT EXISTS lesson_completions (
+                    student_id TEXT NOT NULL,
+                    lesson_id INTEGER NOT NULL,
+                    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY(student_id, lesson_id)
+                );
+            """, fetch=False, commit=True)
+
+            exists = execute_query(
+                "SELECT 1 FROM lesson_completions WHERE student_id = %s AND lesson_id = %s;",
+                (sid_str, lid), fetch=True
+            )
+            if exists:
+                execute_query(
+                    "DELETE FROM lesson_completions WHERE student_id = %s AND lesson_id = %s;",
+                    (sid_str, lid), fetch=False, commit=True
+                )
+                completed_now = False
+            else:
+                execute_query(
+                    "INSERT INTO lesson_completions (student_id, lesson_id) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
+                    (sid_str, lid), fetch=False, commit=True
+                )
+                completed_now = True
+
+            # Sync students table counts if student exists
+            execute_query("""
+                UPDATE students 
+                SET completed_lessons = (SELECT COUNT(*) FROM lesson_completions WHERE student_id = %s),
+                    total_lessons = (SELECT COUNT(*) FROM lessons)
+                WHERE CAST(id AS TEXT) = %s OR CAST(student_code AS TEXT) = %s;
+            """, (sid_str, sid_str, sid_str), fetch=False, commit=True)
+        except Exception as e:
+            logger.warning(f"Error toggling lesson completion in DB: {e}")
+
+    # Also update in-memory cache
+    if sid_str not in _COMPLETED_LESSONS_CACHE:
+        _COMPLETED_LESSONS_CACHE[sid_str] = set()
+    if completed_now:
+        _COMPLETED_LESSONS_CACHE[sid_str].add(lid)
+    else:
+        _COMPLETED_LESSONS_CACHE[sid_str].discard(lid)
+
+    # Sync _STUDENTS_DB
+    try:
+        from services import student_service
+        for s in student_service._STUDENTS_DB:
+            if str(s.get("id")) == sid_str or str(s.get("code")) == sid_str or s.get("username") == sid_str:
+                s["completed_lessons"] = len(_COMPLETED_LESSONS_CACHE[sid_str])
+                s["total_lessons"] = len(_LESSONS_DB)
+    except Exception as e:
+        logger.debug(f"Could not sync student_db in-memory: {e}")
+
+    return completed_now
+

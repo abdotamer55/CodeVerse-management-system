@@ -2,13 +2,25 @@
 <article class="card" style="margin-bottom:1rem">
   <div class="between"><span class="badge badge-info">سؤال {{ loop.index }}</span><span class="badge badge-neutral">{{ q.points|default(1) }} درجة</span></div>
   <h2 class="headline-sm" style="margin-top:.75rem">{{ q.prompt }}</h2>
-  <div class="stack" style="gap:.5rem;margin-top:1rem">
-  {% for option in q.options %}
-    <label class="option {% if show_answers and loop.index0 == q.correct_index %}is-selected{% endif %}">
-      {% if not show_answers %}<input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" required>{% endif %}
-      {{ option }} {% if show_answers and loop.index0 == q.correct_index %}<span class="badge badge-success">الإجابة الصحيحة</span>{% endif %}
-    </label>
-  {% endfor %}
-  </div>
+  {% set question_type = q.type|default(q.category)|default('mcq') %}
+  {% if question_type == 'essay' %}
+    {% if show_answers %}
+      <div class="alert" style="margin-top:1rem"><p>السؤال المقالي يُراجع يدويًا بعد التسليم.</p></div>
+    {% else %}
+      <label class="field" style="margin-top:1rem">
+        <span>إجابتك المقالية</span>
+        <textarea class="textarea" name="{{ q.id }}" data-answer-field="essay_text" rows="5" required placeholder="اكتب إجابتك هنا..."></textarea>
+      </label>
+    {% endif %}
+  {% else %}
+    <div class="stack" style="gap:.5rem;margin-top:1rem">
+    {% for option in q.options %}
+      <label class="option {% if show_answers and loop.index0 == q.correct_index %}is-selected{% endif %}">
+        {% if not show_answers %}<input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" required>{% endif %}
+        {{ option }} {% if show_answers and loop.index0 == q.correct_index %}<span class="badge badge-success">الإجابة الصحيحة</span>{% endif %}
+      </label>
+    {% endfor %}
+    </div>
+  {% endif %}
 </article>
 {% endfor %}

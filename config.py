@@ -26,6 +26,11 @@ class Config:
     SESSION_COOKIE_SECURE = False  # Set to True in Production with HTTPS
     PERMANENT_SESSION_LIFETIME = 86400 * 7  # 7 days
 
+    # File Storage Settings (Direct upload from device)
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100 MB max file size
+    ALLOWED_EXTENSIONS = {"pdf", "zip", "rar", "7z", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "webm", "png", "jpg", "jpeg"}
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

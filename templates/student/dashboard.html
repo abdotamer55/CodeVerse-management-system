@@ -7,8 +7,13 @@
   <div class="glow glow-b"></div>
   <h1 class="headline-lg">مرحباً {{ student.name }}، استمر في مسار الإتقان 👋</h1>
   <p class="body-md muted">{{ student.track }} · {{ student.level }}</p>
-  <div class="progress success" style="margin-top:12px;max-width:420px">
-    <span style="width:{{ (student.completed_lessons / student.total_lessons * 100)|int }}%"></span>
+  {% set total_l = student.total_lessons if student.total_lessons and student.total_lessons > 0 else 1 %}
+  {% set prog_pct = ((student.completed_lessons / total_l) * 100)|int %}
+  <div class="row" style="gap:12px;margin-top:12px;max-width:480px;align-items:center">
+    <div class="progress success" style="flex:1">
+      <span style="width:{{ prog_pct }}%"></span>
+    </div>
+    <span class="label-sm muted">{{ prog_pct }}% مكتمل</span>
   </div>
 </section>
 
@@ -24,7 +29,10 @@
         <span class="label-md muted">/ {{ student.total_lessons }}</span>
       </div>
     </div>
-    <div class="stat-foot"><span>المتبقي في الخطة</span><strong>حصة واحدة</strong></div>
+    <div class="stat-foot">
+      <span>المتبقي في الخطة</span>
+      <strong>{{ (student.total_lessons - student.completed_lessons)|int }} حصة</strong>
+    </div>
   </div>
 
   <div class="card stat-card">
@@ -38,7 +46,14 @@
         <span class="label-md muted">/ {{ student.total_homework }}</span>
       </div>
     </div>
-    <div class="stat-foot"><span>نسبة الالتزام</span><strong>100%</strong></div>
+    <div class="stat-foot">
+      <span>نسبة الالتزام</span>
+      <strong>
+        {% if student.total_homework and student.total_homework > 0 %}
+          {{ ((student.completed_homework / student.total_homework) * 100)|int }}%
+        {% else %}—{% endif %}
+      </strong>
+    </div>
   </div>
 
   <div class="card stat-card">
@@ -46,12 +61,23 @@
       <div class="stat-icon amber"><span class="material-symbols-outlined">quiz</span></div>
     </div>
     <div>
-      <span class="label-sm muted">الاختبار القادم</span>
+      <span class="label-sm muted">الاختبارات المتاحة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="headline-md" style="color:var(--tertiary);font-weight:700">هياكل البيانات</span>
+        {% if student.active_exams and student.active_exams > 0 %}
+          <span class="headline-md" style="color:var(--tertiary);font-weight:700">{{ student.active_exams }} اختبار</span>
+        {% else %}
+          <span class="headline-md muted">لا يوجد</span>
+        {% endif %}
       </div>
     </div>
-    <div class="stat-foot"><span>المدة المقررة</span><strong>90 دقيقة</strong></div>
+    <div class="stat-foot">
+      <span>حالة الاختبار</span>
+      <strong>
+        {% if student.active_exams and student.active_exams > 0 %}
+          <span style="color:var(--success)">مفتوح الآن</span>
+        {% else %}لا يوجد مجدول{% endif %}
+      </strong>
+    </div>
   </div>
 
   <div class="card stat-card">
@@ -61,10 +87,17 @@
     <div>
       <span class="label-sm muted">المعدل التراكمي</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="display-hero success">{{ student.overall_grade }}%</span>
+        <span class="display-hero {% if student.overall_grade >= 90 %}success{% elif student.overall_grade >= 70 %}warning{% else %}danger{% endif %}">
+          {{ "%.1f"|format(student.overall_grade) }}%
+        </span>
       </div>
     </div>
-    <div class="stat-foot"><span>لوحة الشرف</span><strong>متميز L3</strong></div>
+    <div class="stat-foot">
+      <span>التقدير</span>
+      <strong>
+        {% if student.overall_grade >= 90 %}ممتاز{% elif student.overall_grade >= 80 %}جيد جداً{% elif student.overall_grade >= 70 %}جيد{% elif student.overall_grade > 0 %}مقبول{% else %}لا توجد نتائج{% endif %}
+      </strong>
+    </div>
   </div>
 </section>
 
@@ -76,9 +109,20 @@
         <span class="body-sm muted">{{ lesson_overview.current.lesson_date if lesson_overview.current else '' }}</span>
       </div>
       <h3 class="headline-sm">{{ lesson_overview.current.title if lesson_overview.current else 'لا يوجد درس حالي' }}</h3>
-      {% if lesson_overview.current and lesson_overview.current.image_url %}<img src="{{ lesson_overview.current.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover">{% endif %}
+      {% if lesson_overview.current and lesson_overview.current.image_url %}
+        <img src="{{ lesson_overview.current.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:8px">
+      {% endif %}
       <div class="wrap" style="margin-top:8px">
-        {% if lesson_overview.current %}<a class="btn btn-primary" href="{{ url_for('student.lesson_detail', lesson_id=lesson_overview.current.id) }}">المادة والملف PDF</a>{% endif %}
+        {% if lesson_overview.current %}
+          <a class="btn btn-primary" href="{{ url_for('student.lesson_detail', lesson_id=lesson_overview.current.id) }}">
+            <span class="material-symbols-outlined">play_circle</span> معاينة الحصة
+          </a>
+          {% if lesson_overview.current.material_url %}
+          <a class="btn btn-secondary" href="{{ lesson_overview.current.material_url }}" target="_blank">
+            <span class="material-symbols-outlined">picture_as_pdf</span> تحميل المذكرة
+          </a>
+          {% endif %}
+        {% endif %}
       </div>
     </div>
   </article>
@@ -90,13 +134,46 @@
         <span class="body-sm muted">{{ lesson_overview.next.lesson_date if lesson_overview.next else '' }}</span>
       </div>
       <h3 class="headline-sm">{{ lesson_overview.next.title if lesson_overview.next else 'لا يوجد درس قادم' }}</h3>
-      {% if lesson_overview.next and lesson_overview.next.image_url %}<img src="{{ lesson_overview.next.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover">{% endif %}
+      {% if lesson_overview.next and lesson_overview.next.image_url %}
+        <img src="{{ lesson_overview.next.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:8px">
+      {% endif %}
       <div class="wrap" style="margin-top:8px">
-        {% if lesson_overview.next %}<a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=lesson_overview.next.id) }}">عرض الدرس</a>{% endif %}
+        {% if lesson_overview.next %}
+          <a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=lesson_overview.next.id) }}">
+            <span class="material-symbols-outlined">visibility</span> عرض الدرس
+          </a>
+        {% endif %}
       </div>
     </div>
   </article>
 </div>
 
-<section style="margin-top:2rem"><div class="between"><h2 class="headline-md">مواد جميع الدروس</h2><a class="btn btn-ghost" href="{{ url_for('student.lessons') }}">عرض الدروس</a></div><div class="grid-3" style="margin-top:1rem">{% for lesson in lesson_overview.materials %}<article class="card"><span class="badge badge-info">{{ lesson.lesson_date }}</span><h3 class="headline-sm" style="margin-top:.75rem">{{ lesson.title }}</h3>{% if lesson.image_url %}<img src="{{ lesson.image_url }}" alt="" style="width:100%;max-height:120px;object-fit:cover;margin-top:.75rem">{% endif %}<div class="wrap" style="margin-top:1rem"><a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=lesson.id) }}">المادة والملف PDF</a>{% if lesson.homework_id %}<a class="btn btn-ghost" href="{{ url_for('student.homework') }}">الواجب المرتبط</a>{% endif %}</div></article>{% endfor %}</div></section>
+<section style="margin-top:2rem">
+  <div class="between">
+    <h2 class="headline-md">مواد جميع الدروس</h2>
+    <a class="btn btn-ghost" href="{{ url_for('student.lessons') }}">عرض كل الدروس</a>
+  </div>
+  <div class="grid-3" style="margin-top:1rem">
+    {% for lesson in lesson_overview.materials %}
+    <article class="card">
+      <div class="between">
+        <span class="badge badge-info">{{ lesson.lesson_date or lesson.live_time or '—' }}</span>
+        {% if lesson.is_live %}<span class="badge badge-warn">مباشر</span>{% endif %}
+      </div>
+      <h3 class="headline-sm" style="margin-top:.75rem">{{ lesson.title }}</h3>
+      {% if lesson.image_url %}
+        <img src="{{ lesson.image_url }}" alt="" style="width:100%;max-height:100px;object-fit:cover;margin-top:.75rem;border-radius:6px">
+      {% endif %}
+      <div class="wrap" style="margin-top:1rem">
+        <a class="btn btn-primary" href="{{ url_for('student.lesson_detail', lesson_id=lesson.id) }}">
+          <span class="material-symbols-outlined">play_circle</span> معاينة الحصة
+        </a>
+        {% if lesson.homework_id %}
+          <a class="btn btn-ghost" href="{{ url_for('student.homework_detail', hw_id=lesson.homework_id) }}">الواجب المرتبط</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
 {% endblock content %}

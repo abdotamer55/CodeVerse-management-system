@@ -6,7 +6,7 @@
 <div class="toolbar">
   <div>
     <h1 class="headline-lg">مستودع بنك الأسئلة الأكاديمي</h1>
-    <p class="body-md muted">إدارة وتصنيف أسئلة الاختيار من متعدد، صح/خطأ، والمسائل البرمجية وتتبع نسب الصعوبة وتعديلها أو حذفها.</p>
+    <p class="body-md muted">إدارة وتصنيف أسئلة الاختيار من متعدد، صح/خطأ، المقالية، والمسائل البرمجية مع درجاتها وإجاباتها.</p>
   </div>
   <button class="btn btn-primary" type="button" data-open="#q-modal">
     <span class="material-symbols-outlined">add_circle</span> إضافة سؤال جديد
@@ -15,6 +15,8 @@
 
 <div class="tabs">
   <button class="tab is-active" data-tab-group="q" data-tab="mcq" type="button">اختيار من متعدد (MCQ)</button>
+  <button class="tab" data-tab-group="q" data-tab="boolean" type="button">صح / خطأ</button>
+  <button class="tab" data-tab-group="q" data-tab="essay" type="button">مقالي</button>
   <button class="tab" data-tab-group="q" data-tab="code" type="button">مسائل برمجية وكود</button>
 </div>
 
@@ -46,6 +48,18 @@
   </article>
   {% endfor %}
 </section>
+
+{% for category, label in [('boolean', 'صح / خطأ'), ('essay', 'مقالي')] %}
+<section data-tab-panel-group="q" data-tab-panel="{{ category }}" class="hidden stack" style="gap:1rem">
+  {% for q in questions if q.category == category %}
+  <article class="card">
+    <div class="between"><span class="badge {{ q.difficulty_badge|default('badge-info') }}">{{ label }}</span><span class="badge badge-neutral">{{ q.points|default(1) }} درجة</span><button class="btn btn-secondary" type="button" data-open="#edit-q-modal-{{ q.id }}">تعديل</button></div>
+    <h3 class="headline-sm" style="margin-top:10px">{{ q.prompt }}</h3>
+    {% if category == 'essay' %}<p class="body-sm muted">إجابة مقالية، تصحيح يدوي</p>{% else %}<p class="body-sm muted">الإجابة الصحيحة: {{ q.correct_index }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endfor %}
 
 <!-- Code Panel -->
 <section class="hidden stack" data-tab-panel-group="q" data-tab-panel="code" style="gap:1rem">
@@ -92,10 +106,11 @@
         <div class="form-grid">
           <div class="field">
             <label>نوع السؤال</label>
-            <select class="select" name="category">
+            <select class="select" name="category" data-question-category>
               <option value="mcq">اختيار من متعدد (MCQ)</option>
               <option value="code">مسألة كود برمجي</option>
               <option value="boolean">صح / خطأ</option>
+              <option value="essay">سؤال مقالي</option>
             </select>
           </div>
           <div class="field">
@@ -112,7 +127,12 @@
           <label>المسار الأكاديمي</label>
           <input class="input" name="track" value="الخوارزميات" placeholder="مثال: هياكل البيانات، هندسة الويب..." />
         </div>
-        <div class="field">
+        <div class="form-grid" data-options-fields>
+          <div class="field"><label>الخيارات</label><textarea class="textarea" name="options" rows="3" placeholder="خيار 1&#10;خيار 2&#10;خيار 3&#10;خيار 4"></textarea></div>
+          <div class="field"><label>رقم الإجابة الصحيحة</label><input class="input" name="correct_index" type="number" min="0" value="0" /></div>
+        </div>
+        <div class="field"><label>الدرجة</label><input class="input" name="points" type="number" min="1" value="1" required /></div>
+        <div class="field" data-model-answer>
           <label>الإجابة النموذجية أو الكود المتوقع</label>
           <input class="input" name="correct_answer" required placeholder="الناتج المتوقع أو الكود النموذجي..." />
         </div>
@@ -140,10 +160,11 @@
         <div class="form-grid">
           <div class="field">
             <label>نوع السؤال</label>
-            <select class="select" name="category">
+            <select class="select" name="category" data-question-category>
               <option value="mcq" {% if q.category == 'mcq' %}selected{% endif %}>اختيار من متعدد (MCQ)</option>
               <option value="code" {% if q.category == 'code' %}selected{% endif %}>مسألة كود برمجي</option>
               <option value="boolean" {% if q.category == 'boolean' %}selected{% endif %}>صح / خطأ</option>
+              <option value="essay" {% if q.category == 'essay' %}selected{% endif %}>سؤال مقالي</option>
             </select>
           </div>
           <div class="field">
@@ -160,7 +181,12 @@
           <label>المسار الأكاديمي</label>
           <input class="input" name="track" value="{{ q.track }}" />
         </div>
-        <div class="field">
+        <div class="form-grid" data-options-fields>
+          <div class="field"><label>الخيارات</label><textarea class="textarea" name="options" rows="3">{{ q.options|join('\n') if q.options else '' }}</textarea></div>
+          <div class="field"><label>رقم الإجابة الصحيحة</label><input class="input" name="correct_index" type="number" min="0" value="{{ q.correct_index if q.correct_index is not none else 0 }}" /></div>
+        </div>
+        <div class="field"><label>الدرجة</label><input class="input" name="points" type="number" min="1" value="{{ q.points|default(1) }}" required /></div>
+        <div class="field" data-model-answer>
           <label>الإجابة النموذجية أو الكود المتوقع</label>
           <textarea class="textarea" name="correct_answer" rows="2">{{ q.answer_preview or q.correct_answer }}</textarea>
         </div>
@@ -173,3 +199,25 @@
   </div>
   {% endfor %}
 {% endblock modals %}
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('[data-question-category]').forEach((select) => {
+  const form = select.closest('form');
+  const options = form.querySelector('[data-options-fields]');
+  const answer = form.querySelector('[data-model-answer]');
+  const optionInput = options.querySelector('[name="options"]');
+  const indexInput = options.querySelector('[name="correct_index"]');
+  const sync = () => {
+    const essay = select.value === 'essay';
+    const boolean = select.value === 'boolean';
+    options.hidden = essay;
+    answer.hidden = essay;
+    optionInput.required = !essay;
+    if (boolean) { optionInput.value = 'True\\nFalse'; optionInput.readOnly = true; indexInput.max = '1'; }
+    else { optionInput.readOnly = false; indexInput.removeAttribute('max'); }
+  };
+  select.addEventListener('change', sync); sync();
+});
+</script>
+{% endblock extra_scripts %}

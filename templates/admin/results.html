@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}رصد النتائج والتقارير{% endblock %}
+{% block title %}رصد النتائج والتقارير الأكاديمية{% endblock %}
 
 {% block content %}
 <div class="toolbar">
   <div>
     <h1 class="headline-lg">رصد النتائج والتقارير الأكاديمية</h1>
-    <p class="body-md muted">تحليل درجات الاختبارات والواجبات حسب المسار ورصد مستويات الإتقان لكل دفعة.</p>
+    <p class="body-md muted">تصحيح الأسئلة المقالية، رصد درجات الواجبات المسلّمة، وتحليل مستويات الإتقان لكل دفعة.</p>
   </div>
-  <button class="btn btn-secondary" type="button" data-open="#generic-modal">
-    <span class="material-symbols-outlined">download</span> تصدير تقرير الإكسل
-  </button>
+  <div class="wrap">
+    {% if pending_essays %}
+    <span class="badge badge-warn" style="font-size:13px;padding:6px 12px;">
+      <span class="material-symbols-outlined" style="font-size:16px">edit_note</span>
+      {{ pending_essays|length }} إجابة مقالية بانتظار التصحيح
+    </span>
+    {% endif %}
+    <button class="btn btn-secondary" type="button" onclick="window.print()">
+      <span class="material-symbols-outlined">print</span> طباعة التقرير
+    </button>
+  </div>
 </div>
 
 <section class="grid-4">
@@ -23,8 +31,8 @@
     <div class="headline-lg success">{{ summary.pass_rate }}</div>
   </div>
   <div class="card">
-    <span class="label-sm muted">طلاب بحاجة لإعادة التقييم</span>
-    <div class="headline-lg warning">{{ summary.needs_repeat }}</div>
+    <span class="label-sm muted">بانتظار تصحيح المقالي</span>
+    <div class="headline-lg warning">{{ pending_essays|length or 0 }}</div>
   </div>
   <div class="card">
     <span class="label-sm muted">إجمالي التقييمات المرصودة</span>
@@ -32,38 +40,284 @@
   </div>
 </section>
 
-<div class="table-wrap">
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>الطالب</th>
-        <th>المعرف</th>
-        <th>الاختبار أو التكليف</th>
-        <th>الدرجة</th>
-        <th>التاريخ</th>
-        <th>التقييم</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in results %}
-      <tr>
-        <td><strong>{{ r.student_name }}</strong></td>
-        <td class="ltr accent">{{ r.student_code }}</td>
-        <td>{{ r.assessment }}</td>
-        <td><strong class="headline-sm {% if r.score_percent >= 90 %}success{% elif r.score_percent < 70 %}danger{% endif %}">{{ r.score_display }}</strong></td>
-        <td>{{ r.date }}</td>
-        <td><span class="badge {{ r.grade_badge }}">{{ r.grade_label }}</span></td>
-        <td>
-          <form method="POST" action="{{ url_for('admin.delete_result', result_id=r.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل الأكاديمي؟');" style="display:inline">
-            <button class="btn-icon" type="submit" style="color:var(--red, #ef4444)" title="حذف النتيجة">
-              <span class="material-symbols-outlined">delete</span>
+<!-- Section 1: Pending Essay Questions Grading -->
+<section style="margin-top:2rem">
+  <div class="between" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+    <div>
+      <h2 class="headline-sm">📝 محاولات بانتظار تصحيح الأسئلة المقالية</h2>
+      <p class="body-sm muted">الأسئلة الموضوعية صُححت آلياً. قم بمراجعة الإجابة المقالية ورصد درجتها لاعتماد النتيجة الكلية.</p>
+    </div>
+    {% if pending_essays %}
+      <span class="badge badge-warn">{{ pending_essays|length }} محاولة</span>
+    {% endif %}
+  </div>
+
+  {% if pending_essays %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الطالب</th>
+          <th>الاختبار</th>
+          <th>درجة الموضوعي</th>
+          <th>السؤال المقالي وإجابة الطالب</th>
+          <th>أقصى درجة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pe in pending_essays %}
+        <tr>
+          <td>
+            <strong>{{ pe.student_name }}</strong>
+            <div class="ltr accent">{{ pe.student_code }}</div>
+          </td>
+          <td>
+            <strong>{{ pe.exam_title }}</strong>
+            <div class="body-sm muted">{{ pe.submitted_at }}</div>
+          </td>
+          <td>
+            <span class="badge badge-info">{{ pe.mcq_score }} / {{ pe.total_score }}</span>
+          </td>
+          <td style="max-width:320px;">
+            <div style="font-weight:600;font-size:13px;">{{ pe.question_prompt }}</div>
+            <div style="margin-top:4px;padding:6px 10px;background:var(--surface-dim);border-radius:6px;font-size:12px;color:var(--text-color, #e2e8f0);max-height:80px;overflow-y:auto;">
+              {{ pe.essay_text or '— لا توجد إجابة مكتوبة —' }}
+            </div>
+          </td>
+          <td>
+            <strong>{{ pe.question_points }} درجات</strong>
+          </td>
+          <td>
+            <button class="btn btn-primary" type="button" data-open="#grade-essay-modal-{{ pe.answer_id }}" style="padding:4px 12px;font-size:13px">
+              <span class="material-symbols-outlined" style="font-size:16px">fact_check</span> رصد الدرجة
             </button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="padding:1.25rem;text-align:center;background:var(--surface-lowest);border:1px dashed rgba(255,255,255,0.15)">
+    <p class="body-sm muted" style="margin:0">✅ لا توجد أسئلة مقالية بانتظار التصحيح حالياً. جميع إجابات الطلاب مصححة ومعتمدة.</p>
+  </div>
+  {% endif %}
+</section>
+
+<!-- Section 2: Pending Homework Submissions Grading -->
+{% if pending_homework %}
+<section style="margin-top:2rem">
+  <div class="between" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+    <div>
+      <h2 class="headline-sm">💻 تسليمات الواجبات والتكاليف المسلمة</h2>
+      <p class="body-sm muted">يمكنك رصد وتقييم الواجبات البرمجية من هنا مباشرة وإشعار الطلاب.</p>
+    </div>
+    <span class="badge badge-info">{{ pending_homework|length }} تسليم</span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الطالب</th>
+          <th>التكليف البرمجي</th>
+          <th>مستودع الكود</th>
+          <th>تاريخ التسليم</th>
+          <th>الحالة</th>
+          <th>الدرجة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in pending_homework[:6] %}
+        <tr>
+          <td>
+            <strong>{{ sub.student_name }}</strong>
+            <div class="ltr accent">{{ sub.student_code }}</div>
+          </td>
+          <td>
+            <strong>{{ sub.homework_title or 'واجب برمجي' }}</strong>
+            <div class="ltr muted">{{ sub.homework_code or '' }}</div>
+          </td>
+          <td>
+            {% if sub.repo_url %}
+              <a href="https://{{ sub.repo_url }}" target="_blank" class="ltr accent" style="font-size:12px">{{ sub.repo_url }}</a>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="body-sm">{{ sub.submitted_at }}</td>
+          <td>
+            <span class="badge {% if sub.status == 'graded' %}badge-success{% else %}badge-warn{% endif %}">
+              {% if sub.status == 'graded' %}تم الرصد{% else %}بانتظار التقييم{% endif %}
+            </span>
+          </td>
+          <td>
+            {% if sub.grade %}
+              <strong class="success">{{ sub.grade }}</strong>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-secondary" type="button" data-open="#grade-sub-modal-{{ sub.id }}" style="padding:4px 10px;font-size:13px">
+              رصد الدرجة
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<!-- Section 3: Finalized Academic Results -->
+<section style="margin-top:2rem">
+  <div class="between" style="margin-bottom:1rem">
+    <h2 class="headline-sm">📊 سجل النتائج والتقارير المعتمدة</h2>
+  </div>
+
+  {% if results %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الطالب</th>
+          <th>المعرف</th>
+          <th>الاختبار أو التكليف</th>
+          <th>الدرجة</th>
+          <th>التاريخ</th>
+          <th>التقييم</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td><strong>{{ r.student_name }}</strong></td>
+          <td class="ltr accent">{{ r.student_code }}</td>
+          <td>{{ r.assessment }}</td>
+          <td><strong class="headline-sm {% if r.score_percent >= 90 %}success{% elif r.score_percent < 70 %}danger{% endif %}">{{ r.score_display }}</strong></td>
+          <td>{{ r.date }}</td>
+          <td><span class="badge {{ r.grade_badge }}">{{ r.grade_label }}</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.delete_result', result_id=r.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل الأكاديمي؟');" style="display:inline">
+              <button class="btn-icon" type="submit" style="color:var(--red, #ef4444)" title="حذف النتيجة">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="margin-top:1.5rem;text-align:center;padding:2rem">
+    <span class="material-symbols-outlined" style="font-size:2.5rem;opacity:0.3">analytics</span>
+    <p class="body-md muted" style="margin-top:0.5rem">لا توجد نتائج أكاديمية مرصودة حتى الآن.</p>
+  </div>
+  {% endif %}
+</section>
 {% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+
+  <!-- Grade Essay Modals -->
+  {% for pe in pending_essays %}
+  <div class="modal-backdrop" id="grade-essay-modal-{{ pe.answer_id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تصحيح السؤال المقالي ورصد النتيجة الكلية</h2>
+          <span class="body-sm muted">{{ pe.student_name }} · {{ pe.student_code }} · {{ pe.exam_title }}</span>
+        </div>
+        <button class="btn-icon" data-close="#grade-essay-modal-{{ pe.answer_id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.grade_essay') }}">
+        <input type="hidden" name="attempt_id" value="{{ pe.attempt_id }}" />
+        <input type="hidden" name="answer_id" value="{{ pe.answer_id }}" />
+
+        <div class="card" style="margin-bottom:1rem;background:var(--surface-lowest);padding:0.75rem;">
+          <div style="font-weight:bold;margin-bottom:0.25rem;">نص السؤال:</div>
+          <p style="margin:0;color:var(--text-color, #e2e8f0);">{{ pe.question_prompt }}</p>
+          <div style="margin-top:0.75rem;font-weight:bold;">إجابة الطالب:</div>
+          <div style="margin-top:4px;padding:8px;background:var(--surface-dim);border-radius:6px;max-height:140px;overflow-y:auto;font-size:13px;line-height:1.6;">
+            {{ pe.essay_text or '— فارغ —' }}
+          </div>
+          <div class="between" style="margin-top:0.75rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,0.1)">
+            <span class="body-sm muted">درجة الموضوعي المحتسبة: <strong>{{ pe.mcq_score }}</strong></span>
+            <span class="body-sm accent">الدرجة القصوى للمقالي: <strong>{{ pe.question_points }}</strong></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>الدرجة الممنوحة للمقالي (من {{ pe.question_points }})</label>
+          <input class="input" name="marks" type="number" step="0.5" min="0" max="{{ pe.question_points }}" required value="{{ pe.marks_awarded or pe.question_points }}" />
+        </div>
+        <div class="field">
+          <label>ملاحظات الأستاذ وتعليق التقييم</label>
+          <textarea class="textarea" name="feedback" rows="2" placeholder="إجابة وافية ودقيقة، تمت مراعاة خطوات الحل..."></textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#grade-essay-modal-{{ pe.answer_id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">
+            <span class="material-symbols-outlined">verified</span> اعتماد النتيجة الكلية وإشعار الطالب
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Grade Homework Modals in Results Page -->
+  {% for sub in pending_homework %}
+  <div class="modal-backdrop" id="grade-sub-modal-{{ sub.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">رصد وتقييم تسليم التكليف</h2>
+          <span class="body-sm muted">{{ sub.student_name }} · {{ sub.student_code }}</span>
+        </div>
+        <button class="btn-icon" data-close="#grade-sub-modal-{{ sub.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.grade_submission') }}">
+        <input type="hidden" name="submission_id" value="{{ sub.id }}" />
+        <div class="card" style="margin-bottom:1rem;background:var(--surface-lowest);padding:0.75rem;">
+          <div class="between">
+            <span class="label-sm muted">التكليف:</span>
+            <strong>{{ sub.homework_title or 'واجب برمجي' }}</strong>
+          </div>
+          {% if sub.repo_url %}
+          <div class="between" style="margin-top:0.5rem;">
+            <span class="label-sm muted">مستودع الكود:</span>
+            <a href="https://{{ sub.repo_url }}" target="_blank" class="ltr accent" style="word-break:break-all">{{ sub.repo_url }}</a>
+          </div>
+          {% endif %}
+          {% if sub.code_snippet %}
+          <div style="margin-top:0.5rem;">
+            <span class="label-sm muted">كود / ملاحظات الطالب:</span>
+            <pre style="margin-top:4px;padding:8px;background:var(--surface-dim);border-radius:6px;max-height:100px;overflow-y:auto;font-size:12px;">{{ sub.code_snippet }}</pre>
+          </div>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label>الدرجة المرصودة</label>
+          <input class="input" name="grade" value="{{ sub.grade or '' }}" required placeholder="مثال: 38 / 40 أو 95%" />
+        </div>
+        <div class="field">
+          <label>ملاحظات التقييم</label>
+          <textarea class="textarea" name="feedback" rows="2" placeholder="أداء ممتاز...">{{ sub.feedback or '' }}</textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#grade-sub-modal-{{ sub.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">اعتماد ورصد الدرجة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock modals %}

@@ -27,7 +27,7 @@
   <div class="card stat-card">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">groups</span></div>
-      <span class="badge badge-success"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span> +12 هذا الأسبوع</span>
+      <span class="badge badge-success"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span> مسجلون رسمياً</span>
     </div>
     <div>
       <span class="label-sm muted">إجمالي الطلاب المسجلين</span>
@@ -42,7 +42,7 @@
   <div class="card stat-card">
     <div class="between">
       <div class="stat-icon green"><span class="material-symbols-outlined">bolt</span></div>
-      <span class="badge badge-success">92.4% تفاعل نشط</span>
+      <span class="badge badge-success">نشطون اليوم</span>
     </div>
     <div>
       <span class="label-sm muted">الطلاب النشطون حالياً</span>
@@ -51,68 +51,92 @@
         <span class="label-md muted">متواجد اليوم</span>
       </div>
     </div>
-    <div class="stat-foot"><span>في المختبر البرمجي</span><strong>64 جلسة فورية</strong></div>
+    <div class="stat-foot"><span>في خطر أكاديمي</span><strong class="danger">{{ summary.at_risk_count }} طالب</strong></div>
   </div>
 
   <div class="card stat-card">
     <div class="between">
       <div class="stat-icon amber"><span class="material-symbols-outlined">video_library</span></div>
-      <span class="badge badge-warn">4 مسارات تدريبية</span>
+      <span class="badge badge-warn">{{ lesson_summary.live_this_week or 0 }} مباشرة</span>
     </div>
     <div>
       <span class="label-sm muted">إجمالي الحصص المنشورة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="display-hero">84</span>
+        <span class="display-hero">{{ lesson_summary.published_count or 0 }}</span>
         <span class="label-md muted">حصة ومحاضرة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>إجمالي الساعات</span><strong>142 ساعة مسجلة</strong></div>
+    <div class="stat-foot"><span>إجمالي الساعات</span><strong>{{ lesson_summary.training_hours or 0 }} ساعة مسجلة</strong></div>
   </div>
 
   <div class="card stat-card">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">assignment_turned_in</span></div>
-      <span class="badge badge-info">معدل عام: 87.6%</span>
+      <span class="badge badge-info">معدل: {{ results_summary.cohort_average or '—' }}</span>
     </div>
     <div>
-      <span class="label-sm muted">الامتحانات والواجبات المنفذة</span>
+      <span class="label-sm muted">الامتحانات والواجبات المرصودة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="display-hero">32</span>
+        <span class="display-hero">{{ results_summary.graded_exams_count or 0 }}</span>
         <span class="label-md muted">تقييماً رسمياً</span>
       </div>
     </div>
-    <div class="stat-foot"><span>واجبات قيد الرصد</span><strong class="danger">14 تسليم جديد</strong></div>
+    <div class="stat-foot"><span>بحاجة إعادة</span><strong class="danger">{{ results_summary.needs_repeat or 0 }} طالب</strong></div>
   </div>
 </section>
 
 <!-- Attendance Chart & Next Live Lecture -->
 <div class="grid-12">
   <section class="card card-lg span-8">
-    <h2 class="headline-sm">معدل الحضور وتسليم التكاليف البرمجية</h2>
-    <p class="body-sm muted">مقارنة نسب حضور المحاضرات الرقمية ومعدل تسليم كود الواجبات خلال الأسابيع الستة السابقة</p>
-    <div class="chart-bars">
-      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:62%"></span><span class="bar secondary" style="height:48%"></span></div><span class="label-sm muted">أ1</span></div>
-      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:70%"></span><span class="bar secondary" style="height:55%"></span></div><span class="label-sm muted">أ2</span></div>
-      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:66%"></span><span class="bar secondary" style="height:72%"></span></div><span class="label-sm muted">أ3</span></div>
-      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:80%"></span><span class="bar secondary" style="height:68%"></span></div><span class="label-sm muted">أ4</span></div>
-      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:74%"></span><span class="bar secondary" style="height:81%"></span></div><span class="label-sm muted">أ5</span></div>
-      <div class="chart-col"><div class="bars"><span class="bar primary" style="height:88%"></span><span class="bar secondary" style="height:79%"></span></div><span class="label-sm muted">أ6</span></div>
+    <div class="between" style="margin-bottom:1rem">
+      <div>
+        <h2 class="headline-sm">معدل الحضور وتسليم التكاليف البرمجية</h2>
+        <p class="body-sm muted">مقارنة نسب حضور المحاضرات الرقمية ومعدل تسليم الواجبات خلال الحصص الأخيرة</p>
+      </div>
+      <div class="row" style="gap:12px;align-items:center">
+        <span class="row" style="gap:6px;align-items:center"><span style="width:12px;height:12px;border-radius:3px;background:var(--primary);display:inline-block"></span><span class="label-sm muted">حضور</span></span>
+        <span class="row" style="gap:6px;align-items:center"><span style="width:12px;height:12px;border-radius:3px;background:var(--secondary);display:inline-block"></span><span class="label-sm muted">تسليم</span></span>
+      </div>
+    </div>
+    <div style="position:relative;height:200px">
+      <canvas id="attendanceChart"></canvas>
     </div>
   </section>
 
   <section class="card card-lg span-4">
-    <span class="badge badge-info">مباشر اليوم 07:00 م</span>
-    <h2 class="headline-sm" style="margin:8px 0">البث القادم</h2>
-    <div class="live-card" style="position:relative;border-radius:12px;overflow:hidden;background:var(--surface-lowest)">
-      <div class="video-stage" style="min-height:140px">
-        <span class="material-symbols-outlined" style="font-size:40px;color:var(--primary)">live_tv</span>
-        <strong>معمل الخوارزميات الحي #14</strong>
-        <p class="body-sm muted">حل معضلات البرمجة الديناميكية Dynamic Programming</p>
+    {% set live_lesson = lesson_summary.get('live_lesson') if lesson_summary and lesson_summary.get('live_lesson') else none %}
+    {% set all_lessons = lesson_summary.get('lessons_data') if lesson_summary and lesson_summary.get('lessons_data') else [] %}
+    {% set featured_lesson = live_lesson or (all_lessons[0] if all_lessons else none) %}
+    <div class="between">
+      <span class="badge {% if live_lesson and live_lesson.get('is_live') %}badge-info{% else %}badge-neutral{% endif %}">
+        {% if live_lesson and live_lesson.get('is_live') %}مباشر — {{ live_lesson.live_time }}{% elif featured_lesson %}حصة معتمدة — {{ featured_lesson.code }}{% else %}لا توجد حصص مسجلة{% endif %}
+      </span>
+      {% if featured_lesson and featured_lesson.attendees %}
+      <span class="body-sm muted">{{ featured_lesson.attendees }} حاضر</span>
+      {% endif %}
+    </div>
+    <h2 class="headline-sm" style="margin:8px 0">{% if live_lesson and live_lesson.get('is_live') %}البث القادم{% else %}الحصة النشطة بالمنهج{% endif %}</h2>
+    <div class="live-card" style="position:relative;border-radius:12px;overflow:hidden;background:var(--surface-lowest);border:1px solid var(--border)">
+      <div class="video-stage" style="min-height:140px;padding:1rem;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:6px">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary)">{% if live_lesson and live_lesson.get('is_live') %}live_tv{% else %}play_circle{% endif %}</span>
+        {% if featured_lesson %}
+          <strong style="font-size:15px;line-height:1.4">{{ featured_lesson.title }}</strong>
+          <p class="body-sm muted" style="margin:0">{{ featured_lesson.track }}</p>
+        {% else %}
+          <strong>لا يوجد دروس مسجلة</strong>
+          <p class="body-sm muted" style="margin:0">أضف حصة من صفحة الحصص</p>
+        {% endif %}
       </div>
     </div>
-    <div class="between" style="margin-top:12px">
-      <span class="body-sm muted">المسجلون في البث: 184 طالب</span>
-      <button class="btn btn-primary" type="button" data-open="#generic-modal">تجهيز الغرفة</button>
+    <div class="between" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+      {% if featured_lesson and featured_lesson.id %}
+      <a class="btn btn-primary" href="{{ url_for('admin.preview_lesson', lesson_id=featured_lesson.id) }}" title="معاينة محتوى الحصة بالكامل">
+        <span class="material-symbols-outlined">visibility</span> معاينة الحصة
+      </a>
+      {% endif %}
+      <a class="btn btn-secondary" href="{{ url_for('admin.lessons') }}" title="الانتقال لجدول وإدارة الحصص">
+        <span class="material-symbols-outlined">video_library</span> إدارة الحصص
+      </a>
     </div>
   </section>
 </div>
@@ -156,7 +180,7 @@
           <td class="ltr">{{ s.completed_lessons }} / {{ s.total_lessons }}</td>
           <td>
             <div class="progress {% if s.overall_grade >= 90 %}success{% elif s.overall_grade < 70 %}danger{% endif %}" style="max-width:100px">
-              <span style="width:{{ (s.completed_homework / s.total_homework * 100)|int }}%"></span>
+              <span style="width:{{ ((s.completed_homework / s.total_homework * 100)|int) if s.total_homework and s.total_homework > 0 else 0 }}%"></span>
             </div>
           </td>
           <td>
@@ -176,3 +200,83 @@
   </div>
 </section>
 {% endblock content %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  // Build chart from real lesson data passed via template
+  const lessons = {{ lesson_summary.lessons_data | tojson if lesson_summary and lesson_summary.lessons_data else '[]' }};
+  
+  // Generate labels from lesson titles (truncated) or fallback weeks
+  let labels, attendanceData, submissionData;
+  
+  if (lessons && lessons.length > 0) {
+    const sliced = lessons.slice(-8); // Last 8 lessons
+    labels = sliced.map(l => l.code || l.title?.slice(0,6) || '—');
+    attendanceData = sliced.map(l => Math.round((l.attendees || 0) / Math.max({{ summary.total_count or 1 }}, 1) * 100));
+    submissionData = sliced.map(l => Math.round((l.progress || 0)));
+  } else {
+    // Fallback: use summary data proportionally
+    const total = {{ summary.total_count or 10 }};
+    const active = {{ summary.active_today or 5 }};
+    const baseAttend = total > 0 ? Math.round((active / total) * 100) : 60;
+    labels = ['ح-1','ح-2','ح-3','ح-4','ح-5','ح-6'];
+    attendanceData = [baseAttend - 15, baseAttend - 10, baseAttend - 8, baseAttend - 4, baseAttend, baseAttend + 5].map(v => Math.min(100, Math.max(0, v)));
+    submissionData = attendanceData.map(v => Math.max(0, v - 12));
+  }
+
+  const ctx = document.getElementById('attendanceChart');
+  if (!ctx) return;
+  
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+  
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'نسبة الحضور %',
+          data: attendanceData,
+          backgroundColor: 'rgba(99,102,241,0.75)',
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'نسبة التسليم %',
+          data: submissionData,
+          backgroundColor: 'rgba(16,185,129,0.6)',
+          borderRadius: 6,
+          borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          rtl: true,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Tajawal, sans-serif' } } },
+        y: {
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'Tajawal, sans-serif' }, callback: v => v + '%' },
+          max: 100, min: 0
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock scripts %}

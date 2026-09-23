@@ -11,28 +11,20 @@
 </div>
 
 <div class="stack" style="gap:1rem">
-  <article class="notif-item unread">
-    <span class="material-symbols-outlined">quiz</span>
-    <div>
-      <strong>تذكير مهم: قاعة اختبار هياكل البيانات والخوارزميات مفتوحة الآن</strong>
-      <p class="body-sm muted">المؤقت: 90 دقيقة · ينتهي الموعد غداً في تمام 11:59 م · منذ ساعتين</p>
+  {% if notifications %}
+    {% for n in notifications %}
+    <article class="notif-item {% if not n.is_read %}unread{% endif %}">
+      <span class="material-symbols-outlined">{{ n.icon | default('notifications') }}</span>
+      <div>
+        <strong>{{ n.title }}</strong>
+        <p class="body-sm muted">{{ n.content }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  {% else %}
+    <div class="card" style="text-align:center;padding:2rem">
+      <p class="body-md muted">لا توجد إشعارات حالياً.</p>
     </div>
-  </article>
-
-  <article class="notif-item">
-    <span class="material-symbols-outlined">task_alt</span>
-    <div>
-      <strong>تم رصد نتيجة تقييم مشروع REST API و Redis بنجاح</strong>
-      <p class="body-sm muted">الدرجة: 38 / 40 · اجتياز فحص الـ CI/CD بنسبة 100% · أمس</p>
-    </div>
-  </article>
-
-  <article class="notif-item">
-    <span class="material-symbols-outlined">live_tv</span>
-    <div>
-      <strong>تذكير بالبث المباشر لمعمل البرمجة الديناميكية #14</strong>
-      <p class="body-sm muted">اليوم الساعة 07:00 مساءً مع د. طارق الحارثي · قبل يومين</p>
-    </div>
-  </article>
+  {% endif %}
 </div>
 {% endblock content %}

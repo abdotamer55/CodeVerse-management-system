@@ -3,7 +3,7 @@ CodeVerse Learning Management System (LMS)
 Flask Application Factory & Core Server
 """
 import os
-from flask import Flask, render_template, redirect, url_for, session
+from flask import Flask, render_template, redirect, url_for, session, flash, request
 from config import config_by_name
 from routes import auth_bp, admin_bp, student_bp
 from services import auth_service
@@ -16,6 +16,11 @@ def create_app(config_name=None):
 
     app = Flask(__name__)
     app.config.from_object(config_by_name.get(config_name, config_by_name["default"]))
+
+    # Ensure Uploads Directory Exists
+    upload_dir = app.config.get("UPLOAD_FOLDER")
+    if upload_dir:
+        os.makedirs(upload_dir, exist_ok=True)
 
     # Register Blueprints
     app.register_blueprint(auth_bp)
@@ -59,6 +64,11 @@ def create_app(config_name=None):
     @app.errorhandler(500)
     def internal_server_error(e):
         return render_template("errors/500.html", page_id="500"), 500
+
+    @app.errorhandler(413)
+    def request_entity_too_large(e):
+        flash("حجم الملف المرفوع يتجاوز الحد الأقصى المسموح به (100 ميجابايت).", "error")
+        return redirect(request.referrer or url_for("admin.files"))
 
     return app
 

@@ -332,4 +332,54 @@
     </div>
   </div>
   {% endfor %}
+
+  <!-- Grade Homework Modals -->
+  {% for sub in submissions %}
+  <div class="modal-backdrop" id="grade-modal-{{ sub.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">رصد وتقييم تسليم التكليف</h2>
+          <span class="body-sm muted">{{ sub.student_name }} · <span class="ltr accent">{{ sub.student_code }}</span></span>
+        </div>
+        <button class="btn-icon" data-close="#grade-modal-{{ sub.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.grade_submission') }}">
+        <input type="hidden" name="submission_id" value="{{ sub.id }}" />
+        <div class="card" style="margin-bottom:1rem;background:var(--surface-lowest);padding:0.75rem;">
+          <div class="between">
+            <span class="label-sm muted">التكليف:</span>
+            <strong>{{ sub.homework_title or 'واجب برمجي' }}</strong>
+          </div>
+          {% if sub.repo_url %}
+          <div class="between" style="margin-top:0.5rem;">
+            <span class="label-sm muted">مستودع الكود:</span>
+            <a href="https://{{ sub.repo_url }}" target="_blank" class="ltr accent" style="word-break:break-all">{{ sub.repo_url }}</a>
+          </div>
+          {% endif %}
+          {% if sub.code_snippet %}
+          <div style="margin-top:0.5rem;">
+            <span class="label-sm muted">ملاحظات / كود الطالب:</span>
+            <pre style="margin-top:4px;padding:8px;background:var(--surface-dim);border-radius:6px;max-height:120px;overflow-y:auto;font-size:12px;">{{ sub.code_snippet }}</pre>
+          </div>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label>الدرجة المرصودة</label>
+          <input class="input" name="grade" value="{{ sub.grade or '' }}" required placeholder="مثال: 38 / 40 أو 95%" />
+        </div>
+        <div class="field">
+          <label>ملاحظات وتوجيهات الأستاذ للطالب</label>
+          <textarea class="textarea" name="feedback" rows="3" placeholder="أداء ممتاز، تم التحقق من بنية الكود بنجاح...">{{ sub.feedback or '' }}</textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#grade-modal-{{ sub.id }}">إلغاء</button>
+          <button class="btn btn-primary" type="submit">
+            <span class="material-symbols-outlined">verified</span> اعتماد ورصد الدرجة
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
 {% endblock modals %}

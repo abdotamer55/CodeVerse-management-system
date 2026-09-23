@@ -1,1 +1,86 @@
-{% extends "base.html" %}{% block title %}{{ assessment_label }} | {{ assessment.title }}{% endblock %}{% block content %}<section class="page-hero"><h1 class="headline-lg">{{ assessment.title }}</h1></section>{% if attempt %}<div class="alert"><p>تم تسليم هذه المحاولة وهي مقفلة. النتيجة: {{ attempt.score }} / {{ attempt.total_score }} ({{ attempt.percentage }}%).</p></div>{% else %}<form method="post" action="{{ submit_url }}">{% set show_answers=false %}{% include 'components/assessment-questions.html' %}<button class="btn btn-primary" type="submit">تسليم {{ assessment_label }} نهائياً</button></form>{% endif %}{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}{{ assessment_label }} | {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap">
+    <div class="row" style="gap:12px;align-items:center">
+      <a class="btn btn-ghost" href="{% if page_id == 'exams' %}{{ url_for('student.exams') }}{% else %}{{ url_for('student.homework') }}{% endif %}">
+        <span class="material-symbols-outlined">arrow_back</span> العودة
+      </a>
+      <div>
+        <span class="badge badge-info">{{ assessment_label }} الأكاديمي</span>
+        <h1 class="headline-lg" style="margin-top:4px">{{ assessment.title }}</h1>
+        {% if assessment.due_date %}
+        <p class="body-sm muted" style="margin-top:4px">الموعد النهائي: {{ assessment.due_date }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if not attempt %}
+  <section class="card card-lg stack" style="gap:1rem;margin-top:1.5rem">
+    <div class="row">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">assignment</span></div>
+      <div>
+        <h2 class="headline-sm">بدء محاولة {{ assessment_label }}</h2>
+        <p class="body-md muted">سيتم فتح الأسئلة وتسجيل محاولة قيد التنفيذ. يمكنك مراجعة الأسئلة قبل التسليم النهائي.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('student.start_homework_attempt', hw_id=assessment.id) }}">
+      <button class="btn btn-primary" type="submit">
+        <span class="material-symbols-outlined">play_arrow</span> بدء المحاولة الآن
+      </button>
+    </form>
+  </section>
+
+{% elif attempt.status == 'submitted' %}
+  <section class="card card-lg stack" style="gap:1rem;margin-top:1.5rem">
+    <div class="alert alert-success">
+      <span class="material-symbols-outlined" style="font-size:1.5rem">check_circle</span>
+      <div>
+        <strong>تم تسليم المحاولة بنجاح وهي مقفلة حالياً.</strong>
+        <p class="body-sm" style="margin-top:4px">النتيجة المرصودة: {{ attempt.score }} من إجمالي {{ attempt.total_score }} درجة ({{ attempt.percentage|default('') }}%).</p>
+      </div>
+    </div>
+    <div class="wrap">
+      <a class="btn btn-secondary" href="{% if page_id == 'exams' %}{{ url_for('student.exams') }}{% else %}{{ url_for('student.homework') }}{% endif %}">
+        <span class="material-symbols-outlined">arrow_forward</span> العودة للقائمة
+      </a>
+      <a class="btn btn-ghost" href="{{ url_for('student.results') }}">سجل نتائجي</a>
+    </div>
+  </section>
+
+{% elif attempt.status == 'expired' %}
+  <section class="card card-lg stack" style="gap:1rem;margin-top:1.5rem">
+    <div class="alert alert-warning">
+      <span class="material-symbols-outlined" style="font-size:1.5rem">timer_off</span>
+      <div>
+        <strong>انتهت صلاحية المحاولة السابقة.</strong>
+        <p class="body-sm" style="margin-top:4px">انقضت المدة المحددة دون تسليم الإجابات. يمكنك إعادة بدء المحاولة إذا كانت السياسة تسمح بذلك.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('student.start_homework_attempt', hw_id=assessment.id) }}">
+      <button class="btn btn-secondary" type="submit">
+        <span class="material-symbols-outlined">refresh</span> إعادة بدء المحاولة
+      </button>
+    </form>
+  </section>
+
+{% else %}
+  <form method="post" action="{{ submit_url }}" data-assessment-submit style="margin-top:1.5rem">
+    {% set show_answers = false %}
+    {% include 'components/assessment-questions.html' %}
+    <div class="wrap" style="margin-top:1.5rem">
+      <button class="btn btn-primary" type="submit" style="padding:0.75rem 2rem;font-size:15px">
+        <span class="material-symbols-outlined">send</span> تسليم {{ assessment_label }} نهائياً
+      </button>
+      <a class="btn btn-ghost" href="{% if page_id == 'exams' %}{{ url_for('student.exams') }}{% else %}{{ url_for('student.homework') }}{% endif %}">
+        إلغاء والعودة
+      </a>
+    </div>
+  </form>
+{% endif %}
+{% endblock %}

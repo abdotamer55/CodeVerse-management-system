@@ -15,7 +15,9 @@
       <button class="btn btn-primary" type="button" data-open="#exam-modal">
         <span class="material-symbols-outlined">add_circle</span> إنشاء امتحان جديد
       </button>
-      <a class="btn btn-secondary" href="{{ url_for('student.exam_detail', exam_id=1) }}">معاينة كطالب</a>
+      <button class="btn btn-secondary" type="button" data-open="#preview-select-modal">
+        <span class="material-symbols-outlined">visibility</span> معاينة كطالب
+      </button>
       <a class="btn btn-primary" href="{{ url_for('admin.questions') }}">بنك الأسئلة</a>
     </div>
   </div>
@@ -27,12 +29,16 @@
       <div class="stat-icon blue"><span class="material-symbols-outlined">timer</span></div>
     </div>
     <div>
-      <span class="label-sm muted">امتحانات نشطة ومجدولة</span>
+      <span class="label-sm muted">امتحانات مسجلة ومجدولة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.active_exams }}</span>
+        <span class="label-md muted">امتحان</span>
       </div>
     </div>
-    <div class="stat-foot"><span>اليوم</span><strong>3 قاعات جارية</strong></div>
+    <div class="stat-foot">
+      <span>القاعات الجارية</span>
+      <strong>{{ summary.today_active_halls }} قاعة نشطة</strong>
+    </div>
   </div>
 
   <div class="card stat-card">
@@ -40,12 +46,16 @@
       <div class="stat-icon green"><span class="material-symbols-outlined">groups</span></div>
     </div>
     <div>
-      <span class="label-sm muted">إجمالي المشاركين اليوم</span>
+      <span class="label-sm muted">إجمالي الطلاب المعتمدين</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.total_participants }}</span>
+        <span class="label-md muted">طالب بالمنصة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>القاعات</span><strong>متصلة بنجاح</strong></div>
+    <div class="stat-foot">
+      <span>القاعات</span>
+      <strong>متصلة وجاهزة</strong>
+    </div>
   </div>
 
   <div class="card stat-card">
@@ -56,9 +66,13 @@
       <span class="label-sm muted">بانتظار الرصد النهائي</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.awaiting_grading }}</span>
+        <span class="label-md muted">محاولة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>مراجعة مقالية</span><strong>مطلوبة</strong></div>
+    <div class="stat-foot">
+      <span>مراجعة مقالية</span>
+      <strong>{% if summary.awaiting_grading > 0 %}{{ summary.awaiting_grading }} تتطلب تصحيحاً{% else %}تم رصد الكل{% endif %}</strong>
+    </div>
   </div>
 
   <div class="card stat-card">
@@ -69,9 +83,10 @@
       <span class="label-sm muted">أسئلة البنك المعتمدة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.question_bank_count }}</span>
+        <span class="label-md muted">سؤال</span>
       </div>
     </div>
-    <div class="stat-foot"><span>مستودع جاهز</span><strong>للاستخدام</strong></div>
+    <div class="stat-foot"><span>مستودع الأسئلة</span><strong>معتمد للاختبارات</strong></div>
   </div>
 </section>
 
@@ -86,14 +101,17 @@
         <span class="body-sm muted">{{ e.duration_minutes }} دقيقة</span>
       </div>
       <h3 class="headline-sm">{{ e.title }}</h3>
-      <p class="body-sm muted">{{ e.scheduled_date }} · {{ e.total_questions }} سؤالاً · نظام فحص النزاهة مفعّل</p>
+      <p class="body-sm muted">{{ e.scheduled_date or 'موعد غير محدد' }} · {{ e.total_questions }} سؤالاً · نظام فحص النزاهة مفعّل</p>
       <div class="wrap" style="margin-top:12px">
         {% if e.status == 'active' %}
           <div class="progress"><span style="width:{{ e.progress }}%"></span></div>
           <a class="btn btn-primary" href="{{ url_for('admin.results') }}">رصد النتائج الحية</a>
         {% endif %}
         <a class="btn btn-secondary" href="{{ url_for('admin.exam_builder', exam_id=e.id) }}">إدارة الأسئلة</a>
-        <a class="btn btn-ghost" href="{{ url_for('admin.review_exam', exam_id=e.id) }}">مراجعة الاختبار</a>
+        <a class="btn btn-ghost" href="{{ url_for('admin.preview_exam', exam_id=e.id) }}" title="معاينة الاختبار كما يراه الطالب">
+          <span class="material-symbols-outlined">visibility</span> معاينة
+        </a>
+        <a class="btn btn-ghost" href="{{ url_for('admin.review_exam', exam_id=e.id) }}">مراجعة</a>
         <button class="btn btn-ghost" type="button" data-open="#edit-exam-modal-{{ e.id }}">
           <span class="material-symbols-outlined">edit</span> تعديل
         </button>
@@ -111,6 +129,38 @@
 
 {% block modals %}
   {{ super() }}
+
+  <!-- Preview Exam Selection Modal -->
+  <div class="modal-backdrop" id="preview-select-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">اختر الاختبار الذي ترغب في معاينته</h2>
+        <button class="btn-icon" data-close="#preview-select-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="modal-body">
+        {% if exams %}
+          <div class="stack" style="gap:0.75rem">
+            {% for e in exams %}
+            <div class="card" style="padding:1rem;background:var(--surface-lowest);display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <div>
+                <strong class="headline-sm" style="display:block">{{ e.title }}</strong>
+                <span class="body-sm muted">{{ e.duration_minutes }} دقيقة · {{ e.total_questions }} أسئلة · {{ e.status_label }}</span>
+              </div>
+              <a class="btn btn-primary" href="{{ url_for('admin.preview_exam', exam_id=e.id) }}">
+                <span class="material-symbols-outlined">visibility</span> بدء المعاينة
+              </a>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="card" style="text-align:center;padding:2rem;">
+            <p class="body-md muted">لا توجد اختبارات مسجلة حالياً للمعاينة. أنشئ اختباراً جديداً أولاً.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
   <!-- Create Exam Modal -->
   <div class="modal-backdrop" id="exam-modal">
     <div class="modal">
@@ -134,8 +184,12 @@
           </div>
         </div>
         <div class="field">
-          <label>تاريخ ووقت البدء</label>
-          <input class="input" name="scheduled_date" placeholder="مثال: 22 سبتمبر 2024 · 08:00 م" />
+          <label>تاريخ ووقت البدء (مجدول)</label>
+          <div class="row" style="gap:0.5rem;align-items:center;">
+            <input class="input date-target" name="scheduled_date" placeholder="مثال: 22 سبتمبر 2026 · 08:00 م" />
+            <input class="input" type="datetime-local" style="max-width:44px;padding:0 8px;cursor:pointer;" onchange="applyArabicDate(this)" title="اختر من التقويم" />
+          </div>
+          <span class="body-sm muted" style="margin-top:4px;display:block">سيتم إرسال إشعار تذكيري تلقائي للطلاب بموعد الاختبار.</span>
         </div>
         <div class="field">
           <label>الحالة</label>
@@ -181,7 +235,10 @@
         </div>
         <div class="field">
           <label>تاريخ ووقت البدء</label>
-          <input class="input" name="scheduled_date" value="{{ e.scheduled_date or '' }}" />
+          <div class="row" style="gap:0.5rem;align-items:center;">
+            <input class="input date-target" name="scheduled_date" value="{{ e.scheduled_date or '' }}" placeholder="مثال: 22 سبتمبر 2026 · 08:00 م" />
+            <input class="input" type="datetime-local" style="max-width:44px;padding:0 8px;cursor:pointer;" onchange="applyArabicDate(this)" title="اختر من التقويم" />
+          </div>
         </div>
         <div class="field">
           <label>الحالة</label>
@@ -200,3 +257,25 @@
   </div>
   {% endfor %}
 {% endblock modals %}
+
+{% block scripts %}
+<script>
+function applyArabicDate(picker) {
+  if (!picker.value) return;
+  const d = new Date(picker.value);
+  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+  const day = d.getDate();
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'م' : 'ص';
+  hours = hours % 12 || 12;
+  const target = picker.closest('.field').querySelector('.date-target');
+  if (target) {
+    target.value = `${day} ${month} ${year} · ${String(hours).padStart(2, '0')}:${mins} ${ampm}`;
+  }
+}
+</script>
+{% endblock %}
+

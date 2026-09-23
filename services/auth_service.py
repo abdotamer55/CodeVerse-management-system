@@ -11,17 +11,17 @@ logger = logging.getLogger(__name__)
 
 # Sample/fallback users for development prior to live Supabase connection
 _SAMPLE_USERS = {
-    "student@codeverse.edu": {
-        "id": "b0000000-0000-0000-0000-000000000001",
-        "username": "ziad",
-        "email": "student@codeverse.edu",
+    "mariem@codeverse.dev": {
+        "id": "mariem",
+        "username": "mariem",
+        "email": "mariem@codeverse.dev",
         "password_hash": generate_password_hash("student123"),
         "role": "student",
-        "name": "زياد حسام الدين",
-        "initials": "ز.ح",
-        "student_code": "#ST-2024-089",
+        "name": "مريم محمد",
+        "initials": "م.م",
+        "student_code": "#ST-2024-001",
         "track": "هندسة برمجيات الأنظمة",
-        "title": "طالب مسار هندسة البرمجيات",
+        "title": "طالبة مسار هندسة البرمجيات",
     },
     "admin@codeverse.edu": {
         "id": "a0000000-0000-0000-0000-000000000001",
@@ -38,8 +38,8 @@ _SAMPLE_USERS = {
 }
 
 _USERNAME_TO_EMAIL = {
-    "ziad": "student@codeverse.edu",
-    "student": "student@codeverse.edu",
+    "mariem": "mariem@codeverse.dev",
+    "student": "mariem@codeverse.dev",
     "admin": "admin@codeverse.edu",
     "tareq": "admin@codeverse.edu",
 }
@@ -76,6 +76,11 @@ def authenticate(identifier: str, password: str):
             """
             rows = execute_query(sql, (clean_id, clean_id), fetch=True)
             if not rows:
+                # Check sample users fallback (e.g. ziad / student / tareq)
+                email = _USERNAME_TO_EMAIL.get(clean_id, clean_id)
+                user = _SAMPLE_USERS.get(email)
+                if user and check_password_hash(user["password_hash"], password):
+                    return user, None
                 return None, "بيانات الاعتماد غير صحيحة. يرجى التحقق من اسم المستخدم أو البريد"
 
             user_row = rows[0]
@@ -136,3 +141,26 @@ def get_user_by_id(user_id: str):
         if user["id"] == user_id:
             return user
     return None
+
+
+def update_user_name(user_id: str, full_name: str):
+    """Update only the authenticated user's display name."""
+    name = (full_name or "").strip()
+    if not user_id or not name:
+        raise ValueError("الاسم الكامل مطلوب.")
+    if len(name) > 255:
+        raise ValueError("الاسم طويل جداً.")
+    if is_db_active():
+        rows = execute_query(
+            "UPDATE users SET full_name = %s, initials = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING id, full_name, initials;",
+            (name, name[:2], str(user_id)), fetch=True,
+        )
+        if not rows:
+            raise ValueError("تعذر العثور على المستخدم.")
+        return dict(rows[0])
+    for user in _SAMPLE_USERS.values():
+        if user["id"] == user_id:
+            user["name"] = name
+            user["initials"] = name[:2]
+            return {"id": user_id, "full_name": name, "initials": name[:2]}
+    raise ValueError("تعذر العثور على المستخدم.")

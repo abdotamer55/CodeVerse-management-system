@@ -16,6 +16,7 @@
       <span class="badge badge-success">إجمالي الدرجات: <strong id="total-points">0</strong></span>
       <button class="btn btn-secondary" type="button" id="add-mcq">+ اختيار متعدد</button>
       <button class="btn btn-secondary" type="button" id="add-tf">+ صح / خطأ</button>
+      <button class="btn btn-secondary" type="button" id="add-essay">+ مقالي</button>
       <button class="btn btn-secondary" type="button" id="add-bank-question">+ إضافة من بنك الأسئلة</button>
     </div>
   </div>
@@ -79,7 +80,7 @@
   </div>
 </div>
 {% endblock %}
-{% block scripts %}{{ super() }}
+{% block extra_scripts %}
 <script>
 const questions = {{ assessment.questions|default([])|tojson }};
 const bankQuestions = {{ question_bank|default([])|tojson }};
@@ -88,6 +89,7 @@ const host = document.querySelector('#question-editor');
 function normalizeQuestion(raw = {}, fallbackType = 'mcq') {
   const type = raw.type || raw.category || fallbackType;
   const isBoolean = type === 'boolean';
+  const isEssay = type === 'essay';
   let rawOptions = raw.options;
   if (typeof rawOptions === 'string') {
     try {
@@ -96,14 +98,14 @@ function normalizeQuestion(raw = {}, fallbackType = 'mcq') {
       rawOptions = rawOptions.split('|').map((option) => option.trim());
     }
   }
-  const options = Array.isArray(rawOptions) && rawOptions.length ? rawOptions : (isBoolean ? ['صح', 'خطأ'] : ['','','','']);
-  const correctIndex = Number(raw.correct_index ?? raw.correctIndex ?? 0);
+  const options = Array.isArray(rawOptions) && rawOptions.length ? rawOptions : (isBoolean ? ['صح', 'خطأ'] : (isEssay ? [] : ['','','','']));
+  const correctIndex = raw.correct_index === null || isEssay ? null : Number(raw.correct_index ?? raw.correctIndex ?? 0);
   return {
     id: raw.id || null,
     type,
     prompt: raw.prompt || '',
     options,
-    correct_index: Number.isFinite(correctIndex) ? correctIndex : 0,
+    correct_index: correctIndex === null ? null : (Number.isFinite(correctIndex) ? correctIndex : 0),
     points: Number(raw.points || 1),
     source: raw.source || 'manual'
   };
@@ -119,7 +121,7 @@ function render() {
     host.insertAdjacentHTML('beforeend', `
       <article class="card">
         <div class="between">
-          <strong>سؤال ${i + 1} — ${normalized.type === 'boolean' ? 'صح / خطأ' : 'اختيار متعدد'}</strong>
+          <strong>سؤال ${i + 1} — ${normalized.type === 'boolean' ? 'صح / خطأ' : normalized.type === 'essay' ? 'مقالي' : normalized.type === 'code' ? 'برمجي' : 'اختيار متعدد'}</strong>
           <div class="row" style="gap:0.5rem;">
             <button type="button" data-up="${i}" class="btn btn-ghost" style="padding:4px 10px;">↑</button>
             <button type="button" data-down="${i}" class="btn btn-ghost" style="padding:4px 10px;">↓</button>
@@ -130,7 +132,7 @@ function render() {
           <label>نص السؤال</label>
           <textarea class="textarea" data-p="${i}" placeholder="نص السؤال">${normalized.prompt || ''}</textarea>
         </div>
-        ${options.map((o, j) => `
+        ${normalized.type === 'essay' ? '' : options.map((o, j) => `
           <div class="field">
             <label>الخيار ${j + 1}</label>
             <div class="row" style="gap:0.5rem; align-items:center;">
@@ -153,6 +155,10 @@ function render() {
 
 function addQuestionToBuilder(question) {
   const normalized = normalizeQuestion(question, question.category || 'mcq');
+  if (!['mcq', 'boolean', 'essay'].includes(normalized.type)) {
+    alert('هذا النوع محفوظ في بنك الأسئلة لكنه غير مدعوم حاليًا داخل التقييمات.');
+    return;
+  }
   const entry = {
     id: normalized.id || Date.now() + Math.random(),
     type: normalized.type,
@@ -223,6 +229,13 @@ document.querySelector('#add-tf').onclick = () => {
   });
 };
 
+function addEssayQuestion() {
+  addQuestionToBuilder({ type: 'essay', prompt: '', options: [], correct_index: null, points: 1, source: 'manual' });
+}
+
+const addEssayButton = document.querySelector('#add-essay');
+if (addEssayButton) addEssayButton.onclick = addEssayQuestion;
+
 document.querySelector('#add-bank-question').onclick = () => {
   if (!bankQuestions.length) {
     alert('لا توجد أسئلة متاحة في بنك الأسئلة حالياً.');
@@ -231,11 +244,11 @@ document.querySelector('#add-bank-question').onclick = () => {
   const bankQuestion = bankQuestions[0];
   addQuestionToBuilder({
     id: bankQuestion.id,
-    type: bankQuestion.category === 'boolean' ? 'boolean' : 'mcq',
+    type: bankQuestion.category,
     prompt: bankQuestion.prompt,
     options: bankQuestion.options || ['','','',''],
-    correct_index: bankQuestion.correct_index ?? bankQuestion.correctIndex ?? 0,
-    points: 1,
+    correct_index: bankQuestion.category === 'essay' ? null : (bankQuestion.correct_index ?? bankQuestion.correctIndex ?? 0),
+    points: bankQuestion.points || 1,
     source: 'bank'
   });
 };
@@ -246,11 +259,11 @@ document.querySelectorAll('[data-bank-add]').forEach((button) => {
       const item = JSON.parse(button.dataset.bankAdd);
       addQuestionToBuilder({
         id: item.id,
-        type: item.category === 'boolean' ? 'boolean' : 'mcq',
+        type: item.category,
         prompt: item.prompt,
         options: item.options || ['','','',''],
-        correct_index: item.correct_index ?? item.correctIndex ?? 0,
-        points: 1,
+        correct_index: item.category === 'essay' ? null : (item.correct_index ?? item.correctIndex ?? 0),
+        points: item.points || 1,
         source: 'bank'
       });
     } catch (error) {

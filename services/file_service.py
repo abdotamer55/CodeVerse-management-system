@@ -156,16 +156,20 @@ def create_file(data: dict):
 
     file_name = (data.get("file_name") or name).strip()
     category = data.get("category", "pdf")
-    if category not in ("pdf", "zip", "video", "slides"):
+    if category not in ("pdf", "zip", "video", "slides", "folder", "code", "doc"):
         category = "pdf"
 
     icon_map = {
         "pdf": "picture_as_pdf",
         "zip": "folder_zip",
+        "rar": "folder_zip",
         "video": "video_file",
         "slides": "slideshow",
+        "doc": "description",
+        "code": "code",
+        "folder": "folder",
     }
-    icon = icon_map.get(category, "draft")
+    icon = data.get("icon") or icon_map.get(category, "draft")
     size_display = (data.get("size_display") or "2.4 MB").strip()
     description = (data.get("description") or "").strip()
     file_url = (data.get("file_url") or "#").strip()

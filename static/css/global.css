@@ -91,7 +91,7 @@ table {
 .display-hero {
   font-size: 48px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
@@ -99,7 +99,7 @@ table {
 .headline-xl {
   font-size: 36px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: normal;
 }
 
 .headline-lg {
@@ -229,4 +229,28 @@ table {
   height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-dim);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 144, 159, 0.25);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(173, 198, 255, 0.4);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 144, 159, 0.25) var(--surface-dim);
 }

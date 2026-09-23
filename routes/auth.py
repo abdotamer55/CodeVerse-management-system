@@ -4,7 +4,7 @@ Handles login, logout, session management, and role-based route protection.
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort
-from services import auth_service
+from services import auth_service, student_service, lesson_service, homework_service, exam_service
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -92,7 +92,21 @@ def _dashboard_for_role(role):
 @role_required("teacher")
 def teacher_dashboard():
     """Dedicated teacher landing page; it grants no administrative permissions."""
-    return render_template("teacher/dashboard.html", user_role="teacher", page_id="teacher-dashboard")
+    students_summary = student_service.get_students_summary()
+    lessons_summary = lesson_service.get_lessons_summary()
+    homework_summary = homework_service.get_homework_summary()
+    exams_summary = exam_service.get_exams_summary()
+    recent_lessons = lesson_service.get_all_lessons()[:5]
+    return render_template(
+        "teacher/dashboard.html",
+        user_role="teacher",
+        page_id="teacher-dashboard",
+        students_summary=students_summary,
+        lessons_summary=lessons_summary,
+        homework_summary=homework_summary,
+        exams_summary=exams_summary,
+        recent_lessons=recent_lessons,
+    )
 
 
 @auth_bp.route("/logout", methods=["GET"])

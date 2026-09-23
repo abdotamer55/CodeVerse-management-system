@@ -8,32 +8,43 @@
     <h1 class="headline-lg">سجل نتائجي الأكاديمية</h1>
     <p class="body-md muted">رصد الدرجات التفصيلية للاختبارات والمشاريع البرمجية التراكمية.</p>
   </div>
+  <a class="btn btn-ghost" href="{{ url_for('student.dashboard') }}">
+    <span class="material-symbols-outlined">arrow_back</span> لوحة الطالب
+  </a>
 </div>
 
 <section class="grid-4">
   <div class="card">
-    <span class="label-sm muted">المعدل التراكمي العام</span>
-    <div class="headline-lg success" style="margin-top:4px">98.4%</div>
+    <span class="label-sm muted">متوسط درجاتي</span>
+    <div class="headline-lg success" style="margin-top:4px">
+      {% if summary.overall_average %}{{ summary.overall_average }}{% else %}<span class="muted body-md">لا توجد بيانات</span>{% endif %}
+    </div>
   </div>
   <div class="card">
     <span class="label-sm muted">درجة آخر تقييم</span>
-    <div class="headline-lg" style="margin-top:4px">96%</div>
+    <div class="headline-lg" style="margin-top:4px">
+      {% if summary.last_score %}{{ summary.last_score }}{% else %}<span class="muted body-md">—</span>{% endif %}
+    </div>
   </div>
   <div class="card">
-    <span class="label-sm muted">الترتيب في الدفعة</span>
-    <div class="headline-lg" style="margin-top:4px">الأول L3</div>
+    <span class="label-sm muted">عدد التقييمات المرصودة</span>
+    <div class="headline-lg" style="margin-top:4px">{{ summary.total_graded }}</div>
   </div>
   <div class="card">
-    <span class="label-sm muted">الشهادات المكتسبة</span>
-    <div class="headline-lg" style="margin-top:4px">2 شهادات</div>
+    <span class="label-sm muted">الواجبات المسلّمة</span>
+    <div class="headline-lg" style="margin-top:4px">
+      {{ results | selectattr('grade_label', 'defined') | list | length if results else 0 }}
+    </div>
   </div>
 </section>
 
-<div class="table-wrap">
+{% if results %}
+<div class="table-wrap" style="margin-top:1.5rem">
   <table class="data-table">
     <thead>
       <tr>
         <th>التقييم الأكاديمي</th>
+        <th>النوع</th>
         <th>الدرجة المرصودة</th>
         <th>التاريخ</th>
         <th>التقدير العام</th>
@@ -43,7 +54,22 @@
       {% for r in results %}
       <tr>
         <td><strong>{{ r.assessment }}</strong></td>
-        <td><strong class="headline-sm success">{{ r.score_display }}</strong></td>
+        <td>
+          {% if r.get('exam_id') %}
+            <span class="badge badge-info">امتحان</span>
+          {% elif r.get('homework_id') %}
+            <span class="badge badge-neutral">واجب</span>
+          {% else %}
+            <span class="badge badge-neutral">تقييم</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.status == 'pending_essay_grading' %}
+            <span class="badge badge-warn">جارٍ تصحيح المقالي</span>
+          {% else %}
+            <strong class="headline-sm success">{{ r.score_display }}</strong>
+          {% endif %}
+        </td>
         <td>{{ r.date }}</td>
         <td><span class="badge {{ r.grade_badge }}">{{ r.grade_label }}</span></td>
       </tr>
@@ -51,4 +77,11 @@
     </tbody>
   </table>
 </div>
+{% else %}
+<div class="card" style="margin-top:1.5rem;text-align:center;padding:3rem">
+  <span class="material-symbols-outlined" style="font-size:48px;color:var(--muted)">assignment</span>
+  <p class="body-md muted" style="margin-top:1rem">لا توجد نتائج مرصودة لك حتى الآن.</p>
+  <a class="btn btn-secondary" href="{{ url_for('student.exams') }}" style="margin-top:1rem">استعرض الامتحانات</a>
+</div>
+{% endif %}
 {% endblock content %}

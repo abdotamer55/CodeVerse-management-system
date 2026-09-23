@@ -8,7 +8,7 @@
         const s = String(remaining % 60).padStart(2, "0");
         timerEl.textContent = `${m}:${s}`;
         if (remaining <= 0) {
-          window.CVUi && CVUi.toast("انتهى الوقت — هذه معاينة واجهة فقط");
+          window.CVUi && CVUi.toast("انتهى المؤقت الإرشادي — لا يتم إغلاق المحاولة تلقائياً");
           return;
         }
         remaining -= 1;
@@ -41,6 +41,16 @@
           next.click();
         }
       });
+    });
+
+    document.querySelectorAll("form[data-assessment-submit]").forEach((form) => {
+      form.addEventListener("submit", () => {
+        const submitButtons = form.querySelectorAll("button[type=submit]");
+        submitButtons.forEach((button) => {
+          button.disabled = true;
+          button.setAttribute("aria-disabled", "true");
+        });
+      }, { once: true });
     });
   }
 

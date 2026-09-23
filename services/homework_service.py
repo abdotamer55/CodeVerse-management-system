@@ -595,11 +595,9 @@ def delete_submission(submission_id: int):
 
 
 def save_homework_questions(homework_id: int, questions: list):
-    """Reuse the assessment question validator for manual homework questions."""
+    """Reuse the assessment question validator for manual homework questions (allows admin editing anytime)."""
     questions = exam_service._validate_questions(questions)
     homework = get_homework_by_id(homework_id)
-    if homework.get("status") == "published":
-        raise ValueError("لا يمكن تعديل واجب منشور.")
     homework["questions"] = questions
     homework["max_grade"] = sum(question["points"] for question in questions)
     if is_db_active():

@@ -1,1 +1,116 @@
-{% extends "base.html" %}{% block title %}نتيجة الاختبار{% endblock %}{% block content %}<section class="page-hero"><h1 class="headline-lg">تم تسليم الاختبار وقفل المحاولة</h1><p class="body-md muted">لا يمكن تعديل الإجابات أو إعادة التسليم.</p></section><div class="grid-4"><div class="card stat-card"><span class="label-sm muted">الدرجة</span><strong class="display-hero">{{ attempt.score }} / {{ attempt.total_score }}</strong></div><div class="card stat-card"><span class="label-sm muted">الإجابات الصحيحة</span><strong class="display-hero">{{ attempt.correct_count }} / {{ attempt.total_questions }}</strong></div><div class="card stat-card"><span class="label-sm muted">النسبة</span><strong class="display-hero">{{ attempt.percentage }}%</strong></div></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}نتيجة التقييم | كودفيرس{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap;gap:1rem;">
+    <div>
+      <span class="badge badge-success">تم استلام الإجابات بنجاح</span>
+      <h1 class="headline-lg" style="margin-top:0.5rem">تقرير نتيجة: {{ assessment.title }}</h1>
+      <p class="body-md muted">تم قفل المحاولة وتسجيل التسليم في السجل الأكاديمي.</p>
+    </div>
+    <div class="wrap">
+      <a class="btn btn-ghost" href="{% if page_id == 'exams' %}{{ url_for('student.exams') }}{% else %}{{ url_for('student.homework') }}{% endif %}">
+        <span class="material-symbols-outlined">arrow_back</span> العودة للقائمة
+      </a>
+      <a class="btn btn-primary" href="{{ url_for('student.results') }}">سجل نتائجي الأكاديمية</a>
+    </div>
+  </div>
+</section>
+
+{% if attempt.has_essay or attempt.status == 'pending_essay_grading' %}
+<div class="card" style="margin-bottom:1.5rem;padding:1.5rem;border:1px solid rgba(99,102,241,0.4);background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(59,130,246,0.04) 100%);">
+  <div class="between" style="flex-wrap:wrap;gap:1rem;">
+    <div class="row" style="gap:1rem;align-items:center;">
+      <span class="stat-icon blue" style="width:48px;height:48px"><span class="material-symbols-outlined" style="font-size:28px">edit_note</span></span>
+      <div>
+        <h3 class="headline-sm" style="margin:0;color:var(--primary, #3b82f6)">جارٍ تصحيح الأسئلة المقالية</h3>
+        <p class="body-md muted" style="margin:4px 0 0">تم رصد درجات الأسئلة الموضوعية (الاختيارية) تلقائياً، والأسئلة المقالية قيد المراجعة والتقدير من قِبل المعلم لرصد الدرجة الكلية المجمعة.</p>
+      </div>
+    </div>
+    <span class="badge badge-warn">بانتظار اعتماد المقالي</span>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">check_circle</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">درجة الأسئلة الموضوعية</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero success">{{ attempt.mcq_score or attempt.score }}</span>
+        <span class="label-md muted">/ {{ attempt.mcq_total or attempt.total_score }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">quiz</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الأسئلة الصحيحة الموضوعية</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ attempt.correct_count }}</span>
+        <span class="label-md muted">/ {{ attempt.total_questions }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">hourglass_top</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الدرجة النهائية الكلية</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="headline-lg warning">قيد التدقيق</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="grid-3">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">verified</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الدرجة النهائية المعتمدة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero success">{{ attempt.score }}</span>
+        <span class="label-md muted">/ {{ attempt.total_score }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">fact_check</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الإجابات الصحيحة</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ attempt.correct_count }}</span>
+        <span class="label-md muted">/ {{ attempt.total_questions }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">percent</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">النسبة المئوية</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ attempt.percentage }}%</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+

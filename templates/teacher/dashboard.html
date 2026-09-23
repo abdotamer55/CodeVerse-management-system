@@ -1,3 +1,84 @@
 {% extends "base.html" %}
+
 {% block title %}بوابة المعلم{% endblock %}
-{% block content %}<section class="page-hero"><h1 class="headline-lg">بوابة المعلم</h1><p class="body-md muted">تم تسجيل دخولك بنجاح. صلاحيات المعلم تبقى منفصلة عن صلاحيات إدارة المحتوى.</p></section>{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 class="headline-lg">بوابة المعلم</h1>
+    <p class="body-md muted">مرحباً، {{ session.get('user_name', 'المعلم') }} — نظرة عامة على المنصة الأكاديمية.</p>
+  </div>
+</div>
+
+<section class="grid-4" style="margin-top:1rem">
+  <div class="card">
+    <span class="label-sm muted">إجمالي الطلاب المقيدين</span>
+    <div class="headline-lg" style="margin-top:4px">{{ students_summary.total_count }}</div>
+    <p class="body-sm muted" style="margin-top:4px">منهم {{ students_summary.honor_count }} في لوحة الشرف</p>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الحصص المنشورة</span>
+    <div class="headline-lg" style="margin-top:4px">{{ lessons_summary.published_count }}</div>
+    <p class="body-sm muted" style="margin-top:4px">{{ lessons_summary.live_this_week }} حصة حية هذا الأسبوع</p>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الواجبات النشطة</span>
+    <div class="headline-lg" style="margin-top:4px">{{ homework_summary.active_count }}</div>
+    <p class="body-sm muted" style="margin-top:4px">{{ homework_summary.pending_reviews }} تسليم بانتظار التصحيح</p>
+  </div>
+  <div class="card">
+    <span class="label-sm muted">الاختبارات المتاحة</span>
+    <div class="headline-lg" style="margin-top:4px">{{ exams_summary.active_exams }}</div>
+    <p class="body-sm muted" style="margin-top:4px">{{ exams_summary.awaiting_grading }} اختبار بانتظار الرصد</p>
+  </div>
+</section>
+
+<section style="margin-top:2rem">
+  <h2 class="headline-sm" style="margin-bottom:1rem">آخر الحصص المدرجة</h2>
+
+  {% if recent_lessons %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الحصة</th>
+          <th>المسار</th>
+          <th>المدة</th>
+          <th>المدرّب</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lesson in recent_lessons %}
+        <tr>
+          <td><strong>{{ lesson.title }}</strong></td>
+          <td>{{ lesson.track }}</td>
+          <td class="ltr">{{ lesson.duration_text or (lesson.duration_minutes|string + ' د') }}</td>
+          <td>{{ lesson.instructor or '—' }}</td>
+          <td>
+            {% if lesson.is_live %}
+            <span class="badge badge-success">بث حي</span>
+            {% else %}
+            <span class="badge badge-neutral">مسجّلة</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:2rem">
+    <span class="material-symbols-outlined" style="font-size:2.5rem;opacity:0.3">school</span>
+    <p class="body-md muted" style="margin-top:0.5rem">لا توجد حصص مدرجة حتى الآن.</p>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card" style="margin-top:2rem">
+  <p class="body-sm muted">
+    <span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle">info</span>
+    صلاحيات المعلم تشمل المتابعة والاطلاع فقط. إدارة المحتوى وتعديل بيانات الطلاب تتطلب صلاحيات الإدارة.
+  </p>
+</section>
+{% endblock %}

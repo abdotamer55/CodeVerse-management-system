@@ -10,7 +10,12 @@
   </div>
 </div>
 
-<form class="card card-lg stack" data-validate style="gap:1.5rem">
+<form class="card card-lg stack" method="POST" style="gap:1.5rem">
+  <div class="field">
+    <label>اسم مسؤول المنصة</label>
+    <input class="input" name="full_name" value="{{ current_user.name if current_user else '' }}" required maxlength="255" />
+    <p class="body-sm muted">يُحدّث اسم حسابك الحالي فقط.</p>
+  </div>
   <div class="form-grid">
     <div class="field">
       <label>اسم المنصة أو الأكاديمية</label>
@@ -65,7 +70,7 @@
 
   <div class="hero-actions" style="margin-top:0.5rem">
     <button class="btn btn-primary" type="submit">
-      <span class="material-symbols-outlined">save</span> حفظ الإعدادات
+      <span class="material-symbols-outlined">save</span> حفظ اسم الحساب
     </button>
   </div>
 </form>

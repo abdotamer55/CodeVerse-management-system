@@ -13,93 +13,22 @@ logger = logging.getLogger(__name__)
 _STUDENTS_DB = [
     {
         "id": 1,
-        "code": "#ST-2024-089",
-        "name": "زياد حسام الدين",
-        "initials": "ز.ح",
-        "email": "ziad.h@codeverse.dev",
+        "code": "#ST-2024-001",
+        "username": "mariem",
+        "name": "مريم محمد",
+        "initials": "م.م",
+        "email": "mariem@codeverse.dev",
         "track": "هندسة برمجيات الأنظمة",
-        "level": "المستوى المتقدم L3",
-        "completed_lessons": 27,
-        "total_lessons": 28,
-        "completed_homework": 14,
-        "total_homework": 14,
-        "overall_grade": 98.4,
-        "status": "online",
-        "status_label": "متصل الآن",
-        "is_honor": True,
-        "last_active": "قبل دقيقتين",
-    },
-    {
-        "id": 2,
-        "code": "#ST-2024-114",
-        "name": "سارة طارق المنصور",
-        "initials": "س.م",
-        "email": "sara.m@codeverse.edu",
-        "track": "تطوير واجهات React",
-        "level": "المستوى الثاني",
-        "completed_lessons": 24,
-        "total_lessons": 28,
-        "completed_homework": 13,
-        "total_homework": 14,
-        "overall_grade": 93.0,
-        "status": "active",
-        "status_label": "نشط ومنتظم",
-        "is_honor": False,
-        "last_active": "اليوم 04:15 م",
-    },
-    {
-        "id": 3,
-        "code": "#ST-2024-032",
-        "name": "عمر خالد الدوسري",
-        "initials": "ع.د",
-        "email": "omar.d@codeverse.edu",
-        "track": "تطوير الخوادم Node.js",
         "level": "المستوى الأول",
-        "completed_lessons": 14,
-        "total_lessons": 28,
-        "completed_homework": 6,
-        "total_homework": 14,
-        "overall_grade": 64.2,
-        "status": "risk",
-        "status_label": "متأخر دراسياً",
-        "is_honor": False,
-        "last_active": "قبل 3 أيام",
-    },
-    {
-        "id": 4,
-        "code": "CV-24901",
-        "name": "عبدالله سامي القحطاني",
-        "initials": "ع.س",
-        "email": "abdullah.s@codeverse.edu",
-        "track": "هندسة النظم الخلفية",
-        "level": "المستوى المتقدم L3",
-        "completed_lessons": 42,
-        "total_lessons": 44,
-        "completed_homework": 14,
-        "total_homework": 14,
-        "overall_grade": 98.8,
-        "status": "online",
-        "status_label": "متميز وأول الدفعة",
-        "is_honor": True,
-        "last_active": "الآن",
-    },
-    {
-        "id": 5,
-        "code": "CV-24918",
-        "name": "فاطمة ناصر الزهراني",
-        "initials": "ف.ن",
-        "email": "fatima.n@codeverse.edu",
-        "track": "تطبيقات الجوال Flutter",
-        "level": "المستوى الثاني",
-        "completed_lessons": 31,
-        "total_lessons": 44,
-        "completed_homework": 11,
-        "total_homework": 14,
-        "overall_grade": 88.5,
+        "completed_lessons": 0,
+        "total_lessons": 3,
+        "completed_homework": 0,
+        "total_homework": 3,
+        "overall_grade": 0.0,
         "status": "active",
         "status_label": "نشط ومنتظم",
         "is_honor": False,
-        "last_active": "أمس 09:30 م",
+        "last_active": "الآن",
     },
 ]
 
@@ -140,12 +69,75 @@ def get_students_summary():
             logger.warning(f"Error querying student summary from DB: {e}")
 
     return {
-        "total_count": 348,
-        "active_today": 312,
-        "honor_count": 14,
-        "at_risk_count": 8,
+        "total_count": len(_STUDENTS_DB),
+        "active_today": sum(1 for s in _STUDENTS_DB if s["status"] == "online"),
+        "honor_count": sum(1 for s in _STUDENTS_DB if s.get("is_honor")),
+        "at_risk_count": sum(1 for s in _STUDENTS_DB if s["status"] == "risk"),
         "attendance_rate": "91.4%",
         "seat_capacity": "87%",
+    }
+
+
+def get_student_dashboard_stats(student_id):
+    """Return real per-student stats: completed/total lessons, homework, overall_grade, next exam."""
+    from services import lesson_service, homework_service
+    all_lessons = lesson_service.get_all_lessons()
+    actual_total_lessons = len(all_lessons)
+    actual_completed_lessons = lesson_service.get_completed_lessons_count(student_id)
+    all_homework = homework_service.get_all_homework()
+    actual_total_hw = len(all_homework)
+
+    if is_db_active():
+        try:
+            sql = """
+                SELECT
+                    s.completed_lessons,
+                    s.total_lessons,
+                    s.completed_homework,
+                    s.total_homework,
+                    s.overall_grade,
+                    (SELECT COUNT(*) FROM lessons) AS real_total_lessons,
+                    (SELECT COUNT(*) FROM exams WHERE status IN ('active','published')) AS active_exams,
+                    (SELECT COUNT(*) FROM assessment_attempts
+                        WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT)
+                        AND status IN ('submitted','graded','pending_essay_grading')) AS completed_hw_real,
+                    (SELECT COUNT(*) FROM homework) AS real_total_hw,
+                    (SELECT COUNT(*) FROM exams) AS total_exams
+                FROM students s
+                WHERE CAST(s.id AS TEXT) = %s
+                LIMIT 1;
+            """
+            rows = execute_query(sql, (str(student_id),), fetch=True)
+            if rows:
+                r = rows[0]
+                total_lessons = int(r["real_total_lessons"]) if (r.get("real_total_lessons") is not None) else actual_total_lessons
+                comp_lessons = actual_completed_lessons if actual_completed_lessons > 0 else int(r["completed_lessons"] or 0)
+                completed_hw = int(r["completed_hw_real"] or r["completed_homework"] or 0)
+                total_hw = int(r["real_total_hw"]) if (r.get("real_total_hw") is not None) else actual_total_hw
+                return {
+                    "completed_lessons": comp_lessons,
+                    "total_lessons": total_lessons,
+                    "completed_homework": completed_hw,
+                    "total_homework": total_hw,
+                    "overall_grade": float(r["overall_grade"] or 0),
+                    "active_exams": int(r["active_exams"] or 0),
+                }
+        except Exception as e:
+            logger.warning(f"Error querying student dashboard stats: {e}")
+
+    student = None
+    for s in _STUDENTS_DB:
+        if str(s.get("id")) == str(student_id) or str(s.get("code")) == str(student_id) or s.get("username") == str(student_id):
+            student = s
+            break
+
+    return {
+        "completed_lessons": actual_completed_lessons if actual_completed_lessons > 0 else (student.get("completed_lessons", 0) if student else 0),
+        "total_lessons": actual_total_lessons,
+        "completed_homework": student.get("completed_homework", 0) if student else 0,
+        "total_homework": actual_total_hw,
+        "overall_grade": float(student.get("overall_grade", 95.0) if student else 95.0),
+        "active_exams": 1,
     }
 
 
@@ -158,6 +150,7 @@ def get_all_students(query=None, status_filter=None):
                     s.id,
                     s.student_code as code,
                     u.full_name as name,
+                    u.username,
                     COALESCE(u.initials, SUBSTRING(u.full_name, 1, 2)) as initials,
                     u.email,
                     s.track,
@@ -184,26 +177,44 @@ def get_all_students(query=None, status_filter=None):
                     q = query.strip().lower()
                     results = [
                         s for s in results
-                        if q in s["name"].lower() or q in s["code"].lower() or q in s["email"].lower()
+                        if q in s["name"].lower() or q in s["code"].lower() or q in s["email"].lower() or q in s.get("username", "").lower()
                     ]
+                from services import lesson_service, homework_service
+                act_total_l = len(lesson_service.get_all_lessons())
+                act_total_hw = len(homework_service.get_all_homework())
+                for s in results:
+                    s["total_lessons"] = act_total_l
+                    s["total_homework"] = act_total_hw
+                    comp = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code"))
+                    if comp > 0 or s.get("completed_lessons") is None:
+                        s["completed_lessons"] = comp
                 return results
         except Exception as e:
             logger.warning(f"Error querying students list from DB: {e}")
 
-    results = _STUDENTS_DB
+    results = [dict(s) for s in _STUDENTS_DB]
     if status_filter and status_filter != "all":
         results = [s for s in results if s["status"] == status_filter]
     if query:
         q = query.strip().lower()
         results = [
             s for s in results
-            if q in s["name"].lower() or q in s["code"].lower() or q in s["email"].lower()
+            if q in s["name"].lower() or q in s["code"].lower() or q in s["email"].lower() or q in s.get("username", "").lower()
         ]
+    from services import lesson_service, homework_service
+    act_total_l = len(lesson_service.get_all_lessons())
+    act_total_hw = len(homework_service.get_all_homework())
+    for s in results:
+        s["total_lessons"] = act_total_l
+        s["total_homework"] = act_total_hw
+        comp = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code"))
+        if comp > 0 or s.get("completed_lessons") is None:
+            s["completed_lessons"] = comp
     return results
 
 
 def get_student_by_id(student_id):
-    """Retrieve single student profile."""
+    """Retrieve single student profile by id, student_code, or username."""
     if is_db_active():
         try:
             sql = """
@@ -211,6 +222,7 @@ def get_student_by_id(student_id):
                     s.id,
                     s.student_code as code,
                     u.full_name as name,
+                    u.username,
                     COALESCE(u.initials, SUBSTRING(u.full_name, 1, 2)) as initials,
                     u.email,
                     s.track,
@@ -226,48 +238,50 @@ def get_student_by_id(student_id):
                     s.last_active
                 FROM students s
                 JOIN users u ON s.id = u.id
-                WHERE s.student_code = %s OR CAST(s.id AS TEXT) = %s
+                WHERE s.student_code = %s
+                   OR CAST(s.id AS TEXT) = %s
+                   OR lower(u.username) = lower(%s)
                 LIMIT 1;
             """
-            rows = execute_query(sql, (str(student_id), str(student_id)), fetch=True)
-            if not rows and str(student_id).isdigit():
-                offset = max(0, int(student_id) - 1)
-                sql_idx = """
-                    SELECT 
-                        s.id,
-                        s.student_code as code,
-                        u.full_name as name,
-                        COALESCE(u.initials, SUBSTRING(u.full_name, 1, 2)) as initials,
-                        u.email,
-                        s.track,
-                        s.level,
-                        s.completed_lessons,
-                        s.total_lessons,
-                        s.completed_homework,
-                        s.total_homework,
-                        s.overall_grade,
-                        s.status,
-                        s.status_label,
-                        s.is_honor,
-                        s.last_active
-                    FROM students s
-                    JOIN users u ON s.id = u.id
-                    ORDER BY s.overall_grade DESC
-                    LIMIT 1 OFFSET %s;
-                """
-                rows = execute_query(sql_idx, (offset,), fetch=True)
+            sid_str = str(student_id)
+            rows = execute_query(sql, (sid_str, sid_str, sid_str), fetch=True)
             if rows:
-                return dict(rows[0])
+                target = dict(rows[0])
+                from services import lesson_service, homework_service
+                target["total_lessons"] = len(lesson_service.get_all_lessons())
+                target["total_homework"] = len(homework_service.get_all_homework())
+                comp = lesson_service.get_completed_lessons_count(student_id)
+                if comp > 0:
+                    target["completed_lessons"] = comp
+                return target
         except Exception as e:
             logger.warning(f"Error querying student by ID from DB: {e}")
 
+    # In-memory fallback: match by id, code, or username
+    target = None
+    sid_str = str(student_id).strip().lower()
     for s in _STUDENTS_DB:
-        if str(s["id"]) == str(student_id) or s["code"] == str(student_id):
-            return s
-    return _STUDENTS_DB[0]
+        if (
+            str(s["id"]) == sid_str
+            or str(s.get("code", "")).lower() == sid_str
+            or str(s.get("username", "")).lower() == sid_str
+        ):
+            target = dict(s)
+            break
+    if not target:
+        # Last resort: return first student (only one exists in mock)
+        target = dict(_STUDENTS_DB[0])
+
+    from services import lesson_service, homework_service
+    target["total_lessons"] = len(lesson_service.get_all_lessons())
+    target["total_homework"] = len(homework_service.get_all_homework())
+    comp = lesson_service.get_completed_lessons_count(student_id)
+    target["completed_lessons"] = comp
+    return target
 
 
-def create_student(name: str, email: str, track: str, level: str, student_code: str = None, password: str = "student123"):
+
+def create_student(name: str, email: str, track: str, level: str, student_code: str = None, username: str = None, password: str = None):
     """Create a new student record and corresponding user account."""
     if not name or not email:
         raise ValueError("الاسم والبريد الإلكتروني مطلوبان.")
@@ -282,11 +296,16 @@ def create_student(name: str, email: str, track: str, level: str, student_code: 
         student_code = f"CV-{rand_suffix}"
 
     initials = "".join([part[0] for part in cleaned_name.split()[:2]]) if cleaned_name else "ط.ج"
-    username = cleaned_email.split("@")[0] + "".join(random.choices(string.digits, k=3))
+    if username and username.strip():
+        final_username = username.strip().lower()
+    else:
+        final_username = cleaned_email.split("@")[0] + "".join(random.choices(string.digits, k=3))
+
+    final_password = password.strip() if (password and password.strip()) else "student123"
 
     if is_db_active():
         try:
-            pw_hash = generate_password_hash(password)
+            pw_hash = generate_password_hash(final_password)
             sql_user = """
                 INSERT INTO users (username, email, password_hash, role, full_name, initials, title)
                 VALUES (%s, %s, %s, 'student', %s, %s, %s)
@@ -294,7 +313,7 @@ def create_student(name: str, email: str, track: str, level: str, student_code: 
             """
             user_rows = execute_query(
                 sql_user,
-                (username, cleaned_email, pw_hash, cleaned_name, initials, f"طالب مسار {cleaned_track}"),
+                (final_username, cleaned_email, pw_hash, cleaned_name, initials, f"طالب مسار {cleaned_track}"),
                 fetch=True
             )
             if user_rows:
@@ -306,7 +325,10 @@ def create_student(name: str, email: str, track: str, level: str, student_code: 
                 """
                 std_rows = execute_query(sql_student, (user_id, student_code, cleaned_track, cleaned_level), fetch=True)
                 if std_rows:
-                    return get_student_by_id(user_id)
+                    res = get_student_by_id(user_id)
+                    res["username"] = final_username
+                    res["plain_password"] = final_password
+                    return res
         except Exception as e:
             logger.error(f"Error creating student in DB: {e}")
             raise
@@ -315,6 +337,7 @@ def create_student(name: str, email: str, track: str, level: str, student_code: 
     new_student = {
         "id": len(_STUDENTS_DB) + 1,
         "code": student_code,
+        "username": final_username,
         "name": cleaned_name,
         "initials": initials,
         "email": cleaned_email,
@@ -331,16 +354,38 @@ def create_student(name: str, email: str, track: str, level: str, student_code: 
         "last_active": "الآن",
     }
     _STUDENTS_DB.append(new_student)
+
+    # Also register in auth fallback so student can log in in tests
+    try:
+        from services import auth_service
+        auth_service._SAMPLE_USERS[cleaned_email] = {
+            "id": f"b0000000-0000-0000-0000-{len(_STUDENTS_DB):012d}",
+            "username": final_username,
+            "email": cleaned_email,
+            "password_hash": generate_password_hash(final_password),
+            "role": "student",
+            "name": cleaned_name,
+            "initials": initials,
+            "student_code": student_code,
+            "track": cleaned_track,
+            "title": f"طالب مسار {cleaned_track}",
+        }
+        auth_service._USERNAME_TO_EMAIL[final_username] = cleaned_email
+    except Exception:
+        pass
+
     return new_student
 
 
 def update_student(student_id, data: dict):
-    """Update student academic profile and user info."""
+    """Update student academic profile and user info including username & password."""
     if not student_id:
         raise ValueError("معرّف الطالب مطلوب.")
 
     name = data.get("name")
     email = data.get("email")
+    username = data.get("username")
+    password = data.get("password")
     track = data.get("track")
     level = data.get("level")
     status = data.get("status", "active")
@@ -353,15 +398,21 @@ def update_student(student_id, data: dict):
             rows = execute_query(find_sql, (str(student_id), str(student_id)), fetch=True)
             if rows:
                 u_id = rows[0]["id"]
-                if name or email:
-                    u_fields = []
-                    u_params = []
-                    if name:
-                        u_fields.append("full_name = %s")
-                        u_params.append(name.strip())
-                    if email:
-                        u_fields.append("email = %s")
-                        u_params.append(email.strip().lower())
+                u_fields = []
+                u_params = []
+                if name:
+                    u_fields.append("full_name = %s")
+                    u_params.append(name.strip())
+                if email:
+                    u_fields.append("email = %s")
+                    u_params.append(email.strip().lower())
+                if username and username.strip():
+                    u_fields.append("username = %s")
+                    u_params.append(username.strip().lower())
+                if password and password.strip():
+                    u_fields.append("password_hash = %s")
+                    u_params.append(generate_password_hash(password.strip()))
+                if u_fields:
                     u_params.append(u_id)
                     execute_query(f"UPDATE users SET {', '.join(u_fields)} WHERE id = %s;", tuple(u_params), fetch=False)
 
@@ -393,11 +444,20 @@ def update_student(student_id, data: dict):
         if str(s["id"]) == str(student_id) or s["code"] == str(student_id):
             if name: s["name"] = name.strip()
             if email: s["email"] = email.strip().lower()
+            if username and username.strip(): s["username"] = username.strip().lower()
             if track: s["track"] = track.strip()
             if level: s["level"] = level.strip()
             if status:
                 s["status"] = status
                 s["status_label"] = status_label
+            if password and password.strip():
+                try:
+                    from services import auth_service
+                    em = s.get("email")
+                    if em in auth_service._SAMPLE_USERS:
+                        auth_service._SAMPLE_USERS[em]["password_hash"] = generate_password_hash(password.strip())
+                except Exception:
+                    pass
             return s
     return None
 

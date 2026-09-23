@@ -121,7 +121,7 @@
         <h2 class="headline-sm">إضافة حصة دراسية جديدة</h2>
         <button class="btn-icon" data-close="#lesson-modal" type="button"><span class="material-symbols-outlined">close</span></button>
       </div>
-      <form class="modal-body" method="POST" action="{{ url_for('admin.create_lesson') }}">
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_lesson') }}" enctype="multipart/form-data">
         <div class="field">
           <label>عنوان الحصة</label>
           <input class="input" name="title" required placeholder="مثال: مقدمة في خوارزميات البحث" />
@@ -140,10 +140,39 @@
           <label>المسار</label>
           <input class="input" name="track" value="هندسة برمجيات الأنظمة" />
         </div>
-        <div class="field"><label>رابط صورة الدرس</label><input class="input ltr" name="image_url" placeholder="https://..." /></div>
+        <div class="field">
+          <label>صورة الدرس (من الجهاز)</label>
+          <input class="input" type="file" name="image_file" accept="image/*" />
+          <span class="body-sm muted">أو أدخل رابطاً خارجياً أدناه</span>
+          <input class="input ltr" name="image_url" placeholder="https://... (اختياري)" style="margin-top:6px" />
+        </div>
         <div class="field"><label>تاريخ الدرس</label><input class="input" name="lesson_date" type="date" /></div>
-        <div class="field"><label>رابط ملف PDF / المادة</label><input class="input ltr" name="material_url" placeholder="https://..." /></div>
+        <div class="field">
+          <label>رفع مذكرة PDF (من الجهاز)</label>
+          <input class="input" type="file" name="material_file" accept=".pdf,.zip,.rar,.doc,.docx,.ppt,.pptx" />
+          <span class="body-sm muted">أو أدخل رابط خارجي أدناه</span>
+          <input class="input ltr" name="material_url" placeholder="https://... (رابط خارجي بديل)" style="margin-top:6px" />
+        </div>
         <div class="field"><label>الواجب المرتبط</label><select class="select" name="homework_id"><option value="">لا يوجد</option>{% for h in homework_options %}<option value="{{ h.id }}">{{ h.title }}</option>{% endfor %}</select></div>
+        <div class="field">
+          <label>رابط فيديو مسجّل (YouTube, Vimeo...)</label>
+          <input class="input ltr" name="video_url" placeholder="https://youtube.com/watch?v=..." />
+        </div>
+        <div class="field">
+          <div class="row" style="align-items:center;gap:12px;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+            <label class="row" style="gap:8px;cursor:pointer;margin:0;flex:1">
+              <input type="checkbox" name="is_live" value="on" id="is-live-new" style="width:18px;height:18px;accent-color:var(--primary)" onchange="toggleLiveUrlNew(this)" />
+              <span style="font-weight:600">هذه حصة بث مباشر</span>
+            </label>
+            <span class="badge badge-warn">لايف</span>
+          </div>
+        </div>
+        <div class="field" id="live-url-new" style="display:none">
+          <label>رابط البث / غرفة الاجتماع (Zoom / Meet / Teams / YouTube Live)</label>
+          <input class="input ltr" name="live_url" placeholder="https://meet.google.com/... أو https://zoom.us/j/..." />
+          <span class="body-sm muted">سيتم عرضه للطلاب كزر انخراط مباشر، أو ضمن مشغّل YouTube إذا كان رابط يوتيوب.</span>
+          <input class="input" name="live_time" placeholder="مثال: الثلاثاء 07:00 مساء" style="margin-top:6px" />
+        </div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">
           <button class="btn btn-ghost" type="button" data-close="#lesson-modal">إلغاء</button>
           <button class="btn btn-primary" type="submit">حفظ الحصة</button>
@@ -163,7 +192,7 @@
         </div>
         <button class="btn-icon" data-close="#edit-lesson-modal-{{ l.id }}" type="button"><span class="material-symbols-outlined">close</span></button>
       </div>
-      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_lesson', lesson_id=l.id) }}">
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_lesson', lesson_id=l.id) }}" enctype="multipart/form-data">
         <div class="field">
           <label>عنوان الحصة</label>
           <input class="input" name="title" value="{{ l.title }}" required />
@@ -182,10 +211,39 @@
           <label>المسار</label>
           <input class="input" name="track" value="{{ l.track }}" />
         </div>
-        <div class="field"><label>رابط صورة الدرس</label><input class="input ltr" name="image_url" value="{{ l.image_url or '' }}" /></div>
+        <div class="field">
+          <label>صورة الدرس (من الجهاز)</label>
+          {% if l.image_url %}<img src="{{ l.image_url }}" alt="" style="max-height:60px;border-radius:4px;margin-bottom:6px">{% endif %}
+          <input class="input" type="file" name="image_file" accept="image/*" />
+          <span class="body-sm muted">أو عدّل الرابط الخارجي</span>
+          <input class="input ltr" name="image_url" value="{{ l.image_url or '' }}" placeholder="https://..." style="margin-top:6px" />
+        </div>
         <div class="field"><label>تاريخ الدرس</label><input class="input" name="lesson_date" type="date" value="{{ l.lesson_date or '' }}" /></div>
-        <div class="field"><label>رابط ملف PDF / المادة</label><input class="input ltr" name="material_url" value="{{ l.material_url or '' }}" /></div>
+        <div class="field">
+          <label>رفع مذكرة PDF (من الجهاز)</label>
+          <input class="input" type="file" name="material_file" accept=".pdf,.zip,.rar,.doc,.docx,.ppt,.pptx" />
+          <input class="input ltr" name="material_url" value="{{ l.material_url or '' }}" placeholder="https://... (رابط خارجي بديل)" style="margin-top:6px" />
+        </div>
         <div class="field"><label>الواجب المرتبط</label><select class="select" name="homework_id"><option value="">لا يوجد</option>{% for h in homework_options %}<option value="{{ h.id }}" {% if l.homework_id|string == h.id|string %}selected{% endif %}>{{ h.title }}</option>{% endfor %}</select></div>
+        <div class="field">
+          <label>رابط فيديو مسجّل (YouTube, Vimeo...)</label>
+          <input class="input ltr" name="video_url" value="{{ l.video_url or '' }}" placeholder="https://youtube.com/watch?v=..." />
+        </div>
+        <div class="field">
+          <div class="row" style="align-items:center;gap:12px;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+            <label class="row" style="gap:8px;cursor:pointer;margin:0;flex:1">
+              <input type="checkbox" name="is_live" value="on" id="is-live-{{ l.id }}" {% if l.is_live %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--primary)" onchange="toggleLiveUrl('{{ l.id }}', this)" />
+              <span style="font-weight:600">هذه حصة بث مباشر</span>
+            </label>
+            {% if l.is_live %}<span class="badge badge-warn">بث مباشر مفعّل</span>{% endif %}
+          </div>
+        </div>
+        <div class="field" id="live-url-{{ l.id }}" {% if not l.is_live %}style="display:none"{% endif %}>
+          <label>رابط البث / غرفة الاجتماع (Zoom / Meet / Teams / YouTube Live)</label>
+          <input class="input ltr" name="live_url" value="{{ l.live_url or '' }}" placeholder="https://meet.google.com/... أو https://zoom.us/j/..." />
+          <span class="body-sm muted">سيتم عرضه للطلاب كزر انخراط مباشر، أو ضمن مشغّل YouTube إذا كان رابط يوتيوب.</span>
+          <input class="input" name="live_time" value="{{ l.live_time or '' }}" placeholder="مثال: الثلاثاء 07:00 مساء" style="margin-top:6px" />
+        </div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">
           <button class="btn btn-ghost" type="button" data-close="#edit-lesson-modal-{{ l.id }}">إلغاء</button>
           <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
@@ -195,3 +253,17 @@
   </div>
   {% endfor %}
 {% endblock modals %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function toggleLiveUrlNew(cb) {
+  const el = document.getElementById("live-url-new");
+  if (el) el.style.display = cb.checked ? "block" : "none";
+}
+function toggleLiveUrl(id, cb) {
+  const el = document.getElementById("live-url-" + id);
+  if (el) el.style.display = cb.checked ? "block" : "none";
+}
+</script>
+{% endblock scripts %}

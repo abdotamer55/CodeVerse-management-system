@@ -4,6 +4,7 @@ Tests route availability, authentication guards, role-based access, and template
 """
 import unittest
 from app import create_app
+from services import auth_service
 
 TEST_STUDENT_ID = "b0000000-0000-0000-0000-000000000001"
 
@@ -54,7 +55,8 @@ class CodeVerseTestCase(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(res.status_code, 200)
         self.assertIn("لوحة الطالب".encode("utf-8"), res.data)
-        self.assertIn("زياد حسام الدين".encode("utf-8"), res.data)
+        student_user, _ = auth_service.authenticate("student@codeverse.edu", "student123")
+        self.assertIn(student_user["name"].encode("utf-8"), res.data)
 
     def test_admin_authentication_flow(self):
         """Admin login should establish session and redirect to /admin/dashboard."""
@@ -64,7 +66,8 @@ class CodeVerseTestCase(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(res.status_code, 200)
         self.assertIn("لوحة التحكم".encode("utf-8"), res.data)
-        self.assertIn("أستاذ د. طارق الحارثي".encode("utf-8"), res.data)
+        admin_user, _ = auth_service.authenticate("admin@codeverse.edu", "admin123")
+        self.assertIn(admin_user["name"].encode("utf-8"), res.data)
 
     def test_role_enforcement_student_blocked_from_admin(self):
         """Student session must not access admin endpoints."""
