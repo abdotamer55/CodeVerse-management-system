@@ -12,15 +12,21 @@ from services import auth_service
 def create_app(config_name=None):
     """Application factory for CodeVerse Flask app."""
     if config_name is None:
-        config_name = os.environ.get("FLASK_ENV", "development")
+        # Vercel sets FLASK_ENV=production; map it to our config keys safely
+        env = os.environ.get("FLASK_ENV", "development")
+        config_name = env if env in ("development", "testing", "production") else "development"
 
     app = Flask(__name__)
     app.config.from_object(config_by_name.get(config_name, config_by_name["default"]))
 
     # Ensure Uploads Directory Exists
+    # NOTE: Vercel's filesystem is read-only, so we skip silently if creation fails
     upload_dir = app.config.get("UPLOAD_FOLDER")
     if upload_dir:
-        os.makedirs(upload_dir, exist_ok=True)
+        try:
+            os.makedirs(upload_dir, exist_ok=True)
+        except OSError:
+            pass  # Read-only filesystem on Vercel — uploads go to cloud storage
 
     # Register Blueprints
     app.register_blueprint(auth_bp)
