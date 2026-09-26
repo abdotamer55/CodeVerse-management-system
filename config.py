@@ -3,8 +3,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
-# Load .env with override=True so project .env strictly overrides any shell environment variables
-load_dotenv(BASE_DIR / ".env", override=True)
+# Load .env only in local dev — silently skipped on Vercel (file doesn't exist)
+_env_path = BASE_DIR / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path, override=True)
 
 
 class Config:

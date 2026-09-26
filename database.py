@@ -13,9 +13,11 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from config import Config
 
-# Strictly load project .env with override=True to guarantee precedence
+# Load .env only in local development — silently skipped on Vercel (file doesn't exist)
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env", override=True)
+_env_path = BASE_DIR / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path, override=True)
 
 _cached_check = None
 _cached_time = 0.0
@@ -120,11 +122,12 @@ def get_sanitized_db_host() -> str:
     return f"{diag['host']}:{diag['port']}"
 
 
-def get_connection(timeout: int = 5):
+def get_connection(timeout: int = 3):
     """
     Establish a connection to the PostgreSQL database.
     Raises ValueError if DATABASE_URL is not configured.
     Raises psycopg2.Error on connection failure.
+    Uses a short timeout (3s default) to prevent Serverless function timeouts on Vercel.
     """
     db_url = get_database_url()
     if not db_url:
