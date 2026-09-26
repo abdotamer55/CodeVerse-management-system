@@ -3,10 +3,18 @@ CodeVerse Learning Management System (LMS)
 Flask Application Factory & Core Server
 """
 import os
-from flask import Flask, render_template, redirect, url_for, session, flash, request
+import sys
+import traceback
+from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
 from config import config_by_name
-from routes import auth_bp, admin_bp, student_bp
-from services import auth_service
+
+# Capture import errors for blueprints/services at module level
+_import_error = None
+try:
+    from routes import auth_bp, admin_bp, student_bp
+    from services import auth_service
+except Exception as _e:
+    _import_error = traceback.format_exc()
 
 
 def create_app(config_name=None):
@@ -27,6 +35,40 @@ def create_app(config_name=None):
             os.makedirs(upload_dir, exist_ok=True)
         except OSError:
             pass  # Read-only filesystem on Vercel — uploads go to cloud storage
+
+    # ── Temporary Diagnostic Route (remove after debugging) ──────────────────
+    @app.route("/debug-info")
+    def debug_info():
+        from database import get_database_url, check_connection
+        db_url = get_database_url()
+        db_ok, db_host, db_tables, db_err = False, "N/A", [], "not checked"
+        try:
+            db_ok, db_host, db_tables, db_err = check_connection(force=True)
+        except Exception as e:
+            db_err = str(e)
+
+        return jsonify({
+            "python_version": sys.version,
+            "flask_env": os.environ.get("FLASK_ENV"),
+            "database_url_set": bool(db_url),
+            "database_url_prefix": (db_url[:40] + "...") if db_url else None,
+            "db_connected": db_ok,
+            "db_host": db_host,
+            "db_tables": db_tables,
+            "db_error": db_err,
+            "import_error": _import_error,
+            "secret_key_set": bool(os.environ.get("SECRET_KEY")),
+            "supabase_url_set": bool(os.environ.get("SUPABASE_URL")),
+        })
+    # ─────────────────────────────────────────────────────────────────────────
+
+    if _import_error:
+        # If blueprints failed to import, return minimal app with error info
+        @app.route("/", defaults={"path": ""})
+        @app.route("/<path:path>")
+        def catch_all(path):
+            return f"<pre>Import Error:\n{_import_error}</pre>", 500
+        return app
 
     # Register Blueprints
     app.register_blueprint(auth_bp)
