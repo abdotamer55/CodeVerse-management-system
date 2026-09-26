@@ -1,30 +1,129 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 76" width="340" height="76" fill="none">
   <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f0ff" />
-      <stop offset="100%" stop-color="#3b82f6" />
+    <!-- Background Gradients -->
+    <linearGradient id="cvBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c1527"/>
+      <stop offset="100%" stop-color="#070c17"/>
     </linearGradient>
-    <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#1d4ed8" />
-      <stop offset="100%" stop-color="#60a5fa" />
+
+    <!-- Neon Energy Gradients -->
+    <linearGradient id="cvCyanBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="3" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+
+    <linearGradient id="cvIndigoViolet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+
+    <linearGradient id="cvStrokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <linearGradient id="cvTextVerseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="60%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="cvGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="cvSubtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
-  <!-- Icon Mark -->
-  <g transform="translate(10, 10)">
-    <rect x="0" y="0" width="60" height="60" rx="16" fill="#0f172a" stroke="#2563eb" stroke-width="1.5"/>
-    <path d="M18 22 L10 30 L18 38" stroke="url(#grad1)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-    <path d="M42 22 L50 30 L42 38" stroke="url(#grad1)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-    <circle cx="30" cy="30" r="5" fill="url(#grad2)" filter="url(#glow)"/>
-    <path d="M25 43 L35 17" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- ================= LOGO ICON / EMBLEM ================= -->
+  <g transform="translate(8, 8)">
+    <!-- Shield / Hexagonal Container -->
+    <rect x="0" y="0" width="60" height="60" rx="16" fill="url(#cvBgGrad)" stroke="url(#cvStrokeGrad)" stroke-width="1.8"/>
+
+    <!-- Subtle Grid / Tech Accent -->
+    <path d="M12 30 H48 M30 12 V48" stroke="#1e293b" stroke-width="1" stroke-dasharray="2 3" opacity="0.45"/>
+
+    <!-- Left Code Bracket "<" -->
+    <path d="M22 21 L13 30 L22 39" 
+          stroke="url(#cvCyanBlue)" 
+          stroke-width="3.2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          filter="url(#cvGlow)"/>
+
+    <!-- Right Code Bracket ">" -->
+    <path d="M38 21 L47 30 L38 39" 
+          stroke="url(#cvIndigoViolet)" 
+          stroke-width="3.2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          filter="url(#cvGlow)"/>
+
+    <!-- Isometric Slash / Forward Ray "/" -->
+    <path d="M34 18 L26 42" 
+          stroke="#00f5ff" 
+          stroke-width="2.8" 
+          stroke-linecap="round" 
+          opacity="0.9"
+          filter="url(#cvSubtleGlow)"/>
+
+    <!-- Energy Core Orbital Node -->
+    <circle cx="30" cy="30" r="3.2" fill="#ffffff" filter="url(#cvGlow)"/>
+    <circle cx="30" cy="30" r="5.5" stroke="#00f5ff" stroke-width="1.2" opacity="0.75"/>
+
+    <!-- Little Spark / Vertex Nodes -->
+    <circle cx="13" cy="30" r="1.6" fill="#00f5ff"/>
+    <circle cx="47" cy="30" r="1.6" fill="#a855f7"/>
   </g>
-  <!-- Text Brand Arabic & English -->
-  <g transform="translate(85, 48)">
-    <text x="0" y="0" font-family="'Cairo', 'Tajawal', sans-serif" font-size="24" font-weight="900" fill="#ffffff" letter-spacing="0.5">CodeVerse</text>
-    <text x="140" y="-1" font-family="'Cairo', 'Tajawal', sans-serif" font-size="19" font-weight="700" fill="#38bdf8">كودفيرس</text>
-    <text x="2" y="16" font-family="'Cairo', 'Tajawal', sans-serif" font-size="11" font-weight="500" fill="#94a3b8" letter-spacing="1">منصة تعليم البرمجيات والتقنية</text>
+
+  <!-- ================= TYPOGRAPHY & LOGOTYPE ================= -->
+  <g transform="translate(82, 0)">
+    <!-- English Wordmark "CodeVerse" -->
+    <text x="0" y="38" 
+          font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+          font-size="28" 
+          font-weight="900" 
+          fill="#f8fafc" 
+          letter-spacing="-0.5">
+      Code<tspan fill="url(#cvTextVerseGrad)">Verse</tspan>
+    </text>
+
+    <!-- Glowing Accent Dot / Pulse Symbol -->
+    <circle cx="166" cy="22" r="3.5" fill="#00f5ff" filter="url(#cvSubtleGlow)"/>
+    <circle cx="166" cy="22" r="6" stroke="#00f5ff" stroke-width="1" opacity="0.4"/>
+
+    <!-- Arabic Name Tag "كودفيرس" -->
+    <text x="180" y="36" 
+          font-family="'Cairo', 'Tajawal', sans-serif" 
+          font-size="18" 
+          font-weight="800" 
+          fill="#38bdf8" 
+          letter-spacing="0.2">
+      كودفيرس
+    </text>
+
+    <!-- Platform Descriptor Subtitle -->
+    <text x="2" y="56" 
+          font-family="'Cairo', 'Tajawal', 'Inter', sans-serif" 
+          font-size="11" 
+          font-weight="600" 
+          fill="#94a3b8" 
+          letter-spacing="0.6">
+      منصة هندسة البرمجيات وإدارة التعلم الأكاديمي
+    </text>
   </g>
 </svg>

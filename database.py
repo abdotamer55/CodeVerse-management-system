@@ -132,7 +132,7 @@ def get_connection(timeout: int = 5):
     return psycopg2.connect(db_url, connect_timeout=timeout)
 
 
-def check_connection(force: bool = False, ttl: float = 5.0):
+def check_connection(force: bool = False, ttl: float = 30.0):
     """
     Perform a real live health check against the PostgreSQL database.
     Caches results for `ttl` seconds to avoid repeated connection latency during fallback mode.
@@ -147,7 +147,7 @@ def check_connection(force: bool = False, ttl: float = 5.0):
     db_url = get_database_url()
     if not db_url:
         _cached_check = (False, "Not Configured", [], "DATABASE_URL is not configured")
-        _cached_time = now
+        _cached_time = now + 3600.0  # No DB URL = permanent offline, cache for 1h
         return _cached_check
 
     diag = get_connection_diagnostics()
@@ -172,7 +172,7 @@ def check_connection(force: bool = False, ttl: float = 5.0):
         err_type = type(exc).__name__
         err_msg = str(exc).strip().split("\n")[0]
         _cached_check = (False, sanitized_host, [], f"{err_type}: {err_msg}")
-        _cached_time = now + 25.0  # Keep failure cached for 30s to prevent repeated delays
+        _cached_time = now + 55.0  # Cache failure for ~60s total to prevent repeated blocking delays
         return _cached_check
 
 

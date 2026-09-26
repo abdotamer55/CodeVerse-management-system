@@ -1,110 +1,242 @@
 {% extends "base.html" %}
 
-{% block title %}مكتبة الملفات والمذكرات{% endblock %}
+{% block title %}
+  {% if current_folder %}
+    مجلد: {{ current_folder.name }} · مكتبة الملفات
+  {% else %}
+    مكتبة الملفات والمذكرات
+  {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="toolbar">
   <div>
-    <span class="label-sm accent">Cloud Repository Engine v2.4</span>
-    <h1 class="headline-xl">مكتبة الملفات والمذكرات الدراسية</h1>
-    <p class="body-md muted">المستودع السحابي الموحد للمذكرات PDF، أكواد المشاريع الأولية، وحزم البرمجيات.</p>
+    {% if current_folder %}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <a href="{{ url_for('admin.files') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:0.875rem;border:1px solid var(--border)">
+          <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span> العودة للمكتبة الرئيسية
+        </a>
+        <span class="muted">/</span>
+        <span class="badge badge-info" style="gap:4px">
+          <span class="material-symbols-outlined" style="font-size:15px">folder</span>
+          {{ current_folder.name }}
+        </span>
+      </div>
+      <h1 class="headline-xl">{{ current_folder.name }}</h1>
+      <p class="body-md muted">{{ current_folder.description or 'مجلد أكاديمي منظم لحفظ المذكرات والملفات.' }}</p>
+    {% else %}
+      <span class="label-sm accent">Cloud Repository Engine v2.5</span>
+      <h1 class="headline-xl">مكتبة الملفات والمذكرات الدراسية</h1>
+      <p class="body-md muted">المستودع السحابي الموحد للمذكرات PDF، أكواد المشاريع، والمجلدات المنظمة.</p>
+    {% endif %}
   </div>
+
   <div class="wrap">
-    <button class="btn btn-primary" data-open="#upload-modal" type="button">
-      <span class="material-symbols-outlined">cloud_upload</span> رفع ملف جديد
-    </button>
-    <button class="btn btn-secondary" data-open="#folder-modal" type="button">
-      <span class="material-symbols-outlined">create_new_folder</span> مجلد جديد
-    </button>
+    {% if current_folder %}
+      <button class="btn btn-primary" data-open="#upload-modal" type="button">
+        <span class="material-symbols-outlined">cloud_upload</span> رفع ملفات داخل المجلد
+      </button>
+      {% if available_files %}
+      <button class="btn btn-secondary" data-open="#attach-modal" type="button">
+        <span class="material-symbols-outlined">playlist_add</span> اختيار ملفات من المكتبة
+      </button>
+      {% endif %}
+      <form method="POST" action="{{ url_for('admin.delete_file', file_id=current_folder.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا المجلد بالكامل؟ ستتحول الملفات التي بداخله للمكتبة الرئيسية.');" style="display:inline">
+        <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444)" title="حذف المجلد">
+          <span class="material-symbols-outlined">delete</span> حذف المجلد
+        </button>
+      </form>
+    {% else %}
+      <button class="btn btn-primary" data-open="#upload-modal" type="button">
+        <span class="material-symbols-outlined">cloud_upload</span> رفع ملفات جديدة
+      </button>
+      <button class="btn btn-secondary" data-open="#folder-modal" type="button">
+        <span class="material-symbols-outlined">create_new_folder</span> مجلد جديد
+      </button>
+    {% endif %}
   </div>
 </div>
 
+{% if not current_folder %}
 <section class="grid-4">
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" onclick="filterFiles('all')" title="عرض جميع الملفات والمسارات" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">folder_copy</span></div>
+      <span class="badge badge-info">المستودع</span>
     </div>
     <div>
       <span class="label-sm muted">إجمالي الملفات النشطة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.total_files }}</span>
-        <span class="label-md muted">ملف</span>
+        <span class="label-md muted">ملف بالمكتبة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>المسارات المعتمدة</span><strong>4</strong></div>
+    <div class="stat-foot"><span>المسارات المعتمدة</span><strong>{{ summary.tracks_count }} مسار</strong></div>
   </div>
 
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" data-open="#storage-modal" title="انقر لعرض تفاصيل التخزين السحابي" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon green"><span class="material-symbols-outlined">cloud</span></div>
+      <span class="badge badge-success">{{ summary.storage_percent }}</span>
     </div>
     <div>
       <span class="label-sm muted">المساحة السحابية المستخدمة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="display-hero">{{ summary.storage_used }}</span>
-        <span class="label-md muted">/ {{ summary.storage_total }}</span>
+        <span class="display-hero">{{ summary.storage_used_number }}</span>
+        <span class="label-md muted">{{ summary.storage_used_unit }} / {{ summary.storage_total }}</span>
       </div>
     </div>
-    <div class="stat-foot"><span>المستهلك</span><strong>{{ summary.storage_percent }}</strong></div>
+    <div class="stat-foot"><span>المستهلك من السيرفر</span><strong>{{ summary.storage_percent }}</strong></div>
   </div>
 
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" onclick="filterFiles('popular')" title="ترتيب الملفات حسب الأكثر تنزيلاً" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">downloading</span></div>
+      <span class="badge badge-neutral"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span> تنزيل</span>
     </div>
     <div>
       <span class="label-sm muted">تنزيلات الطلاب</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.student_downloads }}</span>
+        <span class="label-md muted">مرة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>هذا الشهر</span><strong>+18% نمو</strong></div>
+    <div class="stat-foot"><span>النشاط الشهري</span><strong>{{ summary.monthly_growth }}</strong></div>
   </div>
 
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" data-open="#upload-modal" title="انقر لرفع ملف جديد للمستودع" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon amber"><span class="material-symbols-outlined">fiber_new</span></div>
+      <span class="badge badge-warn">+ رفع ملف</span>
     </div>
     <div>
       <span class="label-sm muted">منشور حديثاً</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.recent_count }}</span>
-        <span class="label-md muted">هذا الأسبوع</span>
+        <span class="label-md muted">عنصر</span>
       </div>
     </div>
-    <div class="stat-foot"><span>آخر إضافة</span><strong>قبل 40 دقيقة</strong></div>
+    <div class="stat-foot"><span>آخر إضافة</span><strong>{{ summary.last_added }}</strong></div>
   </div>
 </section>
+{% endif %}
 
-<div class="grid-2">
-  {% for f in files %}
-  <article class="file-card">
-    <div class="file-card-body">
-      <div class="between">
-        <span class="stat-icon blue" style="width:40px;height:40px">
-          <span class="material-symbols-outlined">{{ f.icon }}</span>
-        </span>
-        <span class="badge badge-neutral ltr">{{ f.size_display }}</span>
-      </div>
-      <h3 class="headline-sm" style="margin-top:8px">{{ f.name }}</h3>
-      <p class="body-sm muted">{{ f.description }}</p>
-      <div class="between" style="margin-top:8px">
-        <span class="body-sm muted">{{ f.downloads_count }} تنزيلاً</span>
-        <div class="wrap">
-          {% if f.file_url and f.file_url != '#' %}
-            <a class="btn btn-secondary" href="{{ f.file_url }}" target="_blank">تحميل</a>
-          {% else %}
-            <button class="btn btn-secondary" type="button" data-open="#generic-modal">تحميل</button>
-          {% endif %}
-          <form method="POST" action="{{ url_for('admin.delete_file', file_id=f.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف الملف ({{ f.name }}) نهائياً؟');" style="display:inline">
-            <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444)" title="حذف الملف">
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-          </form>
-        </div>
-      </div>
+<div class="grid-2" id="files-grid" style="margin-top:1.5rem">
+  {% if not files %}
+  <div class="card" style="text-align:center;padding:3.5rem 1.5rem;grid-column:span 2;background:var(--surface-lowest);border:1px dashed var(--border);border-radius:16px">
+    <div class="stat-icon blue" style="margin:0 auto 12px;width:64px;height:64px">
+      <span class="material-symbols-outlined" style="font-size:36px">
+        {% if current_folder %}folder_open{% else %}cloud_upload{% endif %}
+      </span>
     </div>
-  </article>
+    {% if current_folder %}
+      <h3 class="headline-sm">هذا المجلد ({{ current_folder.name }}) فارغ حالياً</h3>
+      <p class="body-sm muted" style="max-width:520px;margin:8px auto">
+        يمكنك الآن رفع ملفات متعددة دفعة واحدة من جهازك داخل هذا المجلد، أو اختيار ملفات موجودة بالفعل في المكتبة لضمها إليه.
+      </p>
+      <div class="row" style="justify-content:center;gap:12px;margin-top:16px">
+        <button class="btn btn-primary" data-open="#upload-modal" type="button">
+          <span class="material-symbols-outlined">cloud_upload</span> رفع ملفات داخل المجلد
+        </button>
+        {% if available_files %}
+        <button class="btn btn-secondary" data-open="#attach-modal" type="button">
+          <span class="material-symbols-outlined">playlist_add</span> اختيار ملفات من المكتبة
+        </button>
+        {% endif %}
+      </div>
+    {% else %}
+      <h3 class="headline-sm">المستودع السحابي جاهز لرفع المذكرات والملفات</h3>
+      <p class="body-sm muted" style="max-width:480px;margin:8px auto">تم ربط وحدة التخزين السحابية ومجلد الرفع بنجاح. يمكنك الآن رفع المذكرات الدراسية، ملخصات الدروس، وإنشاء مجلدات مخصصة.</p>
+      <div class="row" style="justify-content:center;gap:10px;margin-top:16px">
+        <button class="btn btn-primary" data-open="#upload-modal" type="button">
+          <span class="material-symbols-outlined">upload_file</span> رفع ملفات الآن
+        </button>
+        <button class="btn btn-secondary" data-open="#folder-modal" type="button">
+          <span class="material-symbols-outlined">create_new_folder</span> إنشاء مجلد جديد
+        </button>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% for f in files %}
+    {% if f.category == 'folder' %}
+      {# Folder Card #}
+      <article class="file-card" data-downloads="{{ f.downloads_count or 0 }}" style="border:1.5px solid var(--border);background:var(--surface-lowest);transition:border-color 0.2s,box-shadow 0.2s">
+        <div class="file-card-body">
+          <div class="between">
+            <span class="stat-icon amber" style="width:44px;height:44px;border-radius:10px">
+              <span class="material-symbols-outlined" style="font-size:26px">folder</span>
+            </span>
+            <span class="badge badge-warn" style="font-size:0.8rem">
+              {{ f.files_count or 0 }} ملفات بالداخل
+            </span>
+          </div>
+          <h3 class="headline-sm" style="margin-top:12px;display:flex;align-items:center;gap:6px">
+            <a href="{{ url_for('admin.files', folder_id=f.id) }}" style="color:inherit;text-decoration:none">
+              {{ f.name }}
+            </a>
+          </h3>
+          <p class="body-sm muted" style="min-height:36px">{{ f.description or 'مجلد منظم' }}</p>
+          <div class="between" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+            <span class="body-sm muted">مجلد سحابي</span>
+            <div class="wrap" style="gap:6px">
+              <a class="btn btn-primary" href="{{ url_for('admin.files', folder_id=f.id) }}" style="padding:6px 14px;font-size:0.85rem">
+                <span class="material-symbols-outlined" style="font-size:18px">folder_open</span> فتح المجلد
+              </a>
+              <form method="POST" action="{{ url_for('admin.delete_file', file_id=f.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف المجلد ({{ f.name }}) نهائياً؟ ستنتقل الملفات داخله للمكتبة الرئيسية.');" style="display:inline">
+                <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:6px" title="حذف المجلد">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      {# Standard File Card #}
+      <article class="file-card" data-downloads="{{ f.downloads_count or 0 }}">
+        <div class="file-card-body">
+          <div class="between">
+            <span class="stat-icon blue" style="width:40px;height:40px">
+              <span class="material-symbols-outlined">{{ f.icon }}</span>
+            </span>
+            <span class="badge badge-neutral ltr">{{ f.size_display }}</span>
+          </div>
+          <h3 class="headline-sm" style="margin-top:8px">{{ f.name }}</h3>
+          <p class="body-sm muted">{{ f.description or 'مستند أكاديمي معتمد' }}</p>
+          <div class="between" style="margin-top:8px">
+            <span class="body-sm muted">{{ f.downloads_count }} تنزيلاً</span>
+            <div class="wrap" style="gap:6px">
+              {% if f.file_url and f.file_url != '#' %}
+                <a class="btn btn-secondary" href="{{ f.file_url }}" target="_blank" download style="padding:6px 12px">تحميل</a>
+              {% else %}
+                <button class="btn btn-secondary" type="button" data-open="#generic-modal" style="padding:6px 12px">تحميل</button>
+              {% endif %}
+
+              {% if current_folder %}
+                {# Option to detach file from this folder and return to root #}
+                <form method="POST" action="{{ url_for('admin.detach_file_from_folder', file_id=f.id) }}" onsubmit="return confirm('هل تريد إخراج هذا الملف من المجلد وإعادته للمكتبة الرئيسية؟');" style="display:inline">
+                  <input type="hidden" name="folder_id" value="{{ current_folder.id }}">
+                  <button class="btn btn-ghost" type="submit" style="padding:6px" title="إخراج من المجلد">
+                    <span class="material-symbols-outlined" style="font-size:18px">drive_file_move</span>
+                  </button>
+                </form>
+              {% endif %}
+
+              <form method="POST" action="{{ url_for('admin.delete_file', file_id=f.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف الملف ({{ f.name }}) نهائياً؟');" style="display:inline">
+                {% if current_folder %}
+                  <input type="hidden" name="folder_id" value="{{ current_folder.id }}">
+                {% endif %}
+                <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:6px" title="حذف الملف">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+    {% endif %}
   {% endfor %}
 </div>
 {% endblock content %}
@@ -141,26 +273,53 @@
       </form>
     </div>
   </div>
+
+  <!-- Upload Modal (Supports Multiple Files & Folder Target) -->
   <div class="modal-backdrop" id="upload-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="headline-sm">رفع ملف جديد إلى المكتبة السحابية</h2>
+        <h2 class="headline-sm">
+          {% if current_folder %}
+            رفع ملفات داخل مجلد ({{ current_folder.name }})
+          {% else %}
+            رفع ملفات جديدة إلى المكتبة السحابية
+          {% endif %}
+        </h2>
         <button class="btn-icon" data-close="#upload-modal" type="button"><span class="material-symbols-outlined">close</span></button>
       </div>
       <form class="modal-body" method="POST" action="{{ url_for('admin.create_file') }}" enctype="multipart/form-data">
+        {% if current_folder %}
+          <input type="hidden" name="folder_id" value="{{ current_folder.id }}" />
+        {% endif %}
+
         <div class="field">
-          <label>اختيار الملف من جهازك (مباشر)</label>
-          <input class="input" type="file" name="file" id="admin-file-input" style="padding:8px" />
-          <span class="body-sm muted">يدعم مستندات PDF، أرشيف ZIP/RAR، أكواد برمجية، شرائح وعروض. الحجم والتصنيف يستخرجان تلقائياً.</span>
+          <label>اختيار الملفات من جهازك (يدعم اختيار عدة ملفات معاً)</label>
+          <input class="input" type="file" name="files" id="admin-file-input" multiple style="padding:8px" />
+          <span class="body-sm muted">يمكنك اختيار ملف واحد أو عدة ملفات (PDF، Word، ZIP، شرائح PPT، فيديوهات). سيتم حفظها وتصنيفها تلقائياً.</span>
         </div>
+
+        {% if not current_folder and all_folders %}
         <div class="field">
-          <label>عنوان أو اسم الملف الأكاديمي</label>
+          <label>المجلد المستهدف (اختياري)</label>
+          <select class="select" name="folder_id">
+            <option value="">المكتبة الرئيسية (بدون مجلد)</option>
+            {% for fld in all_folders %}
+              <option value="{{ fld.id }}">📁 {{ fld.name }} ({{ fld.files_count or 0 }} ملفات)</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="field">
+          <label>عنوان مخصص (إذا تم اختيار ملف واحد فقط)</label>
           <input class="input" name="name" id="admin-file-name" placeholder="اتركه فارغاً ليأخذ اسم الملف الأصلي تلقائياً" />
         </div>
+
         <div class="form-grid">
           <div class="field">
             <label>نوع الملف والتصنيف (اختياري)</label>
             <select class="select" name="category">
+              <option value="">تحديد تلقائي حسب الامتداد</option>
               <option value="pdf">مذكرة دراسية (PDF)</option>
               <option value="zip">مشروع برمجي / أرشيف (ZIP/RAR)</option>
               <option value="doc">مستند نصي / وورد (Word/Doc)</option>
@@ -170,24 +329,143 @@
           </div>
           <div class="field">
             <label>الحجم التقديري (يحدد تلقائياً عند الرفع)</label>
-            <input class="input" name="size_display" placeholder="مثال: 3.5 MB" />
+            <input class="input" name="size_display" placeholder="يستخرج تلقائياً" />
           </div>
         </div>
+
         <div class="field">
           <label>وصف الملف وملاحظات الشرح</label>
           <textarea class="textarea" name="description" rows="2" placeholder="وصف محتوى الملف والمحاور التي يغطيها..."></textarea>
         </div>
+
         <div class="field">
-          <label>أو رابط خارجي للملف (إن لم يتم رفعه محلياً)</label>
+          <label>أو إضافة رابط خارجي للملف (إن لم يتم رفعه محلياً)</label>
           <input class="input ltr" name="file_url" placeholder="https://..." />
         </div>
+
         <div class="modal-footer" style="padding:0;margin-top:1rem">
           <button class="btn btn-ghost" type="button" data-close="#upload-modal">إلغاء</button>
           <button class="btn btn-primary" type="submit">
-            <span class="material-symbols-outlined">cloud_upload</span> رفع وتخزين الملف
+            <span class="material-symbols-outlined">cloud_upload</span> بدء الرفع والتخزين
           </button>
         </div>
       </form>
     </div>
   </div>
+
+  {% if current_folder and available_files %}
+  <!-- Attach Existing Files to Folder Modal -->
+  <div class="modal-backdrop" id="attach-modal">
+    <div class="modal" style="max-width:620px">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">اختيار ملفات من المكتبة وإضافتها للمجلد</h2>
+          <p class="body-sm muted">حدد الملفات التي ترغب في ضمها إلى مجلد ({{ current_folder.name }})</p>
+        </div>
+        <button class="btn-icon" data-close="#attach-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.attach_files_to_folder', folder_id=current_folder.id) }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span class="label-sm muted">الملفات المتاحة بالمكتبة ({{ available_files|length }} ملف)</span>
+          <button type="button" class="btn btn-ghost" onclick="toggleAllFiles(this)" style="font-size:0.8rem;padding:2px 8px">تحديد الكل</button>
+        </div>
+        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;background:var(--surface-lowest)">
+          {% for af in available_files %}
+          <label style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;background:var(--surface);cursor:pointer;border:1px solid var(--border)">
+            <input type="checkbox" name="file_ids" value="{{ af.id }}" class="attach-checkbox" style="width:18px;height:18px;accent-color:var(--primary)" />
+            <span class="material-symbols-outlined" style="color:var(--primary);font-size:22px">{{ af.icon }}</span>
+            <div style="flex:1">
+              <strong style="font-size:0.9rem;display:block">{{ af.name }}</strong>
+              <span class="body-sm muted" style="font-size:0.75rem">{{ af.size_display }} · {{ af.description or 'ملف بالمكتبة' }}</span>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1.25rem">
+          <button class="btn btn-ghost" type="button" data-close="#attach-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">
+            <span class="material-symbols-outlined">done_all</span> إضافة الملفات المحددة للمجلد
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Storage Details Modal -->
+  <div class="modal-backdrop" id="storage-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="headline-sm">تفاصيل المساحة السحابية والخادم</h2>
+        <button class="btn-icon" data-close="#storage-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="card" style="background:var(--surface-lowest);border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem;border-radius:12px">
+          <div class="between" style="margin-bottom:8px">
+            <span class="body-sm muted">المساحة المستهلكة الفعلية</span>
+            <strong style="color:var(--primary)">{{ summary.storage_used }} من {{ summary.storage_total }}</strong>
+          </div>
+          <div class="progress success" style="height:10px;border-radius:6px">
+            <span style="width:{{ summary.storage_percent if summary.storage_percent != '0%' and summary.storage_percent != '< 0.1%' else '2' }}%"></span>
+          </div>
+          <div class="between" style="margin-top:10px;font-size:0.8rem;color:var(--text-muted)">
+            <span>نسبة الاستهلاك: {{ summary.storage_percent }}</span>
+            <span>الحالة: خادم مستقر وسعة متاحة</span>
+          </div>
+        </div>
+        <div class="stack" style="gap:10px">
+          <div class="notif-item">
+            <span class="material-symbols-outlined">folder</span>
+            <div>
+              <strong>مجلد التخزين: static/uploads</strong>
+              <p class="body-sm muted">تخزين محلي مباشر متوافق مع كافة صيغ المستندات والفيديوهات والمذكرات</p>
+            </div>
+          </div>
+          <div class="notif-item">
+            <span class="material-symbols-outlined">cloud_done</span>
+            <div>
+              <strong>المسارات الأكاديمية المفعلة</strong>
+              <p class="body-sm muted">{{ summary.tracks_count }} مسارات معتمدة (أولى بكالوريا، ثانية بكالوريا)</p>
+            </div>
+          </div>
+        </div>
+        <div class="between" style="margin-top:1.5rem">
+          <button class="btn btn-secondary" data-close="#storage-modal" type="button">إغلاق</button>
+          <button class="btn btn-primary" data-close="#storage-modal" data-open="#upload-modal" type="button">
+            <span class="material-symbols-outlined">cloud_upload</span> رفع ملف جديد
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock modals %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function filterFiles(criteria) {
+  const cards = document.querySelectorAll('#files-grid .file-card');
+  if (criteria === 'all') {
+    cards.forEach(c => c.style.display = '');
+  } else if (criteria === 'popular') {
+    const container = document.getElementById('files-grid');
+    if (container && cards.length > 0) {
+      const arr = Array.from(cards);
+      arr.sort((a, b) => {
+        const da = parseInt(a.getAttribute('data-downloads') || '0', 10);
+        const db = parseInt(b.getAttribute('data-downloads') || '0', 10);
+        return db - da;
+      });
+      arr.forEach(c => container.appendChild(c));
+    }
+  }
+}
+
+function toggleAllFiles(btn) {
+  const checkboxes = document.querySelectorAll('.attach-checkbox');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  checkboxes.forEach(cb => cb.checked = !allChecked);
+  btn.textContent = allChecked ? 'تحديد الكل' : 'إلغاء التحديد';
+}
+</script>
+{% endblock scripts %}

@@ -104,7 +104,7 @@
   }
 
   function footerHTML() {
-    return `<footer class="page-footer">كودفيرس · نظام الإدارة التعليمية · النسخة الخاصة · 2024 / 2025</footer>`;
+    return `<footer class="page-footer">كودفيرس · نظام الإدارة التعليمية · النسخة الخاصة · 2026 - 2027</footer>`;
   }
 
   function mountShell() {

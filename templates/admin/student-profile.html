@@ -110,18 +110,15 @@
           <div class="field">
             <label>المسار</label>
             <select class="select" name="track">
-              <option value="هندسة برمجيات الأنظمة" {% if student.track == 'هندسة برمجيات الأنظمة' %}selected{% endif %}>هندسة برمجيات الأنظمة</option>
-              <option value="تطوير واجهات React" {% if student.track == 'تطوير واجهات React' %}selected{% endif %}>تطوير واجهات React</option>
-              <option value="تطوير الخوادم Node.js" {% if student.track == 'تطوير الخوادم Node.js' %}selected{% endif %}>تطوير الخوادم Node.js</option>
-              <option value="تطبيقات الجوال Flutter" {% if student.track == 'تطبيقات الجوال Flutter' %}selected{% endif %}>تطبيقات الجوال Flutter</option>
+              <option value="أولى بكالوريا" {% if student.track == 'أولى بكالوريا' %}selected{% endif %}>أولى بكالوريا</option>
+              <option value="ثانية بكالوريا" {% if student.track == 'ثانية بكالوريا' %}selected{% endif %}>ثانية بكالوريا</option>
             </select>
           </div>
           <div class="field">
             <label>المستوى</label>
             <select class="select" name="level">
-              <option value="المستوى الأول" {% if 'الأول' in student.level %}selected{% endif %}>المستوى الأول</option>
-              <option value="المستوى الثاني" {% if 'الثاني' in student.level %}selected{% endif %}>المستوى الثاني</option>
-              <option value="المستوى المتقدم L3" {% if 'المتقدم' in student.level %}selected{% endif %}>المستوى المتقدم L3</option>
+              <option value="أولى بكالوريا" {% if 'أولى' in student.level %}selected{% endif %}>أولى بكالوريا</option>
+              <option value="ثانية بكالوريا" {% if 'ثانية' in student.level %}selected{% endif %}>ثانية بكالوريا</option>
             </select>
           </div>
           <div class="field" style="grid-column:1/-1">

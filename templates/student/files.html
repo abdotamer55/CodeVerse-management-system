@@ -1,35 +1,107 @@
 {% extends "base.html" %}
 
-{% block title %}الملفات والمذكرات الأكاديمية{% endblock %}
+{% block title %}
+  {% if current_folder %}
+    مجلد: {{ current_folder.name }} · الملفات الأكاديمية
+  {% else %}
+    الملفات والمذكرات الأكاديمية
+  {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="toolbar">
   <div>
-    <h1 class="headline-lg">الملفات والمذكرات الأكاديمية</h1>
-    <p class="body-md muted">المستودع السحابي للمذكرات الدراسية PDF، كود المشاريع، والحزم التطبيقية.</p>
+    {% if current_folder %}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <a href="{{ url_for('student.files') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:0.875rem;border:1px solid var(--border)">
+          <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span> العودة لجميع الملفات
+        </a>
+        <span class="muted">/</span>
+        <span class="badge badge-info" style="gap:4px">
+          <span class="material-symbols-outlined" style="font-size:15px">folder</span>
+          {{ current_folder.name }}
+        </span>
+      </div>
+      <h1 class="headline-lg">{{ current_folder.name }}</h1>
+      <p class="body-md muted">{{ current_folder.description or 'مجلد أكاديمي يحتوي على مذكرات وملفات دراسية.' }}</p>
+    {% else %}
+      <h1 class="headline-lg">الملفات والمذكرات الأكاديمية</h1>
+      <p class="body-md muted">المستودع السحابي للمذكرات الدراسية PDF، كود المشاريع، والمجلدات المنظمة.</p>
+    {% endif %}
   </div>
 </div>
 
 <div class="grid-2">
-  {% for f in files %}
-  <article class="file-card">
-    <div class="file-card-body">
-      <div class="between">
-        <span class="stat-icon blue" style="width:40px;height:40px">
-          <span class="material-symbols-outlined">{{ f.icon }}</span>
-        </span>
-        <span class="badge badge-neutral ltr">{{ f.size_display }}</span>
-      </div>
-      <h3 class="headline-sm" style="margin-top:8px">{{ f.name }}</h3>
-      <p class="body-sm muted">{{ f.description }}</p>
-      <div class="between" style="margin-top:8px">
-        <span class="body-sm muted">{{ f.downloads_count }} تنزيلاً</span>
-        <button class="btn btn-secondary" type="button" data-open="#generic-modal">
-          <span class="material-symbols-outlined">download</span> تنزيل الملف
-        </button>
-      </div>
+  {% if not files %}
+  <div class="card" style="text-align:center;padding:3rem 1.5rem;grid-column:span 2;background:var(--surface-lowest);border:1px dashed var(--border);border-radius:16px">
+    <div class="stat-icon blue" style="margin:0 auto 12px;width:56px;height:56px">
+      <span class="material-symbols-outlined" style="font-size:32px">
+        {% if current_folder %}folder_open{% else %}draft{% endif %}
+      </span>
     </div>
-  </article>
+    <h3 class="headline-sm">
+      {% if current_folder %}
+        لا توجد ملفات داخل هذا المجلد حالياً
+      {% else %}
+        لا توجد ملفات منشورة بالمكتبة حتى الآن
+      {% endif %}
+    </h3>
+    <p class="body-sm muted" style="margin-top:6px">سيتم نشر المذكرات والملفات المعتمدة من قِبل المشرف الأكاديمي قريباً.</p>
+  </div>
+  {% endif %}
+
+  {% for f in files %}
+    {% if f.category == 'folder' %}
+      {# Folder Card for Student #}
+      <article class="file-card" style="border:1.5px solid var(--border);background:var(--surface-lowest)">
+        <div class="file-card-body">
+          <div class="between">
+            <span class="stat-icon amber" style="width:44px;height:44px;border-radius:10px">
+              <span class="material-symbols-outlined" style="font-size:26px">folder</span>
+            </span>
+            <span class="badge badge-warn">{{ f.files_count or 0 }} ملفات بالداخل</span>
+          </div>
+          <h3 class="headline-sm" style="margin-top:12px">
+            <a href="{{ url_for('student.files', folder_id=f.id) }}" style="color:inherit;text-decoration:none">
+              {{ f.name }}
+            </a>
+          </h3>
+          <p class="body-sm muted">{{ f.description or 'مجلد مذكرات دراسية' }}</p>
+          <div class="between" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+            <span class="body-sm muted">مجلد سحابي</span>
+            <a class="btn btn-primary" href="{{ url_for('student.files', folder_id=f.id) }}">
+              <span class="material-symbols-outlined">folder_open</span> فتح المجلد
+            </a>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      {# File Card for Student #}
+      <article class="file-card">
+        <div class="file-card-body">
+          <div class="between">
+            <span class="stat-icon blue" style="width:40px;height:40px">
+              <span class="material-symbols-outlined">{{ f.icon }}</span>
+            </span>
+            <span class="badge badge-neutral ltr">{{ f.size_display }}</span>
+          </div>
+          <h3 class="headline-sm" style="margin-top:8px">{{ f.name }}</h3>
+          <p class="body-sm muted">{{ f.description or 'ملف أكاديمي معتمد' }}</p>
+          <div class="between" style="margin-top:8px">
+            <span class="body-sm muted">{{ f.downloads_count }} تنزيلاً</span>
+            {% if f.file_url and f.file_url != '#' %}
+              <a class="btn btn-secondary" href="{{ f.file_url }}" target="_blank" download>
+                <span class="material-symbols-outlined">download</span> تنزيل الملف
+              </a>
+            {% else %}
+              <button class="btn btn-secondary" type="button" data-open="#generic-modal">
+                <span class="material-symbols-outlined">download</span> تنزيل الملف
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endif %}
   {% endfor %}
 </div>
 {% endblock content %}

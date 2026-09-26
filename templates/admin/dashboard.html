@@ -8,8 +8,8 @@
   <div class="between" style="flex-wrap:wrap;position:relative;z-index:1">
     <div class="stack" style="gap:8px">
       <div class="wrap">
-        <span class="pill"><span class="dot pulse"></span> الفصل الدراسي الأول 2024 / 2025</span>
-        <span class="badge badge-neutral ltr">TERM-ID: CV-FA24-MTR</span>
+        <span class="pill"><span class="dot pulse"></span> الفصل الدراسي الأول 2026 - 2027</span>
+        <span class="badge badge-neutral ltr">TERM-ID: CV-FA26-MTR</span>
       </div>
       <h1 class="headline-lg">أهلاً بك، {{ current_user.name if current_user else 'أستاذ د. طارق الحارثي' }} 👋</h1>
       <p class="body-md muted">لوحة المتابعة الإدارية والأكاديمية الموحدة لمنصة كودفيرس | رصد فوري للنشاط الصفي، تصحيح الاختبارات التفاعلية، وتحليل مستويات الإتقان البرمجي للطلاب.</p>
@@ -111,8 +111,8 @@
       <span class="badge {% if live_lesson and live_lesson.get('is_live') %}badge-info{% else %}badge-neutral{% endif %}">
         {% if live_lesson and live_lesson.get('is_live') %}مباشر — {{ live_lesson.live_time }}{% elif featured_lesson %}حصة معتمدة — {{ featured_lesson.code }}{% else %}لا توجد حصص مسجلة{% endif %}
       </span>
-      {% if featured_lesson and featured_lesson.attendees %}
-      <span class="body-sm muted">{{ featured_lesson.attendees }} حاضر</span>
+      {% if featured_lesson %}
+      <span class="body-sm muted">{{ featured_lesson.attendees|default(0) }} حاضر</span>
       {% endif %}
     </div>
     <h2 class="headline-sm" style="margin:8px 0">{% if live_lesson and live_lesson.get('is_live') %}البث القادم{% else %}الحصة النشطة بالمنهج{% endif %}</h2>

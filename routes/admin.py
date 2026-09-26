@@ -30,11 +30,23 @@ def _save_uploaded_file(file_storage, subfolder="uploads"):
         return None, None, None, None
 
     ext = orig_name.rsplit(".", 1)[-1].lower() if "." in orig_name else ""
+    # Validate extension — reject dangerous or unknown extensions
+    allowed_exts = {"pdf", "zip", "rar", "7z", "tar", "gz", "ppt", "pptx",
+                    "mp4", "mov", "avi", "webm", "mkv", "doc", "docx", "txt", "md",
+                    "jpg", "jpeg", "jfif", "png", "gif", "webp", "svg"}
+    if ext and ext not in allowed_exts:
+        ext = "bin"
+
     timestamp = int(time.time())
-    safe_stem = "".join(c for c in orig_name.rsplit(".", 1)[0] if c.isalnum() or c in ("-", "_", " ")).strip() or "file"
+    raw_stem = orig_name.rsplit(".", 1)[0] if "." in orig_name else orig_name
+    safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_")).strip() or "file"
+    # Truncate to 60 chars max — prevents Windows MAX_PATH (260 chars) errors
+    safe_stem = safe_stem[:60]
     safe_filename = f"{timestamp}_{safe_stem}.{ext}" if ext else f"{timestamp}_{safe_stem}"
 
-    upload_folder = current_app.config.get("UPLOAD_FOLDER") or os.path.join(current_app.root_path, "static", subfolder)
+    # Always build the full path from root_path + static + subfolder
+    # (ignores UPLOAD_FOLDER which may point to base uploads only)
+    upload_folder = os.path.join(current_app.root_path, "static", subfolder)
     os.makedirs(upload_folder, exist_ok=True)
     dest_path = os.path.join(upload_folder, safe_filename)
     file_storage.save(dest_path)
@@ -57,6 +69,8 @@ def _save_uploaded_file(file_storage, subfolder="uploads"):
         category = "video"
     elif ext in ("doc", "docx", "txt", "md"):
         category = "doc"
+    elif ext in ("jpg", "jpeg", "jfif", "png", "gif", "webp", "svg"):
+        category = "image"
     else:
         category = "pdf"
 
@@ -139,13 +153,13 @@ def preview_lesson(lesson_id):
     lesson = lesson_service.get_lesson_by_id(lesson_id)
     if not lesson:
         flash("الحصة غير موجودة.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.lessons"))
     return render_template(
         "student/lesson.html",
         user_role="admin",
         page_id="lessons",
         lesson=lesson,
-        back_url=url_for("admin.dashboard"),
+        back_url=url_for("admin.lessons"),
     )
 
 
@@ -403,14 +417,31 @@ def grade_essay():
 @admin_bp.route("/files")
 @role_required("admin")
 def files():
+    folder_id = request.args.get("folder_id", type=int)
     summary = file_service.get_files_summary()
-    files_list = file_service.get_all_files()
+    all_folders = file_service.get_all_folders()
+
+    current_folder = None
+    available_files = []
+    if folder_id:
+        current_folder = file_service.get_folder_by_id(folder_id)
+        if not current_folder:
+            flash("المجلد المطلوب غير موجود أو تم حذفه.", "error")
+            return redirect(url_for("admin.files"))
+        files_list = file_service.get_files_by_folder(folder_id)
+        available_files = file_service.get_available_files_for_folder(folder_id)
+    else:
+        files_list = file_service.get_root_files()
+
     return render_template(
         "admin/files.html",
         user_role="admin",
         page_id="files",
         summary=summary,
         files=files_list,
+        current_folder=current_folder,
+        all_folders=all_folders,
+        available_files=available_files,
     )
 
 
@@ -432,11 +463,41 @@ def settings():
     if request.method == "POST":
         try:
             from services import auth_service
-            updated = auth_service.update_user_name(session.get("user_id"), request.form.get("full_name"))
-            session["user_name"] = updated["full_name"]
-            flash("تم تحديث اسم الحساب بنجاح.", "success")
+            user_id = session.get("user_id")
+
+            full_name = request.form.get("full_name")
+            username = request.form.get("username")
+            password = request.form.get("password")
+            confirm_password = request.form.get("confirm_password")
+
+            if password:
+                if confirm_password and password != confirm_password:
+                    flash("كلمة المرور الجديدة وتأكيد كلمة المرور غير متطابقين.", "error")
+                    return redirect(url_for("admin.settings"))
+                elif not confirm_password:
+                    flash("يرجى كتابة تأكيد كلمة المرور الجديدة للتأكد من صحتها.", "error")
+                    return redirect(url_for("admin.settings"))
+
+            updated = auth_service.update_user_credentials(
+                user_id=user_id,
+                username=username if username else None,
+                password=password if password else None,
+                full_name=full_name if full_name else None,
+            )
+
+            if updated.get("full_name"):
+                session["user_name"] = updated["full_name"]
+            if updated.get("username"):
+                session["username"] = updated["username"]
+
+            if password:
+                flash("تم تحديث بيانات المسؤول، اسم المستخدم، وكلمة المرور الجديدة بنجاح.", "success")
+            else:
+                flash("تم تحديث اسم المستخدم وبيانات حساب المسؤول بنجاح.", "success")
         except ValueError as error:
             flash(str(error), "error")
+        except Exception as error:
+            flash(f"حدث خطأ أثناء حفظ التعديلات: {str(error)}", "error")
         return redirect(url_for("admin.settings"))
     return render_template(
         "admin/settings.html",
@@ -521,6 +582,66 @@ def delete_student(student_id):
 # ------------------------------------------------------------------------------
 # Questions CRUD Operations
 # ------------------------------------------------------------------------------
+def _extract_question_form_data(form):
+    category = form.get("category", "mcq")
+    prompt = (form.get("prompt") or "").strip()
+    difficulty = form.get("difficulty", "متوسط")
+    track = form.get("track", "الخوارزميات")
+    points = int(form.get("points") or 1)
+
+    if category == "mcq":
+        raw_opts = [
+            form.get("mcq_opt_0", "").strip(),
+            form.get("mcq_opt_1", "").strip(),
+            form.get("mcq_opt_2", "").strip(),
+            form.get("mcq_opt_3", "").strip(),
+        ]
+        opts = [o for o in raw_opts if o]
+        if not opts:
+            opts = [o.strip() for o in (form.get("options") or "").splitlines() if o.strip()]
+        try:
+            correct_index = int(form.get("mcq_correct", form.get("correct_index", 0)))
+        except Exception:
+            correct_index = 0
+        correct_answer = opts[correct_index] if 0 <= correct_index < len(opts) else ""
+        answer_preview = correct_answer
+    elif category == "boolean":
+        opts = ["صح", "خطأ"]
+        try:
+            correct_index = int(form.get("bool_correct", form.get("correct_index", 0)))
+        except Exception:
+            correct_index = 0
+        correct_answer = opts[correct_index] if 0 <= correct_index < len(opts) else "صح"
+        answer_preview = correct_answer
+    elif category == "essay":
+        opts = []
+        correct_index = None
+        correct_answer = form.get("essay_model_answer") or form.get("correct_answer") or ""
+        answer_preview = correct_answer or "إجابة مقالية (تصحيح يدوي)"
+    elif category == "code":
+        opts = []
+        correct_index = None
+        correct_answer = form.get("code_solution") or form.get("correct_answer") or ""
+        answer_preview = correct_answer or "مسألة برمجية"
+    else:
+        opts = []
+        correct_index = None
+        correct_answer = form.get("correct_answer", "")
+        answer_preview = correct_answer
+
+    return {
+        "prompt": prompt,
+        "category": category,
+        "difficulty": difficulty,
+        "track": track,
+        "options": opts,
+        "correct_index": correct_index,
+        "correct_answer": correct_answer,
+        "answer_preview": answer_preview,
+        "points": points,
+    }
+
+
 @admin_bp.route("/questions/create", methods=["POST"])
 @role_required("admin")
 def create_question():
@@ -530,17 +651,7 @@ def create_question():
         return redirect(url_for("admin.questions"))
 
     try:
-        data = {
-            "prompt": prompt,
-            "category": request.form.get("category", "mcq"),
-            "difficulty": request.form.get("difficulty", "متوسط"),
-            "track": request.form.get("track", "الخوارزميات"),
-            "correct_answer": request.form.get("correct_answer", ""),
-            "answer_preview": request.form.get("correct_answer", ""),
-            "options": request.form.get("options", ""),
-            "correct_index": request.form.get("correct_index"),
-            "points": request.form.get("points", 1),
-        }
+        data = _extract_question_form_data(request.form)
         exam_service.create_question(data)
         flash("تمت إضافة السؤال لبنك الأسئلة المركزي بنجاح.", "success")
     except Exception as e:
@@ -553,17 +664,7 @@ def create_question():
 @role_required("admin")
 def edit_question(question_id):
     try:
-        data = {
-            "prompt": request.form.get("prompt"),
-            "category": request.form.get("category"),
-            "difficulty": request.form.get("difficulty"),
-            "track": request.form.get("track"),
-            "correct_answer": request.form.get("correct_answer"),
-            "answer_preview": request.form.get("correct_answer"),
-            "options": request.form.get("options"),
-            "correct_index": request.form.get("correct_index"),
-            "points": request.form.get("points", 1),
-        }
+        data = _extract_question_form_data(request.form)
         exam_service.update_question(question_id, data)
         flash("تم تعديل السؤال بنجاح.", "success")
     except Exception as e:
@@ -641,6 +742,9 @@ def create_lesson():
             "video_url": video_url,
             "live_time": live_time,
             "live_url": live_url,
+            "instructor": request.form.get("instructor") or "المهندس عبدالرحمن تامر",
+            "description": request.form.get("description", ""),
+            "topics": request.form.get("topics", ""),
         }
         lesson_service.create_lesson(data)
         flash("تم إنشاء الحصة وجدولتها بنجاح.", "success")
@@ -698,13 +802,17 @@ def edit_lesson(lesson_id):
             "video_url": video_url,
             "live_time": live_time,
             "live_url": live_url,
+            "instructor": request.form.get("instructor") or "المهندس عبدالرحمن تامر",
+            "description": request.form.get("description", ""),
+            "topics": request.form.get("topics", ""),
         }
         lesson_service.update_lesson(lesson_id, data)
         flash("تم تحديث بيانات الحصة بنجاح.", "success")
     except Exception as e:
         flash(f"فشل تحديث الحصة: {e}", "error")
 
-    return redirect(url_for("admin.lessons"))
+    redirect_target = request.form.get("redirect_to") or url_for("admin.lessons")
+    return redirect(redirect_target)
 
 
 @admin_bp.route("/lessons/<int:lesson_id>/delete", methods=["POST"])
@@ -892,54 +1000,131 @@ def delete_result(result_id):
 @admin_bp.route("/files/create", methods=["POST"])
 @role_required("admin")
 def create_file():
-    uploaded_file = request.files.get("file")
-    name = (request.form.get("name") or "").strip()
-    file_url = (request.form.get("file_url") or "").strip()
-    category = request.form.get("category", "pdf")
-    size_display = (request.form.get("size_display") or "2.4 MB").strip()
-    file_name = (request.form.get("file_name") or "").strip()
+    uploaded_files = request.files.getlist("files")
+    if not uploaded_files or not any(f.filename for f in uploaded_files):
+        single = request.files.get("file")
+        if single and single.filename:
+            uploaded_files = [single]
+        else:
+            uploaded_files = []
 
-    if uploaded_file and uploaded_file.filename:
-        saved_url, auto_size, orig_fn, auto_cat = _save_uploaded_file(uploaded_file)
-        if saved_url:
-            file_url = saved_url
-            size_display = auto_size
-            file_name = orig_fn
-            if not name:
-                name = orig_fn.rsplit(".", 1)[0]
-            if not request.form.get("category"):
-                category = auto_cat
+    folder_id = request.form.get("folder_id")
+    folder_id = int(folder_id) if folder_id and str(folder_id).isdigit() else None
+    custom_name = (request.form.get("name") or "").strip()
+    manual_url = (request.form.get("file_url") or "").strip()
+    manual_cat = request.form.get("category")
+    manual_size = (request.form.get("size_display") or "2.4 MB").strip()
+    description = (request.form.get("description") or "").strip()
 
-    if not name:
-        flash("يرجى إدخال اسم الملف أو اختيار ملف لرفعه من الجهاز.", "error")
+    # Case 1: Files uploaded directly via file input (supports multiple)
+    if uploaded_files:
+        success_count = 0
+        last_name = ""
+        for uf in uploaded_files:
+            if not uf or not uf.filename:
+                continue
+            saved_url, auto_size, orig_fn, auto_cat = _save_uploaded_file(uf)
+            if not saved_url:
+                continue
+            item_name = custom_name if (len(uploaded_files) == 1 and custom_name) else orig_fn.rsplit(".", 1)[0]
+            item_cat = manual_cat if (manual_cat and len(uploaded_files) == 1) else auto_cat
+            data = {
+                "name": item_name,
+                "file_name": orig_fn,
+                "category": item_cat,
+                "size_display": auto_size,
+                "description": description,
+                "file_url": saved_url,
+                "folder_id": folder_id,
+            }
+            try:
+                file_service.create_file(data)
+                success_count += 1
+                last_name = item_name
+            except Exception as e:
+                logger.error(f"Error saving uploaded file {orig_fn}: {e}")
+
+        if success_count == 1:
+            flash(f"تم رفع وتخزين الملف ({last_name}) بنجاح في المستودع السحابي.", "success")
+        elif success_count > 1:
+            flash(f"تم رفع وتخزين {success_count} ملفات بنجاح في المستودع السحابي.", "success")
+        else:
+            flash("تعذر حفظ الملفات المحددة، يرجى المحاولة مجدداً.", "error")
+
+        if folder_id:
+            return redirect(url_for("admin.files", folder_id=folder_id))
+        return redirect(url_for("admin.files"))
+
+    # Case 2: Manual URL or no files uploaded
+    if not custom_name:
+        flash("يرجى إدخال اسم الملف أو اختيار ملف واحد على الأقل لرفعه من الجهاز.", "error")
+        if folder_id:
+            return redirect(url_for("admin.files", folder_id=folder_id))
         return redirect(url_for("admin.files"))
 
     try:
         data = {
-            "name": name,
-            "file_name": file_name or name,
-            "category": category,
-            "size_display": size_display,
-            "description": request.form.get("description", ""),
-            "file_url": file_url or "#",
+            "name": custom_name,
+            "file_name": custom_name,
+            "category": manual_cat or "pdf",
+            "size_display": manual_size,
+            "description": description,
+            "file_url": manual_url or "#",
+            "folder_id": folder_id,
         }
         file_service.create_file(data)
-        flash(f"تم رفع الملف ({name}) بنجاح وإضافته إلى المستودع السحابي.", "success")
+        flash(f"تمت إضافة الملف/الرابط ({custom_name}) بنجاح إلى المستودع السحابي.", "success")
     except Exception as e:
         flash(f"فشل إضافة الملف: {e}", "error")
 
+    if folder_id:
+        return redirect(url_for("admin.files", folder_id=folder_id))
     return redirect(url_for("admin.files"))
 
 
 @admin_bp.route("/files/<int:file_id>/delete", methods=["POST"])
 @role_required("admin")
 def delete_file(file_id):
+    folder_id = request.form.get("folder_id", type=int)
     try:
         file_service.delete_file(file_id)
-        flash("تم حذف الملف من المستودع السحابي بنجاح.", "success")
+        flash("تم حذف العنصر من المستودع السحابي بنجاح.", "success")
     except Exception as e:
-        flash(f"فشل حذف الملف: {e}", "error")
+        flash(f"فشل حذف العنصر: {e}", "error")
 
+    if folder_id:
+        return redirect(url_for("admin.files", folder_id=folder_id))
+    return redirect(url_for("admin.files"))
+
+
+@admin_bp.route("/files/folder/<int:folder_id>/attach", methods=["POST"])
+@role_required("admin")
+def attach_files_to_folder(folder_id):
+    file_ids = request.form.getlist("file_ids")
+    if not file_ids:
+        flash("يرجى تحديد ملف واحد على الأقل لربطه بالمجلد.", "error")
+        return redirect(url_for("admin.files", folder_id=folder_id))
+    try:
+        count = file_service.attach_files_to_folder(folder_id, file_ids)
+        flash(f"تم ربط وإضافة {count} ملف إلى المجلد بنجاح.", "success")
+    except Exception as e:
+        flash(f"فشل ربط الملفات بالمجلد: {e}", "error")
+
+    return redirect(url_for("admin.files", folder_id=folder_id))
+
+
+@admin_bp.route("/files/<int:file_id>/detach", methods=["POST"])
+@role_required("admin")
+def detach_file_from_folder(file_id):
+    folder_id = request.form.get("folder_id", type=int)
+    try:
+        file_service.detach_file_from_folder(file_id)
+        flash("تم نقل الملف من المجلد إلى المستوى الرئيسي للمكتبة بنجاح.", "success")
+    except Exception as e:
+        flash(f"فشل إخراج الملف من المجلد: {e}", "error")
+
+    if folder_id:
+        return redirect(url_for("admin.files", folder_id=folder_id))
     return redirect(url_for("admin.files"))
 
 
@@ -955,7 +1140,7 @@ def create_folder():
     description = (request.form.get("description") or "مجلد أكاديمي منظم").strip()
 
     try:
-        file_service.create_file({
+        created = file_service.create_file({
             "name": folder_name,
             "file_name": "",
             "category": "folder",
@@ -965,6 +1150,8 @@ def create_folder():
             "file_url": "#",
         })
         flash(f"تم إنشاء المجلد ({folder_name}) بنجاح في المكتبة.", "success")
+        if created and created.get("id"):
+            return redirect(url_for("admin.files", folder_id=created["id"]))
     except Exception as e:
         flash(f"فشل إنشاء المجلد: {e}", "error")
 

@@ -9,98 +9,11 @@ from database import execute_query, check_connection
 
 logger = logging.getLogger(__name__)
 
-_EXAMS_DB = [
-    {
-        "id": 1,
-        "title": "اختبار هياكل البيانات والخوارزميات المتقدمة (Midterm Exam)",
-        "short_title": "اختبار هياكل البيانات",
-        "duration_minutes": 90,
-        "duration_seconds": 5400,
-        "total_questions": 4,
-        "scheduled_date": "16 سبتمبر 2024",
-        "status": "active",
-        "status_label": "جارٍ الآن",
-        "progress": 55,
-        "questions": [
-            {
-                "id": 1,
-                "type": "mcq",
-                "prompt": "ما هو أفضل تعقيد زمني ممكن لخوارزمية البحث الثنائي (Binary Search) على مصفوفة مرتبة؟",
-                "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"],
-                "correct_index": 1,
-            },
-            {
-                "id": 2,
-                "type": "mcq",
-                "prompt": "أي هيكل بيانات يعتمد مبدأ LIFO (Last In, First Out) في إدارة عناصره؟",
-                "options": ["الطابور Queue", "المكدس Stack", "الشجرة Tree", "الرسم البياني Graph"],
-                "correct_index": 1,
-            },
-            {
-                "id": 3,
-                "type": "mcq",
-                "prompt": "تتميز جداول الهاش (Hash Tables) بقدرتها الفائقة على تحقيق زمن بحث بمتوسط:",
-                "options": ["O(n)", "O(log n)", "O(1)", "O(n²)"],
-                "correct_index": 2,
-            },
-            {
-                "id": 4,
-                "type": "mcq",
-                "prompt": "تتفوق القائمة المرتبطة (Linked List) على المصفوفة ذات الحجم الثابت في:",
-                "options": [
-                    "الوصول المباشر والفوري لأي عنصر برقم الفهرس",
-                    "مرونة إدراج وحذف العناصر دون الحاجة لإزاحة الذاكرة",
-                    "استهلاك أقل لحجم الذاكرة لكل عنصر",
-                    "دعم الترتيب الثنائي التلقائي",
-                ],
-                "correct_index": 1,
-            },
-        ],
-    },
-    {
-        "id": 2,
-        "title": "الاختبار النهائي الشامل: هندسة الويب وتطبيقات React 19",
-        "short_title": "نهائي مسار الويب React 19",
-        "duration_minutes": 120,
-        "duration_seconds": 7200,
-        "total_questions": 40,
-        "scheduled_date": "22 سبتمبر 2024 · 08:00 م",
-        "status": "scheduled",
-        "status_label": "مجدول",
-        "progress": 0,
-        "questions": [],
-    },
-]
+# Empty — all exams and questions come from the Supabase DB.
+# Do NOT add mock exams here; if DB is offline the page will show an empty list.
+_EXAMS_DB = []
+_QUESTION_BANK = []
 
-_QUESTION_BANK = [
-    {
-        "id": 101,
-        "category": "mcq",
-        "difficulty": "متوسط",
-        "difficulty_badge": "badge-info",
-        "prompt": "ما تعقيد البحث الثنائي في أسوأ الحالات (Worst-case)؟",
-        "answer_preview": "O(log n)",
-        "track": "الخوارزميات",
-    },
-    {
-        "id": 102,
-        "category": "mcq",
-        "difficulty": "متقدم",
-        "difficulty_badge": "badge-warn",
-        "prompt": "ما ناتج استدعاء دالة RecursionTrace() في الشجرة الثنائية الموضحة؟",
-        "answer_preview": "Post-order Traversal: [4, 5, 2, 3, 1]",
-        "track": "هياكل البيانات",
-    },
-    {
-        "id": 103,
-        "category": "code",
-        "difficulty": "تحدي برمجي",
-        "difficulty_badge": "badge-danger",
-        "prompt": "اكتب دالة بلغة JavaScript أو TypeScript لعكس قائمة أحادية الارتباط In-place:",
-        "answer_preview": "function reverseList(head) { let prev = null, curr = head; while (curr) { const next = curr.next; curr.next = prev; prev = curr; curr = next; } return prev; }",
-        "track": "معالجة الذاكرة",
-    },
-]
 
 # Assessment attempts are deliberately kept separately from presentation state.
 # In production the equivalent rows live in assessment_attempts (migration 003).
@@ -467,7 +380,7 @@ def get_exam_by_id(exam_id: int):
     for e in _EXAMS_DB:
         if e["id"] == exam_id:
             return e
-    return _EXAMS_DB[0]
+    return None
 
 
 def get_question_units():
@@ -590,8 +503,8 @@ def create_question(data: dict):
             options = [opt.strip() for opt in options.split("\n") if opt.strip()]
 
     if category == "boolean":
-        options = ["True", "False"]
-    elif category == "essay":
+        options = ["صح", "خطأ"]
+    elif category in ("essay", "code"):
         options = []
     elif category == "mcq" and len(options) < 2:
         raise ValueError("أسئلة الاختيار من متعدد تحتاج خيارين على الأقل.")
@@ -600,7 +513,7 @@ def create_question(data: dict):
     points = int(data.get("points") or 1)
     if points < 1:
         raise ValueError("درجة السؤال يجب أن تكون موجبة.")
-    correct_index = None if category == "essay" else int(data.get("correct_index", 0))
+    correct_index = None if category in ("essay", "code") else int(data.get("correct_index", 0))
     if correct_index is not None and (correct_index < 0 or correct_index >= len(options)):
         raise ValueError("الإجابة الصحيحة يجب أن تشير إلى أحد الخيارات.")
 
@@ -661,11 +574,16 @@ def update_question(question_id: int, data: dict):
         except Exception:
             options = [opt.strip() for opt in options.split("\n") if opt.strip()]
 
+    if category == "boolean":
+        options = ["صح", "خطأ"]
+    elif category in ("essay", "code"):
+        options = []
+
     points = int(data.get("points") or 1) if "points" in data and data.get("points") is not None else None
     if points is not None and points < 1:
         raise ValueError("درجة السؤال يجب أن تكون موجبة.")
 
-    correct_index = None if category == "essay" else (int(data.get("correct_index", 0)) if "correct_index" in data and data.get("correct_index") is not None else None)
+    correct_index = None if category in ("essay", "code") else (int(data.get("correct_index", 0)) if "correct_index" in data and data.get("correct_index") is not None else None)
 
     if is_db_active():
         try:

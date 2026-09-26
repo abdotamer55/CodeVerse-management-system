@@ -15,68 +15,83 @@
 </div>
 
 <section class="grid-4">
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" onclick="filterLessons('all')" title="عرض جميع الحصص والمسارات" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">video_library</span></div>
+      <span class="badge badge-info">المنهج</span>
     </div>
     <div>
       <span class="label-sm muted">إجمالي الحصص المنشورة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.published_count }}</span>
-        <span class="label-md muted">+6 هذا الشهر</span>
+        <span class="label-md muted">حصة معتمدة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>مسارات معتمدة</span><strong>4</strong></div>
+    <div class="stat-foot"><span>المسارات المعتمدة</span><strong>{{ summary.tracks_count }} مسار</strong></div>
   </div>
 
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" onclick="filterLessons('completed')" title="تصفية الحصص المكتملة" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon green"><span class="material-symbols-outlined">schedule</span></div>
+      <span class="badge badge-success">{{ summary.plan_completion }} إنجاز</span>
     </div>
     <div>
       <span class="label-sm muted">ساعات البث والتدريب</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.training_hours }}</span>
-        <span class="label-md muted">ساعة</span>
+        <span class="label-md muted">ساعة تدريب</span>
       </div>
     </div>
-    <div class="stat-foot"><span>اكتمال الخطة</span><strong>78%</strong></div>
+    <div class="stat-foot"><span>اكتمال الخطة</span><strong>{{ summary.plan_completion }}</strong></div>
   </div>
 
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" onclick="filterLessons('live')" title="تصفية الحصص المباشرة" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon amber"><span class="material-symbols-outlined">play_circle</span></div>
+      {% if summary.live_this_week > 0 %}
+      <span class="badge badge-warn">بث نشط</span>
+      {% else %}
+      <span class="badge badge-neutral">مسجلة</span>
+      {% endif %}
     </div>
     <div>
       <span class="label-sm muted">حصص مباشرة هذا الأسبوع</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.live_this_week }}</span>
+        <span class="label-md muted">حصة</span>
       </div>
     </div>
-    <div class="stat-foot"><span>اليوم</span><strong>معمل RabbitMQ</strong></div>
+    <div class="stat-foot"><span>{{ summary.live_status_label }}</span><strong>{{ summary.live_today_text }}</strong></div>
   </div>
 
-  <div class="card stat-card">
+  <div class="card stat-card interactive-stat" onclick="window.location.href='{{ url_for('admin.files') }}'" title="الانتقال إلى مكتبة الملفات والمذكرات" style="cursor:pointer;transition:transform 0.2s,box-shadow 0.2s">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">picture_as_pdf</span></div>
+      <span class="badge badge-neutral">سحابي</span>
     </div>
     <div>
       <span class="label-sm muted">مذكرات مرفقة</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
         <span class="display-hero">{{ summary.pdf_count }}</span>
+        <span class="label-md muted">ملف دراسي</span>
       </div>
     </div>
-    <div class="stat-foot"><span>PDF سحابي</span><strong>نشط</strong></div>
+    <div class="stat-foot"><span>مستودع المذكرات</span><strong>استعراض الملفات</strong></div>
   </div>
 </section>
 
-<div class="card">
-  <input class="input" data-table-search="#lessons-grid" placeholder="ابحث بالعنوان، كود الدرس (LES-XXX)، أو التقنية..." />
+<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <input class="input" id="lessons-search-input" data-table-search="#lessons-grid" placeholder="ابحث بالعنوان، كود الدرس (LES-XXX)، أو التقنية..." style="flex:1;min-width:240px" />
+  <div class="wrap" style="gap:6px" id="lesson-track-filters">
+    <button class="btn btn-secondary active" type="button" onclick="filterLessonsByTrack('all', this)">كل المسارات</button>
+    <button class="btn btn-ghost" type="button" onclick="filterLessonsByTrack('أولى بكالوريا', this)">أولى بكالوريا</button>
+    <button class="btn btn-ghost" type="button" onclick="filterLessonsByTrack('ثانية بكالوريا', this)">ثانية بكالوريا</button>
+  </div>
 </div>
 
 <div class="grid-2" id="lessons-grid">
   {% for l in lessons %}
-  <article class="course-card">
+  <article class="course-card" data-track="{{ l.track }}" data-is-live="{{ 1 if l.is_live else 0 }}" data-progress="{{ l.progress }}">
     <div class="course-card-media video-stage" style="min-height:140px">
       <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary)">
         {% if l.is_live %}live_tv{% else %}play_circle{% endif %}
@@ -91,12 +106,12 @@
         <span class="body-sm muted">{{ l.duration_text }}</span>
       </div>
       <h3 class="headline-sm">{{ l.title }}</h3>
-      <p class="body-sm muted">{{ l.track }} · {{ l.attendees }} مسجلاً</p>
+      <p class="body-sm muted">{{ l.track }} · {{ l.attendees }} حاضر · إنجاز {{ l.progress }}%</p>
       <div class="progress {% if l.progress == 100 %}success{% endif %}">
         <span style="width:{{ l.progress }}%"></span>
       </div>
       <div class="wrap" style="margin-top:8px">
-        <a class="btn btn-secondary" href="{{ url_for('student.lesson_detail', lesson_id=l.id) }}">معاينة المحتوى</a>
+        <a class="btn btn-secondary" href="{{ url_for('admin.preview_lesson', lesson_id=l.id) }}">معاينة المحتوى</a>
         <button class="btn btn-ghost" data-open="#edit-lesson-modal-{{ l.id }}" type="button">
           <span class="material-symbols-outlined">edit</span> تعديل
         </button>
@@ -154,6 +169,18 @@
           <input class="input ltr" name="material_url" placeholder="https://... (رابط خارجي بديل)" style="margin-top:6px" />
         </div>
         <div class="field"><label>الواجب المرتبط</label><select class="select" name="homework_id"><option value="">لا يوجد</option>{% for h in homework_options %}<option value="{{ h.id }}">{{ h.title }}</option>{% endfor %}</select></div>
+        <div class="field">
+          <label>المحاضر / المدرب</label>
+          <input class="input" name="instructor" value="المهندس عبدالرحمن تامر" placeholder="اسم المحاضر" />
+        </div>
+        <div class="field">
+          <label>محتوى ووصف الحصة (الأهداف والشرح بالتفصيل)</label>
+          <textarea class="textarea" name="description" rows="3" placeholder="اكتب محتوى ووصف الحصة والأهداف التعليمية بالتفصيل..."></textarea>
+        </div>
+        <div class="field">
+          <label>محاور الدرس والتمارين (سطر لكل محور)</label>
+          <textarea class="textarea" name="topics" rows="3" placeholder="مقدمة في المفاهيم الأساسية&#10;تطبيق عملي وتدريب معملي&#10;مناقشة التحديات والحلول"></textarea>
+        </div>
         <div class="field">
           <label>رابط فيديو مسجّل (YouTube, Vimeo...)</label>
           <input class="input ltr" name="video_url" placeholder="https://youtube.com/watch?v=..." />
@@ -226,6 +253,18 @@
         </div>
         <div class="field"><label>الواجب المرتبط</label><select class="select" name="homework_id"><option value="">لا يوجد</option>{% for h in homework_options %}<option value="{{ h.id }}" {% if l.homework_id|string == h.id|string %}selected{% endif %}>{{ h.title }}</option>{% endfor %}</select></div>
         <div class="field">
+          <label>المحاضر / المدرب</label>
+          <input class="input" name="instructor" value="{{ l.instructor or 'المهندس عبدالرحمن تامر' }}" />
+        </div>
+        <div class="field">
+          <label>محتوى ووصف الحصة (الأهداف والشرح بالتفصيل)</label>
+          <textarea class="textarea" name="description" rows="4" placeholder="اكتب محتوى ووصف الحصة والأهداف التعليمية...">{{ l.description or '' }}</textarea>
+        </div>
+        <div class="field">
+          <label>محاور الدرس والتمارين (سطر لكل محور)</label>
+          <textarea class="textarea" name="topics" rows="3" placeholder="سطر لكل محور...">{{ l.topics|join('\n') if l.topics else '' }}</textarea>
+        </div>
+        <div class="field">
           <label>رابط فيديو مسجّل (YouTube, Vimeo...)</label>
           <input class="input ltr" name="video_url" value="{{ l.video_url or '' }}" placeholder="https://youtube.com/watch?v=..." />
         </div>
@@ -264,6 +303,55 @@ function toggleLiveUrlNew(cb) {
 function toggleLiveUrl(id, cb) {
   const el = document.getElementById("live-url-" + id);
   if (el) el.style.display = cb.checked ? "block" : "none";
+}
+
+function filterLessons(type) {
+  const cards = document.querySelectorAll('#lessons-grid .course-card');
+  const searchInput = document.getElementById('lessons-search-input');
+  if (searchInput) searchInput.value = '';
+
+  cards.forEach(card => {
+    if (type === 'all') {
+      card.style.display = '';
+    } else if (type === 'completed') {
+      const prog = parseInt(card.getAttribute('data-progress') || '0', 10);
+      card.style.display = prog > 0 ? '' : 'none';
+    } else if (type === 'live') {
+      const isLive = card.getAttribute('data-is-live') === '1';
+      card.style.display = isLive ? '' : 'none';
+    }
+  });
+
+  document.querySelectorAll('#lesson-track-filters button').forEach(b => {
+    b.classList.remove('active', 'btn-secondary');
+    b.classList.add('btn-ghost');
+  });
+  const allBtn = document.querySelector('#lesson-track-filters button:first-child');
+  if (allBtn && type === 'all') {
+    allBtn.classList.add('active', 'btn-secondary');
+    allBtn.classList.remove('btn-ghost');
+  }
+}
+
+function filterLessonsByTrack(trackName, btn) {
+  const cards = document.querySelectorAll('#lessons-grid .course-card');
+  cards.forEach(card => {
+    const cardTrack = (card.getAttribute('data-track') || '').trim();
+    if (trackName === 'all' || cardTrack.includes(trackName)) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  if (btn) {
+    document.querySelectorAll('#lesson-track-filters button').forEach(b => {
+      b.classList.remove('active', 'btn-secondary');
+      b.classList.add('btn-ghost');
+    });
+    btn.classList.add('active', 'btn-secondary');
+    btn.classList.remove('btn-ghost');
+  }
 }
 </script>
 {% endblock scripts %}

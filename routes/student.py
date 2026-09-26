@@ -18,6 +18,11 @@ from services import (
 student_bp = Blueprint("student", __name__, url_prefix="/student")
 
 
+def _get_student_id():
+    """Return the student identifier (canonical user_id UUID or username) from session."""
+    return session.get("user_id") or session.get("username") or "mariem"
+
+
 @student_bp.route("")
 @student_bp.route("/")
 @role_required("student")
@@ -28,7 +33,7 @@ def root():
 @student_bp.route("/dashboard")
 @role_required("student")
 def dashboard():
-    student_id = session.get("user_id") or 1
+    student_id = _get_student_id()
     student = student_service.get_student_by_id(student_id)
     lesson_overview = lesson_service.get_student_lesson_overview()
     # Attempt to enrich student with real live stats from DB
@@ -55,7 +60,7 @@ def dashboard():
 @student_bp.route("/lessons")
 @role_required("student")
 def lessons():
-    student_id = session.get("user_id") or 1
+    student_id = _get_student_id()
     lessons_list = lesson_service.get_all_lessons()
     completed_ids = lesson_service.get_completed_lesson_ids(student_id)
     completed_count = len(completed_ids)
@@ -70,10 +75,18 @@ def lessons():
 
 
 @student_bp.route("/lessons/<int:lesson_id>")
-@role_required("student")
 def lesson_detail(lesson_id):
-    student_id = session.get("user_id") or 1
+    if session.get("role") == "admin":
+        return redirect(url_for("admin.preview_lesson", lesson_id=lesson_id))
+    if session.get("role") != "student":
+        flash("يرجى تسجيل الدخول كطالب للوصول لهذه الصفحة.", "error")
+        return redirect(url_for("auth.login"))
+
+    student_id = _get_student_id()
     lesson = lesson_service.get_lesson_by_id(lesson_id)
+    if not lesson:
+        flash("الحصة غير موجودة.", "error")
+        return redirect(url_for("student.lessons"))
     is_completed = lesson_service.is_lesson_completed(lesson_id, student_id)
     return render_template(
         "student/lesson.html",
@@ -87,7 +100,7 @@ def lesson_detail(lesson_id):
 @student_bp.route("/lessons/<int:lesson_id>/complete", methods=["POST"])
 @role_required("student")
 def complete_lesson(lesson_id):
-    student_id = session.get("user_id") or 1
+    student_id = _get_student_id()
     is_completed = lesson_service.toggle_lesson_completion(lesson_id, student_id)
     if is_completed:
         flash("تم تسجيل إكمال مشاهدة الحصة بنجاح! تم تحديث رصيدك الأكاديمي.", "success")
@@ -254,12 +267,23 @@ def results():
 @student_bp.route("/files")
 @role_required("student")
 def files():
-    files_list = file_service.get_all_files()
+    folder_id = request.args.get("folder_id", type=int)
+    current_folder = None
+    if folder_id:
+        current_folder = file_service.get_folder_by_id(folder_id)
+        if not current_folder:
+            flash("المجلد المطلوب غير موجود.", "error")
+            return redirect(url_for("student.files"))
+        files_list = file_service.get_files_by_folder(folder_id)
+    else:
+        files_list = file_service.get_root_files()
+
     return render_template(
         "student/files.html",
         user_role="student",
         page_id="files",
         files=files_list,
+        current_folder=current_folder,
     )
 
 
@@ -280,7 +304,7 @@ def notifications():
 @student_bp.route("/profile")
 @role_required("student")
 def profile():
-    student_id = session.get("user_id") or 1
+    student_id = _get_student_id()
     student = student_service.get_student_by_id(student_id)
     # Enrich with real live stats from DB
     db_stats = student_service.get_student_dashboard_stats(student_id)

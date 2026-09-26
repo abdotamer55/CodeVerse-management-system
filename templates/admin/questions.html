@@ -110,32 +110,62 @@
               <option value="mcq">اختيار من متعدد (MCQ)</option>
               <option value="code">مسألة كود برمجي</option>
               <option value="boolean">صح / خطأ</option>
-              <option value="essay">سؤال مقالي</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>مستوى الصعوبة</label>
-            <select class="select" name="difficulty">
-              <option value="مبتدئ">مبتدئ</option>
-              <option value="متوسط" selected>متوسط</option>
-              <option value="متقدم">متقدم</option>
-              <option value="تحدي برمجي">تحدي برمجي</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
+              <option value="essay">سؤال مقالي</op        <div class="field">
           <label>المسار الأكاديمي</label>
           <input class="input" name="track" value="الخوارزميات" placeholder="مثال: هياكل البيانات، هندسة الويب..." />
         </div>
-        <div class="form-grid" data-options-fields>
-          <div class="field"><label>الخيارات</label><textarea class="textarea" name="options" rows="3" placeholder="خيار 1&#10;خيار 2&#10;خيار 3&#10;خيار 4"></textarea></div>
-          <div class="field"><label>رقم الإجابة الصحيحة</label><input class="input" name="correct_index" type="number" min="0" value="0" /></div>
+
+        <!-- MCQ Section -->
+        <div data-section="mcq" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+          <label style="font-weight:600">خيارات السؤال (MCQ)</label>
+          <div class="form-grid">
+            <div class="field"><label class="body-sm">الخيار 1</label><input class="input" name="mcq_opt_0" placeholder="نص الخيار الأول" /></div>
+            <div class="field"><label class="body-sm">الخيار 2</label><input class="input" name="mcq_opt_1" placeholder="نص الخيار الثاني" /></div>
+            <div class="field"><label class="body-sm">الخيار 3</label><input class="input" name="mcq_opt_2" placeholder="نص الخيار الثالث" /></div>
+            <div class="field"><label class="body-sm">الخيار 4</label><input class="input" name="mcq_opt_3" placeholder="نص الخيار الرابع" /></div>
+          </div>
+          <div class="field">
+            <label>الإجابة الصحيحة المعتمدة</label>
+            <select class="select" name="mcq_correct">
+              <option value="0">الخيار الأول (1)</option>
+              <option value="1">الخيار الثاني (2)</option>
+              <option value="2">الخيار الثالث (3)</option>
+              <option value="3">الخيار الرابع (4)</option>
+            </select>
+          </div>
         </div>
-        <div class="field"><label>الدرجة</label><input class="input" name="points" type="number" min="1" value="1" required /></div>
-        <div class="field" data-model-answer>
-          <label>الإجابة النموذجية أو الكود المتوقع</label>
-          <input class="input" name="correct_answer" required placeholder="الناتج المتوقع أو الكود النموذجي..." />
+
+        <!-- Boolean Section -->
+        <div data-section="boolean" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border);display:none">
+          <label style="font-weight:600">سؤال صح / خطأ</label>
+          <div class="field">
+            <label>حدد الإجابة الصحيحة للسؤال</label>
+            <select class="select" name="bool_correct">
+              <option value="0">✓ صح (صحيحة)</option>
+              <option value="1">✗ خطأ (خاطئة)</option>
+            </select>
+          </div>
         </div>
+
+        <!-- Essay Section -->
+        <div data-section="essay" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border);display:none">
+          <label style="font-weight:600">سؤال مقالي (تصحيح يدوي)</label>
+          <div class="field">
+            <label>نموذج الإجابة أو معايير التصحيح المطلوبة من الطالب</label>
+            <textarea class="textarea" name="essay_model_answer" rows="4" placeholder="اكتب عناصر الإجابة النموذجية أو النقاط الواجب توافرها في إجابة الطالب..."></textarea>
+          </div>
+        </div>
+
+        <!-- Code Section -->
+        <div data-section="code" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border);display:none">
+          <label style="font-weight:600">مسألة برمجية (كود)</label>
+          <div class="field">
+            <label>الكود النموذجي أو مخرجات الحل المتوقعة</label>
+            <textarea class="textarea" name="code_solution" rows="4" style="direction:ltr;font-family:monospace" placeholder="e.g. def solve(): ..."></textarea>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:0.5rem"><label>الدرجة</label><input class="input" name="points" type="number" min="1" value="1" required /></div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">
           <button class="btn btn-ghost" type="button" data-close="#q-modal">إلغاء</button>
           <button class="btn btn-primary" type="submit">إضافة للبنك</button>
@@ -181,15 +211,58 @@
           <label>المسار الأكاديمي</label>
           <input class="input" name="track" value="{{ q.track }}" />
         </div>
-        <div class="form-grid" data-options-fields>
-          <div class="field"><label>الخيارات</label><textarea class="textarea" name="options" rows="3">{{ q.options|join('\n') if q.options else '' }}</textarea></div>
-          <div class="field"><label>رقم الإجابة الصحيحة</label><input class="input" name="correct_index" type="number" min="0" value="{{ q.correct_index if q.correct_index is not none else 0 }}" /></div>
+
+        <!-- MCQ Section -->
+        <div data-section="mcq" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+          <label style="font-weight:600">خيارات السؤال (MCQ)</label>
+          <div class="form-grid">
+            <div class="field"><label class="body-sm">الخيار 1</label><input class="input" name="mcq_opt_0" value="{{ q.options[0] if q.options and q.options|length > 0 else '' }}" placeholder="نص الخيار الأول" /></div>
+            <div class="field"><label class="body-sm">الخيار 2</label><input class="input" name="mcq_opt_1" value="{{ q.options[1] if q.options and q.options|length > 1 else '' }}" placeholder="نص الخيار الثاني" /></div>
+            <div class="field"><label class="body-sm">الخيار 3</label><input class="input" name="mcq_opt_2" value="{{ q.options[2] if q.options and q.options|length > 2 else '' }}" placeholder="نص الخيار الثالث" /></div>
+            <div class="field"><label class="body-sm">الخيار 4</label><input class="input" name="mcq_opt_3" value="{{ q.options[3] if q.options and q.options|length > 3 else '' }}" placeholder="نص الخيار الرابع" /></div>
+          </div>
+          <div class="field">
+            <label>الإجابة الصحيحة المعتمدة</label>
+            <select class="select" name="mcq_correct">
+              <option value="0" {% if q.correct_index == 0 %}selected{% endif %}>الخيار الأول (1)</option>
+              <option value="1" {% if q.correct_index == 1 %}selected{% endif %}>الخيار الثاني (2)</option>
+              <option value="2" {% if q.correct_index == 2 %}selected{% endif %}>الخيار الثالث (3)</option>
+              <option value="3" {% if q.correct_index == 3 %}selected{% endif %}>الخيار الرابع (4)</option>
+            </select>
+          </div>
         </div>
-        <div class="field"><label>الدرجة</label><input class="input" name="points" type="number" min="1" value="{{ q.points|default(1) }}" required /></div>
-        <div class="field" data-model-answer>
-          <label>الإجابة النموذجية أو الكود المتوقع</label>
-          <textarea class="textarea" name="correct_answer" rows="2">{{ q.answer_preview or q.correct_answer }}</textarea>
+
+        <!-- Boolean Section -->
+        <div data-section="boolean" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+          <label style="font-weight:600">سؤال صح / خطأ</label>
+          <div class="field">
+            <label>حدد الإجابة الصحيحة للسؤال</label>
+            <select class="select" name="bool_correct">
+              <option value="0" {% if q.correct_index == 0 or q.correct_answer == 'صح' %}selected{% endif %}>✓ صح (صحيحة)</option>
+              <option value="1" {% if q.correct_index == 1 or q.correct_answer == 'خطأ' %}selected{% endif %}>✗ خطأ (خاطئة)</option>
+            </select>
+          </div>
         </div>
+
+        <!-- Essay Section -->
+        <div data-section="essay" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+          <label style="font-weight:600">سؤال مقالي (تصحيح يدوي)</label>
+          <div class="field">
+            <label>نموذج الإجابة أو معايير التصحيح المطلوبة من الطالب</label>
+            <textarea class="textarea" name="essay_model_answer" rows="4" placeholder="اكتب عناصر الإجابة النموذجية أو النقاط الواجب توافرها في إجابة الطالب...">{{ q.answer_preview or q.correct_answer or '' }}</textarea>
+          </div>
+        </div>
+
+        <!-- Code Section -->
+        <div data-section="code" class="stack" style="gap:0.75rem;padding:12px;background:var(--surface-lowest);border-radius:8px;border:1px solid var(--border)">
+          <label style="font-weight:600">مسألة برمجية (كود)</label>
+          <div class="field">
+            <label>الكود النموذجي أو مخرجات الحل المتوقعة</label>
+            <textarea class="textarea" name="code_solution" rows="4" style="direction:ltr;font-family:monospace" placeholder="e.g. def solve(): ...">{{ q.answer_preview or q.correct_answer or '' }}</textarea>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:0.5rem"><label>الدرجة</label><input class="input" name="points" type="number" min="1" value="{{ q.points|default(1) }}" required /></div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">
           <button class="btn btn-ghost" type="button" data-close="#edit-q-modal-{{ q.id }}">إلغاء</button>
           <button class="btn btn-primary" type="submit">حفظ التعديلات</button>
@@ -200,24 +273,31 @@
   {% endfor %}
 {% endblock modals %}
 
-{% block extra_scripts %}
+{% block scripts %}
+{{ super() }}
 <script>
-document.querySelectorAll('[data-question-category]').forEach((select) => {
-  const form = select.closest('form');
-  const options = form.querySelector('[data-options-fields]');
-  const answer = form.querySelector('[data-model-answer]');
-  const optionInput = options.querySelector('[name="options"]');
-  const indexInput = options.querySelector('[name="correct_index"]');
-  const sync = () => {
-    const essay = select.value === 'essay';
-    const boolean = select.value === 'boolean';
-    options.hidden = essay;
-    answer.hidden = essay;
-    optionInput.required = !essay;
-    if (boolean) { optionInput.value = 'True\\nFalse'; optionInput.readOnly = true; indexInput.max = '1'; }
-    else { optionInput.readOnly = false; indexInput.removeAttribute('max'); }
-  };
-  select.addEventListener('change', sync); sync();
+function syncQuestionCategory(form) {
+  const sel = form.querySelector('[data-question-category]');
+  if (!sel) return;
+  const val = sel.value;
+  const mcq = form.querySelector('[data-section="mcq"]');
+  const bool = form.querySelector('[data-section="boolean"]');
+  const essay = form.querySelector('[data-section="essay"]');
+  const code = form.querySelector('[data-section="code"]');
+
+  if (mcq) mcq.style.display = (val === 'mcq') ? 'block' : 'none';
+  if (bool) bool.style.display = (val === 'boolean') ? 'block' : 'none';
+  if (essay) essay.style.display = (val === 'essay') ? 'block' : 'none';
+  if (code) code.style.display = (val === 'code') ? 'block' : 'none';
+}
+
+document.querySelectorAll('[data-question-category]').forEach((sel) => {
+  const form = sel.closest('form');
+  if (form) {
+    sel.addEventListener('change', () => syncQuestionCategory(form));
+    syncQuestionCategory(form);
+  }
 });
 </script>
-{% endblock extra_scripts %}
+{% endblock scripts %}
+

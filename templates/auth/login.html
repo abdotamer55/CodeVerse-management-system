@@ -9,18 +9,27 @@
     <div class="glow glow-a"></div>
     <div class="glow glow-b"></div>
 
-    <div class="between" style="position:relative;z-index:1;margin-bottom:1rem">
-      <span class="pill"><span class="dot pulse"></span> النظام متصل 99.9%</span>
-      <button class="btn btn-ghost label-sm" type="button"><span class="material-symbols-outlined">language</span> English</button>
+    <!-- Top Bar with Return/Back Button -->
+    <div class="between" style="position:relative;z-index:1;margin-bottom:1.25rem">
+      <a class="btn btn-ghost label-sm" href="{{ url_for('index') }}" style="gap:6px;font-weight:700;color:var(--text-primary);padding:0.4rem 0.75rem;border-radius:var(--radius-md);background:rgba(255,255,255,0.04)">
+        <span class="material-symbols-outlined" style="font-size:1.15rem">arrow_forward</span>
+        <span>رجوع للرئيسية</span>
+      </a>
+      <span class="pill"><span class="dot pulse"></span> النظام متصل ومؤمن</span>
     </div>
 
+    <!-- Brand Lockup with CodeVerse Logo -->
     <div class="brand-lockup" style="position:relative;z-index:1">
-      <div class="brand-icon"><span class="material-symbols-outlined icon-fill" style="font-size:32px">terminal</span></div>
-      <div class="row"><span class="headline-sm">كودفيرس</span><span class="badge badge-info">النسخة الخاصة</span></div>
-      <h1 class="headline-md">تسجيل الدخول إلى المنصة</h1>
-      <p class="body-sm muted">أدخل بيانات حسابك المعتمدة للوصول إلى بيئتك التعليمية التفاعلية</p>
+      <a href="{{ url_for('index') }}" title="العودة للصفحة الرئيسية" style="display:inline-block;margin-bottom:0.75rem">
+        <img src="{{ url_for('static', filename='icons/logo-mark.svg') }}" alt="CodeVerse" style="width:54px;height:54px;border-radius:14px;filter:drop-shadow(0 4px 16px rgba(0,245,255,0.3))" />
+      </a>
+      <div class="row" style="gap:8px">
+        <span class="headline-sm" style="font-family:'Inter',sans-serif;font-weight:900;letter-spacing:-0.5px">Code<span style="color:#00f5ff">Verse</span></span>
+        <span class="badge badge-info">كودفيرس</span>
+      </div>
+      <h1 class="headline-md" style="margin-top:8px">تسجيل الدخول إلى المنصة</h1>
+      <p class="body-sm muted">أدخل بيانات حسابك المعتمدة للوصول إلى بيئتك التعليمية</p>
     </div>
-
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -63,9 +72,15 @@
         <span class="label-sm success row"><span class="material-symbols-outlined" style="font-size:14px">shield</span> اتصال مشفر</span>
       </div>
 
-      <button class="btn btn-primary" type="submit" style="width:100%;padding:0.85rem">
-        <span>تسجيل الدخول</span> <span class="material-symbols-outlined">arrow_back</span>
+      <button class="btn btn-primary" type="submit" style="width:100%;padding:0.85rem;font-weight:700;gap:8px">
+        <span>تسجيل الدخول</span> <span class="material-symbols-outlined">login</span>
       </button>
+
+      <!-- Bottom Return/Back Link -->
+      <a class="btn btn-ghost" href="{{ url_for('index') }}" style="width:100%;padding:0.65rem;font-size:13px;gap:6px;color:var(--on-surface-variant)">
+        <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+        <span>العودة إلى الصفحة الرئيسية</span>
+      </a>
     </form>
   </div>
 </main>

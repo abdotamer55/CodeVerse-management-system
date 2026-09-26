@@ -7,56 +7,8 @@ from database import execute_query, check_connection
 
 logger = logging.getLogger(__name__)
 
-_RESULTS_DB = [
-    {
-        "id": 1,
-        "student_name": "زياد حسام الدين",
-        "student_code": "#ST-2024-089",
-        "assessment": "اختبار هياكل البيانات والخوارزميات",
-        "score_percent": 96.0,
-        "score_display": "96%",
-        "date": "10 سبتمبر 2024",
-        "status": "passed",
-        "grade_badge": "badge-success",
-        "grade_label": "ممتاز ومتميز",
-    },
-    {
-        "id": 2,
-        "student_name": "سارة طارق المنصور",
-        "student_code": "#ST-2024-114",
-        "assessment": "اختبار هياكل البيانات والخوارزميات",
-        "score_percent": 91.0,
-        "score_display": "91%",
-        "date": "10 سبتمبر 2024",
-        "status": "passed",
-        "grade_badge": "badge-success",
-        "grade_label": "جيد جداً مرتفع",
-    },
-    {
-        "id": 3,
-        "student_name": "عمر خالد الدوسري",
-        "student_code": "#ST-2024-032",
-        "assessment": "اختبار هياكل البيانات والخوارزميات",
-        "score_percent": 58.0,
-        "score_display": "58%",
-        "date": "10 سبتمبر 2024",
-        "status": "repeat",
-        "grade_badge": "badge-danger",
-        "grade_label": "فرصة إعادة",
-    },
-    {
-        "id": 4,
-        "student_name": "زياد حسام الدين",
-        "student_code": "#ST-2024-089",
-        "assessment": "مشروع REST API وتخزين Redis",
-        "score_percent": 95.0,
-        "score_display": "38 / 40",
-        "date": "12 سبتمبر 2024",
-        "status": "passed",
-        "grade_badge": "badge-success",
-        "grade_label": "ممتاز",
-    },
-]
+# Empty — all results come from the live database.
+_RESULTS_DB = []
 
 
 def is_db_active():
@@ -73,7 +25,7 @@ def get_results_summary():
         try:
             sql = """
                 SELECT 
-                    ROUND(AVG(score_percent), 1) as avg_score,
+                    COALESCE(ROUND(AVG(score_percent), 1), 0.0) as avg_score,
                     COUNT(CASE WHEN status = 'passed' THEN 1 END) as passed_cnt,
                     COUNT(CASE WHEN status = 'repeat' THEN 1 END) as repeat_cnt,
                     COUNT(*) as total_cnt
@@ -82,8 +34,8 @@ def get_results_summary():
             rows = execute_query(sql, fetch=True)
             if rows:
                 r = rows[0]
-                total = r["total_cnt"] or 1
-                pass_rate = round((r["passed_cnt"] / total) * 100, 1)
+                total = r["total_cnt"] or 0
+                pass_rate = round((r["passed_cnt"] / total) * 100, 1) if total > 0 else 0.0
                 return {
                     "cohort_average": f"{r['avg_score']}%",
                     "pass_rate": f"{pass_rate}%",
@@ -94,10 +46,10 @@ def get_results_summary():
             logger.warning(f"Error querying results summary: {e}")
 
     return {
-        "cohort_average": "87.6%",
-        "pass_rate": "91.2%",
-        "needs_repeat": 14,
-        "graded_exams_count": 32,
+        "cohort_average": "0.0%",
+        "pass_rate": "0.0%",
+        "needs_repeat": 0,
+        "graded_exams_count": 0,
     }
 
 
@@ -107,7 +59,7 @@ def get_all_results():
         try:
             sql = "SELECT * FROM results ORDER BY id DESC;"
             rows = execute_query(sql, fetch=True)
-            if rows:
+            if rows is not None:
                 return [dict(r) for r in rows]
         except Exception as e:
             logger.warning(f"Error querying all results: {e}")

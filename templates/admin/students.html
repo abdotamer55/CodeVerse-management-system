@@ -123,13 +123,13 @@
         </td>
         <td>{{ s.track }}<br /><span class="body-sm muted">{{ s.level }}</span></td>
         <td>
-          <div class="progress {% if s.completed_lessons == s.total_lessons %}success{% endif %}">
-            <span style="width:{{ (s.completed_lessons / s.total_lessons * 100)|int }}%"></span>
+          <div class="progress {% if s.total_lessons and s.total_lessons > 0 and s.completed_lessons == s.total_lessons %}success{% endif %}">
+            <span style="width:{{ ((s.completed_lessons / s.total_lessons * 100)|int) if s.total_lessons and s.total_lessons > 0 else 0 }}%"></span>
           </div>
           <span class="ltr">{{ s.completed_lessons }}/{{ s.total_lessons }}</span>
         </td>
         <td>
-          <span class="badge {% if s.completed_homework == s.total_homework %}badge-success{% else %}badge-warn{% endif %}">
+          <span class="badge {% if s.total_homework and s.total_homework > 0 and s.completed_homework == s.total_homework %}badge-success{% else %}badge-warn{% endif %}">
             {{ s.completed_homework }}/{{ s.total_homework }} مكتمل
           </span>
         </td>
@@ -227,18 +227,15 @@
           <div class="field">
             <label>المسار الأكاديمي</label>
             <select class="select" name="track">
-              <option value="هندسة برمجيات الأنظمة">هندسة برمجيات الأنظمة</option>
-              <option value="تطوير واجهات React">تطوير واجهات React</option>
-              <option value="تطوير الخوادم Node.js">تطوير الخوادم Node.js</option>
-              <option value="تطبيقات الجوال Flutter">تطبيقات الجوال Flutter</option>
+              <option value="أولى بكالوريا">أولى بكالوريا</option>
+              <option value="ثانية بكالوريا">ثانية بكالوريا</option>
             </select>
           </div>
           <div class="field">
             <label>المستوى الدراسي</label>
             <select class="select" name="level">
-              <option value="المستوى الأول">المستوى الأول</option>
-              <option value="المستوى الثاني">المستوى الثاني</option>
-              <option value="المستوى المتقدم L3">المستوى المتقدم L3</option>
+              <option value="أولى بكالوريا">أولى بكالوريا</option>
+              <option value="ثانية بكالوريا">ثانية بكالوريا</option>
             </select>
           </div>
         </div>
@@ -282,18 +279,15 @@
           <div class="field">
             <label>المسار</label>
             <select class="select" name="track">
-              <option value="هندسة برمجيات الأنظمة" {% if s.track == 'هندسة برمجيات الأنظمة' %}selected{% endif %}>هندسة برمجيات الأنظمة</option>
-              <option value="تطوير واجهات React" {% if s.track == 'تطوير واجهات React' %}selected{% endif %}>تطوير واجهات React</option>
-              <option value="تطوير الخوادم Node.js" {% if s.track == 'تطوير الخوادم Node.js' %}selected{% endif %}>تطوير الخوادم Node.js</option>
-              <option value="تطبيقات الجوال Flutter" {% if s.track == 'تطبيقات الجوال Flutter' %}selected{% endif %}>تطبيقات الجوال Flutter</option>
+              <option value="أولى بكالوريا" {% if s.track == 'أولى بكالوريا' %}selected{% endif %}>أولى بكالوريا</option>
+              <option value="ثانية بكالوريا" {% if s.track == 'ثانية بكالوريا' %}selected{% endif %}>ثانية بكالوريا</option>
             </select>
           </div>
           <div class="field">
             <label>المستوى</label>
             <select class="select" name="level">
-              <option value="المستوى الأول" {% if 'الأول' in s.level %}selected{% endif %}>المستوى الأول</option>
-              <option value="المستوى الثاني" {% if 'الثاني' in s.level %}selected{% endif %}>المستوى الثاني</option>
-              <option value="المستوى المتقدم L3" {% if 'المتقدم' in s.level %}selected{% endif %}>المستوى المتقدم L3</option>
+              <option value="أولى بكالوريا" {% if 'أولى' in s.level %}selected{% endif %}>أولى بكالوريا</option>
+              <option value="ثانية بكالوريا" {% if 'ثانية' in s.level %}selected{% endif %}>ثانية بكالوريا</option>
             </select>
           </div>
           <div class="field" style="grid-column:1/-1">

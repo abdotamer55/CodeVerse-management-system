@@ -9,9 +9,16 @@
     <span class="material-symbols-outlined">chevron_left</span>
     <span>{{ lesson.code }}: {{ lesson.short_title }}</span>
   </nav>
-  <a class="btn btn-secondary" href="{{ back_url or (url_for('admin.dashboard') if user_role == 'admin' else url_for('student.lessons')) }}">
-    <span class="material-symbols-outlined">arrow_forward</span> رجوع
-  </a>
+  <div class="row" style="gap:8px;align-items:center">
+    {% if user_role == 'admin' %}
+    <button class="btn btn-primary" type="button" data-open="#edit-lesson-modal-preview">
+      <span class="material-symbols-outlined">edit_note</span> تعديل المحتوى
+    </button>
+    {% endif %}
+    <a class="btn btn-secondary" href="{{ back_url or (url_for('admin.lessons') if user_role == 'admin' else url_for('student.lessons')) }}">
+      <span class="material-symbols-outlined">arrow_forward</span> رجوع
+    </a>
+  </div>
 </div>
 
 <div class="card card-lg" style="padding:0;overflow:hidden">
@@ -77,7 +84,7 @@
         <span class="ltr accent">{{ lesson.code }}</span>
         {% if is_live %}<span class="badge badge-warn" style="margin-right:8px">بث مباشر</span>{% endif %}
         <h1 class="headline-md" style="margin-top:4px">{{ lesson.title }}</h1>
-        <p class="body-sm muted">{{ lesson.track }}</p>
+        <p class="body-sm muted">المسار: {{ lesson.track }} · المحاضر: <strong style="color:var(--text)">{{ lesson.instructor or 'المهندس عبدالرحمن تامر' }}</strong></p>
         <p class="body-sm muted">{{ lesson.lesson_date or 'التاريخ يحدده المسؤول' }}</p>
       </div>
       {% if lesson.homework_id %}<a class="btn btn-ghost" href="{{ url_for('student.homework_detail', hw_id=lesson.homework_id) }}">الواجب المرتبط</a>{% endif %}
@@ -105,16 +112,89 @@
 
     <div class="card card-lg" style="margin-top:1.5rem;background:var(--surface-low)">
       <h2 class="headline-sm">وصف الحصة والأهداف التعليمية</h2>
-      <p class="body-md muted" style="margin-top:8px;line-height:1.8">{{ lesson.description }}</p>
+      {% if lesson.description %}
+      <p class="body-md muted" style="margin-top:8px;line-height:1.8;white-space:pre-line">{{ lesson.description }}</p>
+      {% else %}
+      <p class="body-sm muted" style="margin-top:8px">لم تتم إضافة وصف تفصيلي بعد لهذه الحصة.</p>
+      {% endif %}
 
       <h3 class="headline-sm" style="margin-top:1.25rem">محاور الدرس والتمارين المعملية:</h3>
+      {% if lesson.topics %}
       <ul class="stack" style="gap:8px;margin-top:8px;padding-right:1.25rem;list-style:disc">
-        {% for topic in (lesson.topics or []) %}
+        {% for topic in lesson.topics %}
         <li class="body-sm muted">{{ topic }}</li>
         {% endfor %}
       </ul>
+      {% else %}
+      <p class="body-sm muted" style="margin-top:8px">لم تُسجل محاور محددة بعد.</p>
+      {% endif %}
     </div>
   </div>
 </div>
 {% endblock content %}
+
+{% block modals %}
+  {{ super() }}
+  {% if user_role == 'admin' %}
+  <!-- Quick Edit Modal for Admin in Preview -->
+  <div class="modal-backdrop" id="edit-lesson-modal-preview">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">تعديل محتوى الحصة</h2>
+          <span class="ltr accent">{{ lesson.code }}</span>
+        </div>
+        <button class="btn-icon" data-close="#edit-lesson-modal-preview" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.edit_lesson', lesson_id=lesson.id) }}" enctype="multipart/form-data">
+        <input type="hidden" name="redirect_to" value="{{ request.path }}" />
+        <div class="field">
+          <label>عنوان الحصة</label>
+          <input class="input" name="title" value="{{ lesson.title }}" required />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>كود الدرس</label>
+            <input class="input ltr" name="code" value="{{ lesson.code }}" />
+          </div>
+          <div class="field">
+            <label>المدة (دقيقة)</label>
+            <input class="input" name="duration_minutes" type="number" value="{{ lesson.duration_minutes }}" />
+          </div>
+        </div>
+        <div class="field">
+          <label>المسار الأكاديمي</label>
+          <input class="input" name="track" value="{{ lesson.track }}" />
+        </div>
+        <div class="field">
+          <label>المحاضر / المدرب</label>
+          <input class="input" name="instructor" value="{{ lesson.instructor or 'المهندس عبدالرحمن تامر' }}" />
+        </div>
+        <div class="field">
+          <label>محتوى ووصف الحصة (الأهداف والشرح بالتفصيل)</label>
+          <textarea class="textarea" name="description" rows="5" placeholder="اكتب محتوى ووصف الحصة بالتفصيل...">{{ lesson.description or '' }}</textarea>
+        </div>
+        <div class="field">
+          <label>محاور الدرس والتمارين (سطر لكل محور)</label>
+          <textarea class="textarea" name="topics" rows="4" placeholder="سطر لكل محور...">{{ lesson.topics|join('\n') if lesson.topics else '' }}</textarea>
+        </div>
+        <div class="field">
+          <label>رابط فيديو مسجّل (YouTube, Vimeo...)</label>
+          <input class="input ltr" name="video_url" value="{{ lesson.video_url or '' }}" placeholder="https://youtube.com/watch?v=..." />
+        </div>
+        <div class="field">
+          <label>رفع مذكرة PDF (من الجهاز)</label>
+          <input class="input" type="file" name="material_file" accept=".pdf,.zip,.rar,.doc,.docx,.ppt,.pptx" />
+          <input class="input ltr" name="material_url" value="{{ lesson.material_url or '' }}" placeholder="https://... (رابط خارجي بديل)" style="margin-top:6px" />
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#edit-lesson-modal-preview">إلغاء</button>
+          <button class="btn btn-primary" type="submit">حفظ وتحديث المعاينة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+{% endblock modals %}
+
 

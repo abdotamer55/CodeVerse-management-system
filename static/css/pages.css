@@ -173,3 +173,272 @@
   color: var(--cyan);
   overflow: auto;
 }
+
+/* ==========================================================================
+   Enhanced Landing Page Architecture & Theme
+   ========================================================================== */
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(11, 19, 38, 0.75);
+  border-bottom: 1px solid rgba(66, 71, 84, 0.25);
+  transition: all 0.3s ease;
+}
+
+.landing-brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.landing-brand:hover {
+  transform: translateY(-1px);
+}
+
+.landing-brand img {
+  height: 44px;
+  width: auto;
+  filter: drop-shadow(0 2px 12px rgba(0, 245, 255, 0.2));
+  transition: filter 0.3s ease;
+}
+
+.landing-brand:hover img {
+  filter: drop-shadow(0 4px 20px rgba(0, 245, 255, 0.4));
+}
+
+.landing-hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.landing-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-top: 2rem;
+  padding: 1.25rem 1.75rem;
+  background: rgba(19, 27, 46, 0.75);
+  border: 1px solid rgba(66, 71, 84, 0.35);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.landing-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.landing-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.landing-stat-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-stat-lbl {
+  font-size: 0.825rem;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+}
+
+/* Portals Detailed Cards (Student vs Teacher) */
+.portals-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.portal-box {
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-low);
+  border: 1px solid rgba(66, 71, 84, 0.35);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.portal-box:hover {
+  transform: translateY(-4px);
+}
+
+.portal-box.student-portal {
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: 0 12px 36px rgba(0, 245, 255, 0.08);
+}
+
+.portal-box.student-portal:hover {
+  border-color: rgba(0, 245, 255, 0.6);
+  box-shadow: 0 16px 48px rgba(0, 245, 255, 0.16);
+}
+
+.portal-box.teacher-portal {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 12px 36px rgba(168, 85, 247, 0.08);
+}
+
+.portal-box.teacher-portal:hover {
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 16px 48px rgba(168, 85, 247, 0.16);
+}
+
+.portal-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.portal-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.925rem;
+  color: var(--on-surface);
+  line-height: 1.5;
+}
+
+.portal-feature-list li .feat-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Feature Showcase Grid */
+.landing-section-head {
+  text-align: center;
+  max-width: 48rem;
+  margin: 3.5rem auto 1.5rem auto;
+}
+
+.platform-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.platform-feature-card {
+  background: var(--surface-container);
+  border: 1px solid rgba(66, 71, 84, 0.3);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.platform-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary-container);
+  box-shadow: var(--shadow-glow);
+}
+
+/* System Showcase Mockup */
+.system-preview-frame {
+  margin-top: 3rem;
+  background: #090e1a;
+  border: 1px solid rgba(66, 71, 84, 0.4);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.preview-window-bar {
+  background: #060a14;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(66, 71, 84, 0.3);
+}
+
+.window-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.window-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.window-dots span:nth-child(1) { background: #ef4444; }
+.window-dots span:nth-child(2) { background: #eab308; }
+.window-dots span:nth-child(3) { background: #22c55e; }
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  padding: 1.5rem;
+  gap: 1.5rem;
+}
+
+/* FAQ Grid */
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.faq-card {
+  background: var(--surface-low);
+  border: 1px solid rgba(66, 71, 84, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .landing-stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .portals-container {
+    grid-template-columns: 1fr;
+  }
+  .platform-features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .preview-grid {
+    grid-template-columns: 1fr;
+  }
+  .faq-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .landing-stats-bar {
+    grid-template-columns: 1fr;
+  }
+  .platform-features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,33 +1,347 @@
 {% extends "base.html" %}
 
-{% block title %}المنصة التعليمية{% endblock %}
+{% block title %}منصة CodeVerse للتعليم الأكاديمي والبرمجة{% endblock %}
 
 {% block body_layout %}
+<!-- ================= Top Navigation Header ================= -->
 <header class="landing-nav">
-  <div class="row">
-    <img src="{{ url_for('static', filename='icons/logo.svg') }}" alt="كودفيرس" style="height:36px" />
+  <div class="row" style="align-items:center;gap:1rem">
+    <a href="{{ url_for('index') }}" class="landing-brand" aria-label="CodeVerse Home">
+      <img src="{{ url_for('static', filename='icons/logo.svg') }}" alt="CodeVerse كودفيرس" />
+    </a>
   </div>
-  <div class="wrap">
-    <a class="btn btn-ghost" href="{{ url_for('auth.login') }}">تسجيل الدخول</a>
-    <a class="btn btn-primary" href="{{ url_for('auth.login') }}">ابدأ الآن</a>
+
+  <div class="wrap" style="display:flex;align-items:center;gap:0.75rem">
+    <a class="btn btn-ghost" href="{{ url_for('student.dashboard') }}" style="gap:8px;font-weight:700">
+      <span class="material-symbols-outlined" style="font-size:1.25rem;color:var(--cyan)">school</span>
+      <span>بوابة الطالب</span>
+    </a>
+    <a class="btn btn-primary" href="{{ url_for('admin.dashboard') }}" style="gap:8px;font-weight:700">
+      <span class="material-symbols-outlined" style="font-size:1.25rem">co_present</span>
+      <span>بوابة المدرس</span>
+    </a>
   </div>
 </header>
-<section class="landing-hero stack">
-  <div class="page-hero">
+
+<!-- ================= Main Landing Content ================= -->
+<main class="landing-hero stack" style="gap:3rem;padding-bottom:4rem">
+  
+  <!-- Hero Section -->
+  <section class="page-hero" style="padding:2.5rem 2rem;position:relative;overflow:hidden">
     <div class="glow glow-a"></div>
-    <span class="badge badge-info">الفصل الدراسي الأول 2024 / 2025</span>
-    <h1 class="headline-xl" style="margin-top:12px">بيئة تعلم هندسة البرمجيات بواجهة عربية احترافية</h1>
-    <p class="body-lg muted" style="max-width:48rem">رصد فوري للنشاط الصفي، اختبارات مؤقتة، بنك أسئلة، ومكتبة ملفات سحابية — بنفس الهوية البصرية الداكنة لتصاميم كودفيرس.</p>
-    <div class="hero-actions" style="margin-top:1rem">
-      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">دخول تجريبي للمنصة</a>
-      <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">لوحة الإدارة</a>
-      <a class="btn btn-secondary" href="{{ url_for('student.dashboard') }}">لوحة الطالب</a>
+    <div class="glow glow-b" style="bottom:-50px;right:-50px"></div>
+
+    <div class="landing-hero-content stack" style="gap:1.25rem">
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <span class="badge badge-info" style="gap:6px">
+          <span class="dot pulse"></span>
+          المنظومة الأكاديمية الذكية لإدارة وتعلم البرمجيات
+        </span>
+        <span class="badge badge-neutral">البيئة السحابية المعتمدة</span>
+      </div>
+
+      <h1 class="headline-xl" style="max-width:56rem;line-height:1.25">
+        بيئة <span style="background:linear-gradient(135deg,#00f5ff,#4d8eff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">CodeVerse</span>: بيئة تعلم هندسة البرمجيات والتعليم الأكاديمي
+      </h1>
+
+      <p class="body-lg muted" style="max-width:52rem;line-height:1.75">
+        نظام سحابي متكامل يربط بين المدرس والطلاب في فصول دراسية تفاعلية؛ يتيح حضور المحاضرات المباشرة والمسجلة، خوض الاختبارات الذكية بمؤقت زمني صارم، تسليم ومراجعة الواجبات البرمجية، ورصد فوري للنتائج ولوحة الشرف.
+      </p>
+
+      <!-- Primary Actions: Student & Teacher ONLY -->
+      <div class="hero-actions" style="margin-top:0.75rem;gap:1rem;display:flex;align-items:center;flex-wrap:wrap">
+        <a class="btn btn-primary" href="{{ url_for('student.dashboard') }}" style="padding:0.85rem 2rem;font-size:1.05rem;font-weight:700;gap:10px">
+          <span class="material-symbols-outlined" style="font-size:1.4rem">school</span>
+          <span>بوابة الطالب</span>
+        </a>
+        <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}" style="padding:0.85rem 2rem;font-size:1.05rem;font-weight:700;gap:10px">
+          <span class="material-symbols-outlined" style="font-size:1.4rem;color:var(--primary)">co_present</span>
+          <span>بوابة المدرس</span>
+        </a>
+      </div>
+
+      <!-- Professional Platform Highlights -->
+      <div class="hero-feature-tags" style="display:flex;align-items:center;flex-wrap:wrap;gap:1.5rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(66,71,84,0.3)">
+        <div class="row muted body-sm" style="gap:8px">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--cyan)">verified</span>
+          <span>منظومة برمجية معتمدة ومؤمنة</span>
+        </div>
+        <div class="row muted body-sm" style="gap:8px">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary-container)">timer</span>
+          <span>امتحانات مؤتمتة بمؤقت ذكي</span>
+        </div>
+        <div class="row muted body-sm" style="gap:8px">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--secondary)">code_blocks</span>
+          <span>تصحيح وفحص برمجيات تلقائي</span>
+        </div>
+        <div class="row muted body-sm" style="gap:8px">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--tertiary)">cloud_sync</span>
+          <span>حفظ سحابي فوري للإجابات</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Portals In-Depth Comparison Section ================= -->
+  <section class="stack" style="gap:1rem">
+    <div class="landing-section-head">
+      <span class="badge badge-info" style="margin-bottom:0.5rem">بوابات مخصصة لكل مستخدم</span>
+      <h2 class="headline-lg">اختر بوابتك واستمتع بتجربة مخصصة</h2>
+      <p class="body-md muted">صُممت المنصة لتوفير واجهات متخصصة تضمن للطالب بيئة تعلم سلسة وللمعلم أدوات إدارة وتحكم قوية.</p>
+    </div>
+
+    <div class="portals-container">
+      <!-- Student Portal Card -->
+      <div class="portal-box student-portal">
+        <div class="stack" style="gap:1rem">
+          <div class="between">
+            <div class="row" style="gap:12px">
+              <div class="stat-icon blue" style="width:50px;height:50px">
+                <span class="material-symbols-outlined" style="font-size:28px">school</span>
+              </div>
+              <div>
+                <h3 class="headline-md" style="margin:0;color:var(--cyan)">بوابة الطالب</h3>
+                <span class="label-sm muted">بيئة تفاعلية للمتابعة والتعلم والتطبيق</span>
+              </div>
+            </div>
+            <span class="badge badge-info">للمتدربين</span>
+          </div>
+
+          <p class="body-sm muted" style="line-height:1.6">
+            مساحة عمل رقمية تتيح للطالب حضور الدروس، حل التكاليف، خوض الاختبارات، ومتابعة تطوره الأكاديمي خطوة بخطوة.
+          </p>
+
+          <ul class="portal-feature-list">
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:var(--cyan)">check_circle</span>
+              <span><strong>محاضرات ومسارات دراسية:</strong> وصول فوري للدروس المسجلة وروابط البث المباشر مع مذكرات PDF.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:var(--cyan)">check_circle</span>
+              <span><strong>اختبارات ذكية مؤقتة:</strong> نظام امتحانات دقيق بمؤقت تنازلي، حفظ تلقائي، وتصحيح فوري.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:var(--cyan)">check_circle</span>
+              <span><strong>تسليم الواجبات البرمجية:</strong> إمكانية رفع حلول الواجبات وملفات الأكواد ومراجعة تعليقات المعلم.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:var(--cyan)">check_circle</span>
+              <span><strong>لوحة الشرف ونتائجي:</strong> رصد شامل للدرجات، ترتيب الطلاب المتميزين، وتقارير الإنجاز الفردية.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:var(--cyan)">check_circle</span>
+              <span><strong>مكتبة الملفات والمراجع:</strong> تحميل مذكرات الأكواد، شرائح الشرح، والكتب التدريبية المعتمدة.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div style="margin-top:1rem">
+          <a class="btn btn-primary" href="{{ url_for('student.dashboard') }}" style="width:100%;padding:0.85rem;font-weight:700;gap:8px">
+            <span class="material-symbols-outlined">login</span>
+            <span>الدخول إلى بوابة الطالب</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Teacher Portal Card -->
+      <div class="portal-box teacher-portal">
+        <div class="stack" style="gap:1rem">
+          <div class="between">
+            <div class="row" style="gap:12px">
+              <div class="stat-icon purple" style="width:50px;height:50px;background:rgba(168,85,247,0.12);color:#c084fc">
+                <span class="material-symbols-outlined" style="font-size:28px">co_present</span>
+              </div>
+              <div>
+                <h3 class="headline-md" style="margin:0;color:#c084fc">بوابة المدرس والمشرف</h3>
+                <span class="label-sm muted">لوحة تحكم شاملة لإدارة الفصول والاختبارات</span>
+              </div>
+            </div>
+            <span class="badge badge-neutral">للهيئة التعليمية</span>
+          </div>
+
+          <p class="body-sm muted" style="line-height:1.6">
+            مركز القيادة الأكاديمية لإعداد المناهج، تصميم الاختبارات عبر بنك الأسئلة، تقييم الواجبات، ومتابعة أداء الطلاب بدقة.
+          </p>
+
+          <ul class="portal-feature-list">
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:#c084fc">check_circle</span>
+              <span><strong>إدارة الحصص والمحتوى:</strong> رفع وجدولة الدروس، إضافة روابط البثوث، وتنظيم الوحدات التدريبية.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:#c084fc">check_circle</span>
+              <span><strong>منشئ الامتحانات وبنك الأسئلة:</strong> بناء اختبارات مؤتمتة من بنك أسئلة مصنف حسب مستويات الصعوبة.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:#c084fc">check_circle</span>
+              <span><strong>مراقبة النزاهة ورصد النتائج:</strong> محرك كشف محاولات الخروج من الاختبار وتصحيح تلقائي فوري.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:#c084fc">check_circle</span>
+              <span><strong>متابعة الطلاب والدعم الأكاديمي:</strong> رصد نسب الحضور، مؤشرات الطلاب المتعثرين، وإرسال تنبيهات مباشرة.</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon" style="color:#c084fc">check_circle</span>
+              <span><strong>إدارة الحساب والأمان:</strong> إمكانية تعديل اسم المستخدم وكلمة المرور وتحديث الصلاحيات بمرونة.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div style="margin-top:1rem">
+          <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}" style="width:100%;padding:0.85rem;font-weight:700;gap:8px;border-color:rgba(168,85,247,0.4)">
+            <span class="material-symbols-outlined">admin_panel_settings</span>
+            <span>الدخول إلى بوابة المدرس والإدارة</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Comprehensive Features Grid ================= -->
+  <section class="stack" style="gap:1rem">
+    <div class="landing-section-head">
+      <span class="badge badge-info" style="margin-bottom:0.5rem">المزايا والقدرات التقنية</span>
+      <h2 class="headline-lg">تفاصيل المنظومة التعليمية</h2>
+      <p class="body-md muted">حلول متكاملة تضمن تجربة تعليمية برمجية تفاعلية تتوافق مع أعلى المعايير الأكاديمية.</p>
+    </div>
+
+    <div class="platform-features-grid">
+      <article class="platform-feature-card stack" style="gap:0.75rem">
+        <div class="stat-icon blue">
+          <span class="material-symbols-outlined">play_lesson</span>
+        </div>
+        <h3 class="headline-sm">الحصص والمحاضرات المسجلة</h3>
+        <p class="body-sm muted">تنظيم المحاضرات في مسارات مرتبة، مع مشغل فيديو مدمج، روابط غرف البث المباشر، ومذكرات مرفقة لكل درس.</p>
+      </article>
+
+      <article class="platform-feature-card stack" style="gap:0.75rem">
+        <div class="stat-icon amber">
+          <span class="material-symbols-outlined">quiz</span>
+        </div>
+        <h3 class="headline-sm">نظام الاختبارات الذكية</h3>
+        <p class="body-sm muted">مؤقت زمني دقيق، أسئلة برمجية واختيارية، إغلاق تلقائي عند انتهاء الوقت، ومحرك منع التنقل لمكافحة الغش.</p>
+      </article>
+
+      <article class="platform-feature-card stack" style="gap:0.75rem">
+        <div class="stat-icon purple" style="background:rgba(168,85,247,0.12);color:#c084fc">
+          <span class="material-symbols-outlined">help_center</span>
+        </div>
+        <h3 class="headline-sm">بنك الأسئلة المعياري</h3>
+        <p class="body-sm muted">مستودع شامل للأسئلة مقسمة حسب الوحدات، مستويات الصعوبة (سهل، متوسط، متقدم)، مع نماذج الإجابة وشروحاتها.</p>
+      </article>
+
+      <article class="platform-feature-card stack" style="gap:0.75rem">
+        <div class="stat-icon green">
+          <span class="material-symbols-outlined">assignment_turned_in</span>
+        </div>
+        <h3 class="headline-sm">الواجبات والتطبيقات العملية</h3>
+        <p class="body-sm muted">تسليم المشاريع وملفات الأكواد مباشرة، مراجعة دورية من المعلم مع درجات تفصيلية وملاحظات توجيهية فورية.</p>
+      </article>
+
+      <article class="platform-feature-card stack" style="gap:0.75rem">
+        <div class="stat-icon cyan" style="background:rgba(0,245,255,0.12);color:var(--cyan)">
+          <span class="material-symbols-outlined">insights</span>
+        </div>
+        <h3 class="headline-sm">رصد النتائج ولوحة الشرف</h3>
+        <p class="body-sm muted">مخططات إحصائية توضح نسب النجاح ومعدل الإنجاز، مع تكريم دوري للطلاب الأوائل والمتميزين في لوحة الشرف.</p>
+      </article>
+
+      <article class="platform-feature-card stack" style="gap:0.75rem">
+        <div class="stat-icon blue">
+          <span class="material-symbols-outlined">folder_open</span>
+        </div>
+        <h3 class="headline-sm">المكتبة السحابية والملفات</h3>
+        <p class="body-sm muted">أرشيف سحابي منظم للمذكرات والملفات والمراجع البرمجية، مصنف في مجلدات سهلة التصفح والتحميل لجميع الطلاب.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ================= System UI Mockup Preview ================= -->
+  <section class="system-preview-frame">
+    <div class="preview-window-bar">
+      <div class="window-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="row muted body-sm" style="gap:8px;font-family:var(--font-mono);font-size:12px">
+        <span class="material-symbols-outlined" style="font-size:16px;color:var(--cyan)">terminal</span>
+        <span>codeverse-lms-engine // live-production</span>
+      </div>
+      <span class="badge badge-neutral" style="font-size:11px">بيئة الاختبار الحي</span>
+    </div>
+
+    <div class="preview-grid">
+      <div class="stack" style="gap:1rem">
+        <div class="row" style="gap:10px">
+          <span class="pill" style="font-size:12px"><span class="dot pulse"></span> النظام البرمجي متصل</span>
+          <span class="pill" style="font-size:12px">PostgreSQL / Supabase</span>
+        </div>
+        <div class="code-block" style="min-height:160px;margin:0">
+          <span style="color:#64748b">// CodeVerse Automated Evaluation Engine</span><br/>
+          <span style="color:#38bdf8">const</span> <span style="color:#f8fafc">studentSession</span> = <span style="color:#818cf8">await</span> CodeVerse.<span style="color:#00f5ff">verifyStudent</span>({<br/>
+          &nbsp;&nbsp;portal: <span style="color:#4ade80">'student_environment'</span>,<br/>
+          &nbsp;&nbsp;integrityCheck: <span style="color:#f8fafc">true</span>,<br/>
+          &nbsp;&nbsp;autoGrading: <span style="color:#f8fafc">true</span><br/>
+          });<br/><br/>
+          <span style="color:#64748b">// Status: Verified &amp; Active. Ready for Interactive Learning.</span>
+        </div>
+      </div>
+
+      <div class="card stack" style="background:#0c1527;border:1px solid rgba(66,71,84,0.3);justify-content:center;align-items:center;text-align:center;padding:1.5rem">
+        <div class="stat-icon green" style="width:52px;height:52px;margin-bottom:8px">
+          <span class="material-symbols-outlined" style="font-size:30px">verified_user</span>
+        </div>
+        <h4 class="headline-sm" style="margin:0">نظام آمن وموثوق</h4>
+        <p class="body-sm muted" style="margin:4px 0 0 0">حماية مشفرة للجلسات وحفظ فوري للبيانات والإجابات في السحابة.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Frequently Asked Questions ================= -->
+  <section class="stack" style="gap:1rem">
+    <div class="landing-section-head">
+      <span class="badge badge-neutral" style="margin-bottom:0.5rem">الأسئلة الشائعة</span>
+      <h2 class="headline-lg">تساؤلات متكررة حول المنصة</h2>
+      <p class="body-md muted">كل ما تود معرفته عن طريقة الدخول واستخدام النظام التعليمي.</p>
+    </div>
+
+    <div class="faq-grid">
+      <div class="faq-card stack" style="gap:0.5rem">
+        <h3 class="headline-sm" style="color:var(--cyan)">كيف يسجل الطالب الدخول إلى حسابه؟</h3>
+        <p class="body-sm muted">يمكن للطالب الضغط على زر "بوابة الطالب" في أعلى الصفحة أو في الواجهة الرئيسية، واستخدام اسم المستخدم أو البريد المسجل وكلمة المرور المعتمدة.</p>
+      </div>
+
+      <div class="faq-card stack" style="gap:0.5rem">
+        <h3 class="headline-sm" style="color:var(--primary)">كيف يصل المعلم إلى لوحة التحكم والإدارة؟</h3>
+        <p class="body-sm muted">عبر النقر على زر "بوابة المدرس" يتم تحويل المعلم إلى شاشة تسجيل الدخول الموثوقة ومنها إلى لوحة إدارة الطلاب، الحصص، والامتحانات.</p>
+      </div>
+
+      <div class="faq-card stack" style="gap:0.5rem">
+        <h3 class="headline-sm" style="color:var(--secondary)">هل يتم حفظ إجابات الاختبارات تلقائياً؟</h3>
+        <p class="body-sm muted">نعم، تعتمد المنصة على محرك حفظ سحابي فوري؛ عند انقطاع الاتصال أو الانتقال بين الأسئلة تُحفظ الإجابات حتى اللحظة الأخيرة.</p>
+      </div>
+
+      <div class="faq-card stack" style="gap:0.5rem">
+        <h3 class="headline-sm" style="color:var(--tertiary)">هل يمكن للمسؤول تغيير اسم المستخدم وكلمة المرور؟</h3>
+        <p class="body-sm muted">نعم، توفر المنصة من خلال صفحة "الإعدادات العامة" إمكانية تحديث اسم المستخدم (اليوزر نيم) وكلمة المرور (الباسورد) فورياً.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= Footer Component ================= -->
+<footer style="border-top:1px solid rgba(66,71,84,0.3);background:var(--surface-lowest);padding:2.5rem var(--gutter)">
+  <div style="max-width:1440px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem">
+    <div class="row" style="gap:12px;align-items:center">
+      <img src="{{ url_for('static', filename='icons/logo.svg') }}" alt="CodeVerse" style="height:36px;width:auto" />
+      <span class="body-sm muted">© 2026 CodeVerse LMS. جميع الحقوق محفوظة لبيئة كودفيرس الأكاديمية.</span>
+    </div>
+
+    <div class="row" style="gap:1rem;align-items:center">
+      <a class="btn btn-ghost body-sm" href="{{ url_for('student.dashboard') }}">بوابة الطالب</a>
+      <a class="btn btn-ghost body-sm" href="{{ url_for('admin.dashboard') }}">بوابة المدرس</a>
+      <span class="badge badge-info" style="font-size:11px">اتصال سحابي مشفّر</span>
     </div>
   </div>
-  <div class="landing-grid">
-    <article class="card"><div class="stat-icon blue"><span class="material-symbols-outlined">play_lesson</span></div><h3 class="headline-sm" style="margin-top:12px">حصص ومسارات</h3><p class="body-sm muted">محاضرات مسجلة ومباشرة مع مذكرات PDF وروابط فيديو.</p></article>
-    <article class="card"><div class="stat-icon amber"><span class="material-symbols-outlined">quiz</span></div><h3 class="headline-sm" style="margin-top:12px">امتحانات ذكية</h3><p class="body-sm muted">مؤقت صارم، تنقل بين الأسئلة، ومعاينة واجهة الطالب.</p></article>
-    <article class="card"><div class="stat-icon green"><span class="material-symbols-outlined">insights</span></div><h3 class="headline-sm" style="margin-top:12px">نتائج وتقارير</h3><p class="body-sm muted">معدلات الإنجاز، لوحة الشرف، وتنبيهات الدعم الأكاديمي.</p></article>
-  </div>
-</section>
+</footer>
 {% endblock body_layout %}

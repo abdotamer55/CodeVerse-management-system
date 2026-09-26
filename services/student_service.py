@@ -18,8 +18,8 @@ _STUDENTS_DB = [
         "name": "مريم محمد",
         "initials": "م.م",
         "email": "mariem@codeverse.dev",
-        "track": "هندسة برمجيات الأنظمة",
-        "level": "المستوى الأول",
+        "track": "أولى بكالوريا",
+        "level": "أولى بكالوريا",
         "completed_lessons": 0,
         "total_lessons": 3,
         "completed_homework": 0,
@@ -51,29 +51,46 @@ def get_students_summary():
                     COUNT(CASE WHEN status = 'online' THEN 1 END) as active_today,
                     COUNT(CASE WHEN is_honor = true THEN 1 END) as honor_count,
                     COUNT(CASE WHEN status = 'risk' THEN 1 END) as at_risk_count,
+                    COALESCE(
+                        ROUND(
+                            (
+                                (SELECT COUNT(DISTINCT student_id || '-' || lesson_id::text) FROM lesson_completions)::numeric 
+                                / NULLIF(((SELECT COUNT(*) FROM students) * (SELECT GREATEST(COUNT(*), 1) FROM lessons)), 0)
+                            ) * 100, 1
+                        ),
+                        0.0
+                    ) as attendance_rate,
                     COALESCE(ROUND(AVG(overall_grade), 1), 0.0) as avg_grade
                 FROM students;
             """
             rows = execute_query(sql, fetch=True)
             if rows:
                 r = rows[0]
+                att_val = float(r["attendance_rate"]) if r.get("attendance_rate") is not None else 0.0
+                att_display = f"{int(att_val)}%" if att_val.is_integer() else f"{att_val}%"
                 return {
                     "total_count": r["total_count"],
                     "active_today": r["active_today"],
                     "honor_count": r["honor_count"],
                     "at_risk_count": r["at_risk_count"],
-                    "attendance_rate": f"{r['avg_grade']}%",
+                    "attendance_rate": att_display,
                     "seat_capacity": "87%",
                 }
         except Exception as e:
             logger.warning(f"Error querying student summary from DB: {e}")
 
+    from services import lesson_service
+    all_l = lesson_service.get_all_lessons()
+    tot_l_count = len(all_l)
+    tot_students = len(_STUDENTS_DB)
+    comp_sum = sum(s.get("completed_lessons", 0) for s in _STUDENTS_DB)
+    calc_rate = round((comp_sum / max(1, tot_students * tot_l_count)) * 100, 1) if tot_students and tot_l_count else 0.0
     return {
-        "total_count": len(_STUDENTS_DB),
+        "total_count": tot_students,
         "active_today": sum(1 for s in _STUDENTS_DB if s["status"] == "online"),
         "honor_count": sum(1 for s in _STUDENTS_DB if s.get("is_honor")),
         "at_risk_count": sum(1 for s in _STUDENTS_DB if s["status"] == "risk"),
-        "attendance_rate": "91.4%",
+        "attendance_rate": f"{int(calc_rate) if calc_rate.is_integer() else calc_rate}%",
         "seat_capacity": "87%",
     }
 
@@ -111,11 +128,10 @@ def get_student_dashboard_stats(student_id):
             if rows:
                 r = rows[0]
                 total_lessons = int(r["real_total_lessons"]) if (r.get("real_total_lessons") is not None) else actual_total_lessons
-                comp_lessons = actual_completed_lessons if actual_completed_lessons > 0 else int(r["completed_lessons"] or 0)
                 completed_hw = int(r["completed_hw_real"] or r["completed_homework"] or 0)
                 total_hw = int(r["real_total_hw"]) if (r.get("real_total_hw") is not None) else actual_total_hw
                 return {
-                    "completed_lessons": comp_lessons,
+                    "completed_lessons": actual_completed_lessons,
                     "total_lessons": total_lessons,
                     "completed_homework": completed_hw,
                     "total_homework": total_hw,
@@ -132,12 +148,12 @@ def get_student_dashboard_stats(student_id):
             break
 
     return {
-        "completed_lessons": actual_completed_lessons if actual_completed_lessons > 0 else (student.get("completed_lessons", 0) if student else 0),
+        "completed_lessons": actual_completed_lessons,
         "total_lessons": actual_total_lessons,
         "completed_homework": student.get("completed_homework", 0) if student else 0,
         "total_homework": actual_total_hw,
-        "overall_grade": float(student.get("overall_grade", 95.0) if student else 95.0),
-        "active_exams": 1,
+        "overall_grade": float(student.get("overall_grade", 0.0) if student else 0.0),
+        "active_exams": 0,
     }
 
 
@@ -185,9 +201,7 @@ def get_all_students(query=None, status_filter=None):
                 for s in results:
                     s["total_lessons"] = act_total_l
                     s["total_homework"] = act_total_hw
-                    comp = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code"))
-                    if comp > 0 or s.get("completed_lessons") is None:
-                        s["completed_lessons"] = comp
+                    s["completed_lessons"] = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code") or s.get("username"))
                 return results
         except Exception as e:
             logger.warning(f"Error querying students list from DB: {e}")
@@ -207,9 +221,7 @@ def get_all_students(query=None, status_filter=None):
     for s in results:
         s["total_lessons"] = act_total_l
         s["total_homework"] = act_total_hw
-        comp = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code"))
-        if comp > 0 or s.get("completed_lessons") is None:
-            s["completed_lessons"] = comp
+        s["completed_lessons"] = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code") or s.get("username"))
     return results
 
 
@@ -250,9 +262,7 @@ def get_student_by_id(student_id):
                 from services import lesson_service, homework_service
                 target["total_lessons"] = len(lesson_service.get_all_lessons())
                 target["total_homework"] = len(homework_service.get_all_homework())
-                comp = lesson_service.get_completed_lessons_count(student_id)
-                if comp > 0:
-                    target["completed_lessons"] = comp
+                target["completed_lessons"] = lesson_service.get_completed_lessons_count(target.get("id") or student_id)
                 return target
         except Exception as e:
             logger.warning(f"Error querying student by ID from DB: {e}")
@@ -400,6 +410,8 @@ def update_student(student_id, data: dict):
                 u_id = rows[0]["id"]
                 u_fields = []
                 u_params = []
+                s_fields = []
+                s_params = []
                 if name:
                     u_fields.append("full_name = %s")
                     u_params.append(name.strip())
@@ -412,15 +424,17 @@ def update_student(student_id, data: dict):
                 if password and password.strip():
                     u_fields.append("password_hash = %s")
                     u_params.append(generate_password_hash(password.strip()))
+                if track:
+                    cleaned_t = track.strip()
+                    s_fields.append("track = %s")
+                    s_params.append(cleaned_t)
+                    u_fields.append("title = %s")
+                    u_params.append(f"طالب مسار {cleaned_t}")
+
                 if u_fields:
                     u_params.append(u_id)
                     execute_query(f"UPDATE users SET {', '.join(u_fields)} WHERE id = %s;", tuple(u_params), fetch=False)
 
-                s_fields = []
-                s_params = []
-                if track:
-                    s_fields.append("track = %s")
-                    s_params.append(track.strip())
                 if level:
                     s_fields.append("level = %s")
                     s_params.append(level.strip())

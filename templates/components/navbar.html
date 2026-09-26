@@ -35,7 +35,19 @@
           {% endif %}
         </div>
         <div class="label-sm muted">
-          {{ current_user.title if current_user else ('مشرف المنصة الأكاديمية' if user_role == 'admin' else ('عضو الهيئة التعليمية' if user_role == 'teacher' else 'طالب مسار هندسة البرمجيات')) }}
+          {% if user_role == 'admin' %}
+            {{ current_user.title if current_user else 'مشرف المنصة الأكاديمية' }}
+          {% elif user_role == 'teacher' %}
+            {{ current_user.title if current_user else 'عضو الهيئة التعليمية' }}
+          {% else %}
+            {% if current_user and current_user.track %}
+              طالب مسار {{ current_user.track }}
+            {% elif current_user and current_user.title %}
+              {{ current_user.title }}
+            {% else %}
+              طالب معتمد
+            {% endif %}
+          {% endif %}
         </div>
       </div>
       <span class="avatar">

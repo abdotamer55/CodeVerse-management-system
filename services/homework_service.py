@@ -12,74 +12,9 @@ from database import execute_query, check_connection
 logger = logging.getLogger(__name__)
 
 # Sample/fallback datasets for offline development
-_HOMEWORK_DB = [
-    {
-        "id": 1,
-        "code": "HW-118",
-        "title": "مشروع بناء REST API عالي الاعتمادية بنظام التخزين المؤقت Redis",
-        "short_title": "مشروع REST API و Redis",
-        "track": "هندسة النظم الخلفية (Backend)",
-        "submissions_count": 312,
-        "total_students": 348,
-        "due_date": "18 سبتمبر 2024",
-        "status": "grading",
-        "status_label": "تصحيح جارٍ",
-        "auto_tests_pass_rate": "89.4%",
-        "sample_submission": {
-            "student_name": "زياد حسام الدين",
-            "student_code": "#ST-2024-089",
-            "repo_url": "github.com/ziad-dev/fastapi-redis-cache",
-            "grade": "38 / 40",
-            "feedback": "تنفيذ ممتاز لمعمارية Repository Pattern والتعامل مع حالات Cache Invalidation.",
-            "pipeline_passed": True,
-            "tests_summary": "16/16 Unit Tests Passed · Code Coverage 94%",
-        },
-    },
-    {
-        "id": 2,
-        "code": "HW-121",
-        "title": "حل معضلات البرمجة الديناميكية: خوارزمية حقيبة الظهر (0/1 Knapsack)",
-        "short_title": "خوارزميات البرمجة الديناميكية (DP)",
-        "track": "خوارزميات وهياكل البيانات",
-        "submissions_count": 280,
-        "total_students": 348,
-        "due_date": "21 سبتمبر 2024",
-        "status": "open",
-        "status_label": "مفتوح للتسليم",
-        "auto_tests_pass_rate": "76.2%",
-        "sample_submission": {
-            "student_name": "سارة طارق المنصور",
-            "student_code": "#ST-2024-114",
-            "repo_url": "github.com/sara-m/knapsack-memoization",
-            "grade": "قيد المراجعة",
-            "feedback": "",
-            "pipeline_passed": True,
-            "tests_summary": "12/12 Tests Passed · Time Complexity O(nW)",
-        },
-    },
-    {
-        "id": 3,
-        "code": "HW-109",
-        "title": "تطبيق إدارة الحالة المتكامل باستخدام Zustand و React Query",
-        "short_title": "إدارة الحالة بـ Zustand",
-        "track": "تطوير واجهات React",
-        "submissions_count": 340,
-        "total_students": 348,
-        "due_date": "10 سبتمبر 2024",
-        "status": "completed",
-        "status_label": "مكتمل ومرصود",
-        "auto_tests_pass_rate": "95.1%",
-        "sample_submission": {
-            "student_name": "عمر خالد الدوسري",
-            "student_code": "#ST-2024-032",
-            "repo_url": "github.com/omar-d/react-state-lab",
-            "grade": "28 / 40",
-            "feedback": "تأخر في معالجة أخطاء الشبكة داخل Query Cache.",
-            "pipeline_passed": False,
-            "tests_summary": "10/14 Tests Passed",
-        },
-    },
-]
+# Empty — all homework comes from the Supabase DB.
+# Do NOT add mock homework here; if DB is offline the page will show an empty list.
+_HOMEWORK_DB = []
 
 # In-memory fallback submissions for offline mode
 _SUBMISSIONS_DB = []

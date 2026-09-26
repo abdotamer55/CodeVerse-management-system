@@ -19,6 +19,9 @@
         <p class="ltr muted">{{ student.email }} · {{ student.code }}</p>
         <div class="wrap" style="margin-top:6px">
           <span class="badge badge-success">طالب نشط معتمد</span>
+          {% if student.track %}
+          <span class="badge badge-info">طالب مسار {{ student.track }}</span>
+          {% endif %}
           {% if student.is_honor %}
           <span class="badge badge-warn">
             <span class="material-symbols-outlined" style="font-size:14px">emoji_events</span>

@@ -18,16 +18,18 @@
       });
     });
 
-    const toggle = document.querySelector("[data-password-toggle]");
-    if (toggle) {
-      toggle.addEventListener("click", () => {
-        const input = document.getElementById("password");
-        const icon = document.getElementById("password-toggle-icon");
-        const show = input.type === "password";
-        input.type = show ? "text" : "password";
-        if (icon) icon.textContent = show ? "visibility" : "visibility_off";
+    document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const wrap = btn.closest(".input-wrap");
+        const input = wrap ? wrap.querySelector("input") : document.getElementById("password");
+        const icon = btn.querySelector(".material-symbols-outlined") || document.getElementById("password-toggle-icon");
+        if (input) {
+          const show = input.type === "password";
+          input.type = show ? "text" : "password";
+          if (icon) icon.textContent = show ? "visibility" : "visibility_off";
+        }
       });
-    }
+    });
 
     document.querySelectorAll("[data-role]").forEach((btn) => {
       btn.addEventListener("click", () => {

@@ -65,6 +65,7 @@ def login():
         # Establish session
         session.clear()
         session["user_id"] = user["id"]
+        session["username"] = user.get("username") or identifier.lower()
         session["role"] = user["role"]
         session["user_name"] = user["name"]
         session["user_email"] = user["email"]
