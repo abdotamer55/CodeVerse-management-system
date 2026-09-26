@@ -266,6 +266,78 @@ def exams():
     )
 
 
+@admin_bp.route("/exams/create", methods=["POST"])
+@role_required("admin")
+def create_exam():
+    try:
+        title = request.form.get("title")
+        if not title:
+            flash("عنوان الاختبار مطلوب.", "error")
+            return redirect(url_for("admin.exams"))
+
+        data = {
+            "title": title,
+            "duration_minutes": request.form.get("duration_minutes") or 60,
+            "total_questions": request.form.get("total_questions") or 0,
+            "scheduled_date": request.form.get("scheduled_date"),
+            "starts_at": request.form.get("starts_at"),
+            "ends_at": request.form.get("ends_at"),
+            "status": request.form.get("status", "scheduled"),
+        }
+        exam = exam_service.create_exam(data)
+        flash(f"تم إنشاء قاعة الاختبار ({exam.get('title')}) بنجاح.", "success")
+    except Exception as e:
+        flash(f"فشل إنشاء الاختبار: {e}", "error")
+
+    return redirect(url_for("admin.exams"))
+
+
+@admin_bp.route("/exams/<int:exam_id>/edit", methods=["POST"])
+@role_required("admin")
+def edit_exam(exam_id):
+    try:
+        data = {
+            "title": request.form.get("title"),
+            "duration_minutes": request.form.get("duration_minutes"),
+            "total_questions": request.form.get("total_questions"),
+            "scheduled_date": request.form.get("scheduled_date"),
+            "starts_at": request.form.get("starts_at"),
+            "ends_at": request.form.get("ends_at"),
+            "status": request.form.get("status"),
+        }
+        exam_service.update_exam(exam_id, data)
+        flash("تم تحديث تفاصيل ومواعيد الاختبار بنجاح.", "success")
+    except Exception as e:
+        flash(f"فشل تحديث الاختبار: {e}", "error")
+
+    return redirect(url_for("admin.exams"))
+
+
+@admin_bp.route("/exams/<int:exam_id>/republish", methods=["POST"])
+@role_required("admin")
+def republish_exam(exam_id):
+    try:
+        exam_service.republish_exam(exam_id)
+        flash("تمت إعادة نشر وتفعيل الاختبار بنجاح، وأصبح متاحاً للطلاب الآن.", "success")
+    except Exception as e:
+        flash(f"فشل إعادة نشر الاختبار: {e}", "error")
+
+    return redirect(url_for("admin.exams"))
+
+
+@admin_bp.route("/exams/<int:exam_id>/delete", methods=["POST"])
+@role_required("admin")
+def delete_exam(exam_id):
+    try:
+        exam_service.delete_exam(exam_id)
+        flash("تم حذف الاختبار نهائياً من النظام.", "success")
+    except Exception as e:
+        flash(f"فشل حذف الاختبار: {e}", "error")
+
+    return redirect(url_for("admin.exams"))
+
+
+
 @admin_bp.route("/exams/<int:exam_id>/builder", methods=["GET", "POST"])
 @role_required("admin")
 def exam_builder(exam_id):
@@ -376,6 +448,7 @@ def results():
     summary = result_service.get_results_summary()
     results_list = result_service.get_all_results()
     pending_essays = result_service.get_pending_essay_attempts()
+    pending_essay_exams = result_service.get_pending_essays_by_exam()
     pending_homework = homework_service.get_homework_submissions()
     return render_template(
         "admin/results.html",
@@ -384,6 +457,7 @@ def results():
         summary=summary,
         results=results_list,
         pending_essays=pending_essays,
+        pending_essay_exams=pending_essay_exams,
         pending_homework=pending_homework,
     )
 
@@ -410,6 +484,41 @@ def grade_essay():
         flash("تم رصد درجة السؤال المقالي واعتماد النتيجة الإجمالية وإشعار الطالب بنجاح.", "success")
     except Exception as e:
         flash(f"فشل رصد درجة السؤال المقالي: {e}", "error")
+
+    return redirect(url_for("admin.results"))
+
+
+@admin_bp.route("/results/grade-attempt-essays", methods=["POST"])
+@role_required("admin")
+def grade_attempt_essays():
+    attempt_id = request.form.get("attempt_id")
+    overall_feedback = request.form.get("overall_feedback")
+
+    if not attempt_id:
+        flash("بيانات المحاولة غير صحيحة.", "error")
+        return redirect(url_for("admin.results"))
+
+    try:
+        grades = []
+        for key, val in request.form.items():
+            if key.startswith("marks_"):
+                ans_id = key.split("_", 1)[1]
+                marks_val = float(val) if val else 0.0
+                fb_val = request.form.get(f"feedback_{ans_id}")
+                grades.append({
+                    "answer_id": int(ans_id),
+                    "marks": marks_val,
+                    "feedback": fb_val
+                })
+
+        result_service.grade_attempt_all_essays(
+            attempt_id=int(attempt_id),
+            grades=grades,
+            overall_feedback=overall_feedback
+        )
+        flash("تم رصد درجات جميع الأسئلة المقالية للامتحان بنجاح واعتماد النتيجة الكلية وإشعار الطالب.", "success")
+    except Exception as e:
+        flash(f"فشل رصد درجات الأسئلة المقالية: {e}", "error")
 
     return redirect(url_for("admin.results"))
 
@@ -449,11 +558,13 @@ def files():
 @role_required("admin")
 def notifications():
     notifications_list = notification_service.get_all_notifications()
+    students_list = student_service.get_all_students()
     return render_template(
         "admin/notifications.html",
         user_role="admin",
         page_id="notifications",
         notifications=notifications_list,
+        students=students_list,
     )
 
 
@@ -900,83 +1011,8 @@ def delete_submission(submission_id):
     return redirect(url_for("admin.homework"))
 
 
-# ------------------------------------------------------------------------------
-# Exams CRUD Operations
-# ------------------------------------------------------------------------------
-@admin_bp.route("/exams/create", methods=["POST"])
-@role_required("admin")
-def create_exam():
-    title = request.form.get("title")
-    if not title:
-        flash("عنوان الاختبار مطلوب.", "error")
-        return redirect(url_for("admin.exams"))
-
-    try:
-        data = {
-            "title": title,
-            "duration_minutes": request.form.get("duration_minutes", 90),
-            "total_questions": request.form.get("total_questions", 10),
-            "scheduled_date": request.form.get("scheduled_date"),
-            "status": request.form.get("status", "scheduled"),
-        }
-        exam = exam_service.create_exam(data)
-        if data.get("scheduled_date"):
-            try:
-                notification_service.create_notification({
-                    "title": f"تنبيه أكاديمي: موعد اختبار {title}",
-                    "content": f"تمت جدولة موعد الاختبار في {data['scheduled_date']}. يرجى من جميع الطلاب مراجعة بنك الأسئلة والاستعداد.",
-                    "type": "exam",
-                })
-            except Exception as ne:
-                logger.warning(f"Could not dispatch exam notification: {ne}")
-
-        flash("تم إنشاء مسودة الاختبار. أضف الأسئلة ثم راجعها قبل النشر.", "success")
-        return redirect(url_for("admin.exam_builder", exam_id=exam["id"]))
-    except Exception as e:
-        flash(f"فشل إنشاء الاختبار: {e}", "error")
-
-    return redirect(url_for("admin.exams"))
 
 
-@admin_bp.route("/exams/<int:exam_id>/edit", methods=["POST"])
-@role_required("admin")
-def edit_exam(exam_id):
-    try:
-        data = {
-            "title": request.form.get("title"),
-            "duration_minutes": request.form.get("duration_minutes"),
-            "total_questions": request.form.get("total_questions"),
-            "scheduled_date": request.form.get("scheduled_date"),
-            "status": request.form.get("status"),
-        }
-        exam_service.update_exam(exam_id, data)
-        if data.get("scheduled_date"):
-            try:
-                notification_service.create_notification({
-                    "title": f"تحديث موعد الاختبار: {data.get('title') or 'الاختبار'}",
-                    "content": f"تم تحديث موعد الاختبار ليصبح: {data['scheduled_date']}.",
-                    "type": "exam",
-                })
-            except Exception as ne:
-                logger.warning(f"Could not dispatch exam notification: {ne}")
-
-        flash("تم تحديث بيانات الاختبار بنجاح.", "success")
-    except Exception as e:
-        flash(f"فشل تحديث الاختبار: {e}", "error")
-
-    return redirect(url_for("admin.exams"))
-
-
-@admin_bp.route("/exams/<int:exam_id>/delete", methods=["POST"])
-@role_required("admin")
-def delete_exam(exam_id):
-    try:
-        exam_service.delete_exam(exam_id)
-        flash("تم حذف الاختبار بنجاح.", "success")
-    except Exception as e:
-        flash(f"فشل حذف الاختبار: {e}", "error")
-
-    return redirect(url_for("admin.exams"))
 
 
 # ------------------------------------------------------------------------------
@@ -1168,19 +1204,29 @@ def create_notification():
     content = request.form.get("content")
 
     if not title or not content:
-        flash("عنوان ونص التعميم مطلوبان.", "error")
+        flash("عنوان ونص الإشعار مطلوبان.", "error")
         return redirect(url_for("admin.notifications"))
 
     try:
+        # user_id = None → broadcast to all; set → personal to that student
+        user_id = request.form.get("user_id") or None
+        notif_type = request.form.get("type", "announcement")
+        if user_id:
+            notif_type = "personal"
+
         data = {
             "title": title,
             "content": content,
-            "type": request.form.get("type", "announcement"),
+            "type": notif_type,
+            "user_id": user_id,
         }
         notification_service.create_notification(data)
-        flash("تم إرسال ونشر التعميم الأكاديمي بنجاح.", "success")
+        if user_id:
+            flash("تم إرسال الإشعار الشخصي للطالب بنجاح.", "success")
+        else:
+            flash("تم إرسال التعميم لجميع الطلاب بنجاح.", "success")
     except Exception as e:
-        flash(f"فشل إرسال التعميم: {e}", "error")
+        flash(f"فشل إرسال الإشعار: {e}", "error")
 
     return redirect(url_for("admin.notifications"))
 

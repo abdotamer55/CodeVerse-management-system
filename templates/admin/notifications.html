@@ -6,30 +6,79 @@
 <div class="toolbar">
   <div>
     <h1 class="headline-lg">الإشعارات والتعاميم الأكاديمية</h1>
-    <p class="body-md muted">إرسال التنبيهات الفورية للطلاب، مواعيد الاختبارات القادمة، والرسائل الإدارية العاجلة مع إمكانية حذفها وإدارتها.</p>
+    <p class="body-md muted">إرسال تعاميم لجميع الطلاب، أو إشعارات شخصية لطالب محدد.</p>
   </div>
-  <button class="btn btn-primary" data-open="#broadcast-modal" type="button">
-    <span class="material-symbols-outlined">add_alert</span> إرسال تعميم جديد
-  </button>
+  <div class="wrap">
+    <button class="btn btn-primary" data-open="#broadcast-modal" type="button">
+      <span class="material-symbols-outlined">campaign</span> تعميم لجميع الطلاب
+    </button>
+    <button class="btn btn-secondary" data-open="#personal-modal" type="button">
+      <span class="material-symbols-outlined">person</span> إشعار لطالب محدد
+    </button>
+  </div>
 </div>
 
-<div class="stack" style="gap:1rem">
+<!-- Legend / Filter tabs (visual only) -->
+<div class="row" style="gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap">
+  <span class="badge badge-info">
+    <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">campaign</span>
+    تعاميم عامة: {{ notifications | selectattr('user_id', 'none') | list | length }}
+  </span>
+  <span class="badge badge-success">
+    <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">person</span>
+    إشعارات شخصية: {{ notifications | rejectattr('user_id', 'none') | list | length }}
+  </span>
+  <span class="badge badge-neutral" style="margin-right:auto">
+    الإجمالي: {{ notifications | length }}
+  </span>
+</div>
+
+<div class="stack" style="gap:0.75rem">
   {% for n in notifications %}
-  <article class="notif-item {% if not n.is_read %}unread{% endif %}">
-    <span class="material-symbols-outlined">{{ n.icon or 'campaign' }}</span>
-    <div style="flex:1">
-      <strong>{{ n.title }}</strong>
-      <p class="body-sm muted">{{ n.content }} · {{ n.created_at }}</p>
+  <article class="notif-item {% if not n.is_read %}unread{% endif %}" style="
+    border-right: 3px solid
+    {% if n.user_id %}var(--green, #22c55e){% else %}var(--accent, #6366f1){% endif %};
+    padding-right: 1rem;
+  ">
+    <!-- Icon -->
+    <span class="stat-icon {% if n.user_id %}green{% else %}blue{% endif %}" style="width:38px;height:38px;flex-shrink:0">
+      <span class="material-symbols-outlined" style="font-size:1.1rem">{{ n.icon or 'campaign' }}</span>
+    </span>
+
+    <!-- Body -->
+    <div style="flex:1;min-width:0">
+      <div class="row" style="gap:0.5rem;flex-wrap:wrap;align-items:center;margin-bottom:2px">
+        <strong style="font-size:0.95rem">{{ n.title }}</strong>
+        {% if n.user_id %}
+          <span class="badge badge-success" style="font-size:0.7rem">
+            <span class="material-symbols-outlined" style="font-size:0.75rem;vertical-align:middle">person</span>
+            شخصي · {{ n.recipient_label or 'طالب محدد' }}
+          </span>
+        {% else %}
+          <span class="badge badge-info" style="font-size:0.7rem">
+            <span class="material-symbols-outlined" style="font-size:0.75rem;vertical-align:middle">groups</span>
+            تعميم عام
+          </span>
+        {% endif %}
+        {% if not n.is_read %}
+          <span class="badge badge-warn" style="font-size:0.68rem">جديد</span>
+        {% endif %}
+      </div>
+      <p class="body-sm muted" style="margin:0;white-space:pre-wrap">{{ n.content }}</p>
+      <span class="label-sm muted" style="margin-top:4px;display:block">{{ n.created_at }}</span>
     </div>
-    <form method="POST" action="{{ url_for('admin.delete_notification', notification_id=n.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا الإشعار نهائياً؟');" style="display:inline">
+
+    <!-- Delete -->
+    <form method="POST" action="{{ url_for('admin.delete_notification', notification_id=n.id) }}"
+          onsubmit="return confirm('هل أنت متأكد من حذف هذا الإشعار نهائياً؟');" style="display:inline;flex-shrink:0">
       <button class="btn-icon" type="submit" style="color:var(--red, #ef4444)" title="حذف الإشعار">
         <span class="material-symbols-outlined">delete</span>
       </button>
     </form>
   </article>
   {% else %}
-  <div class="card" style="text-align:center;padding:2rem">
-    <span class="material-symbols-outlined" style="font-size:2.5rem;opacity:0.3">notifications_off</span>
+  <div class="card" style="text-align:center;padding:2.5rem">
+    <span class="material-symbols-outlined" style="font-size:2.5rem;opacity:0.3;display:block">notifications_off</span>
     <p class="body-md muted" style="margin-top:0.5rem">لا توجد إشعارات أو تعاميم مسجلة حالياً.</p>
   </div>
   {% endfor %}
@@ -38,19 +87,28 @@
 
 {% block modals %}
   {{ super() }}
+
+  <!-- Broadcast Modal -->
   <div class="modal-backdrop" id="broadcast-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="headline-sm">إرسال تعميم أو إشعار للطلاب</h2>
+        <div>
+          <h2 class="headline-sm">إرسال تعميم أكاديمي</h2>
+          <span class="badge badge-info" style="margin-top:4px">
+            <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">groups</span>
+            يصل لجميع الطلاب
+          </span>
+        </div>
         <button class="btn-icon" data-close="#broadcast-modal" type="button"><span class="material-symbols-outlined">close</span></button>
       </div>
       <form class="modal-body" method="POST" action="{{ url_for('admin.create_notification') }}">
+        <input type="hidden" name="user_id" value="" />
         <div class="field">
           <label>عنوان التعميم</label>
           <input class="input" name="title" required placeholder="مثال: تنبيه بخصوص موعد الاختبار النصفي" />
         </div>
         <div class="field">
-          <label>نوع التعميم / التصنيف</label>
+          <label>نوع التعميم</label>
           <select class="select" name="type">
             <option value="announcement">تعميم أكاديمي عام</option>
             <option value="exam">تنبيه باختبار</option>
@@ -59,12 +117,61 @@
           </select>
         </div>
         <div class="field">
-          <label>نص الرسالة أو التعميم</label>
-          <textarea class="textarea" name="content" required rows="3" placeholder="اكتب تفاصيل التنبيه أو التوجيه للطلاب..."></textarea>
+          <label>نص الرسالة</label>
+          <textarea class="textarea" name="content" required rows="3" placeholder="اكتب تفاصيل التنبيه..."></textarea>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">
           <button class="btn btn-ghost" type="button" data-close="#broadcast-modal">إلغاء</button>
-          <button class="btn btn-primary" type="submit">إرسال التعميم الفوري</button>
+          <button class="btn btn-primary" type="submit">
+            <span class="material-symbols-outlined">send</span> إرسال لجميع الطلاب
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Personal Notification Modal -->
+  <div class="modal-backdrop" id="personal-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="headline-sm">إشعار لطالب محدد</h2>
+          <span class="badge badge-success" style="margin-top:4px">
+            <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">person</span>
+            رسالة شخصية
+          </span>
+        </div>
+        <button class="btn-icon" data-close="#personal-modal" type="button"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form class="modal-body" method="POST" action="{{ url_for('admin.create_notification') }}">
+        <div class="field">
+          <label>اختر الطالب</label>
+          <select class="select" name="user_id" required>
+            <option value="">-- اختر الطالب --</option>
+            {% for s in students %}
+            <option value="{{ s.id }}">{{ s.name or s.username }} {% if s.code %}· {{ s.code }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>عنوان الإشعار</label>
+          <input class="input" name="title" required placeholder="مثال: تنبيه بخصوص غيابك عن الحصة" />
+        </div>
+        <div class="field">
+          <label>نص الرسالة</label>
+          <textarea class="textarea" name="content" required rows="3" placeholder="اكتب تفاصيل الإشعار الشخصي..."></textarea>
+        </div>
+        <div class="card" style="padding:0.75rem 1rem;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:var(--radius-sm)">
+          <p class="body-sm" style="margin:0;color:var(--green,#22c55e)">
+            <span class="material-symbols-outlined" style="font-size:0.9rem;vertical-align:middle">lock</span>
+            هذا الإشعار خاص ولن يراه سوى الطالب المحدد فقط.
+          </p>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:1rem">
+          <button class="btn btn-ghost" type="button" data-close="#personal-modal">إلغاء</button>
+          <button class="btn btn-primary" type="submit">
+            <span class="material-symbols-outlined">send</span> إرسال الإشعار الشخصي
+          </button>
         </div>
       </form>
     </div>

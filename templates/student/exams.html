@@ -15,22 +15,77 @@
   <article class="exam-card">
     <div class="exam-card-body">
       <div class="between">
-        <span class="badge {% if e.status == 'active' %}badge-success{% else %}badge-info{% endif %}">
-          {{ e.status_label }}
+        <span class="badge
+          {% if e.state_code == 'open' %}badge-success
+          {% elif e.state_code == 'upcoming' %}badge-info
+          {% elif e.state_code == 'expired' %}badge-neutral
+          {% else %}badge-neutral
+          {% endif %}">
+          {% if e.state_code == 'open' %}
+            <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">radio_button_checked</span>
+            جارٍ الآن
+          {% elif e.state_code == 'upcoming' %}
+            <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">schedule</span>
+            مجدول قادم
+          {% elif e.state_code == 'expired' %}
+            <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">event_busy</span>
+            انتهى الوقت
+          {% else %}
+            {{ e.status_label }}
+          {% endif %}
         </span>
         <span class="body-sm muted">{{ e.duration_minutes }} دقيقة</span>
       </div>
+
       <h3 class="headline-sm">{{ e.title }}</h3>
-      <p class="body-sm muted">{{ e.scheduled_date }} · {{ e.total_questions }} سؤالاً</p>
-      <div class="wrap" style="margin-top:8px">
-        {% if e.status == 'active' %}
-          <a class="btn btn-primary" href="{{ url_for('student.exam_detail', exam_id=e.id) }}">دخول قاعة الاختبار الآن</a>
+      <p class="body-sm muted">{{ e.scheduled_date or '' }} · {{ e.total_questions }} سؤالاً</p>
+
+      <!-- Scheduling message -->
+      {% if e.state_code in ('upcoming', 'expired') and e.availability_message %}
+      <div class="row" style="gap:0.4rem;align-items:center;margin-top:6px;padding:0.5rem 0.75rem;background:{% if e.state_code == 'upcoming' %}rgba(99,102,241,0.07){% else %}rgba(100,116,139,0.08){% endif %};border-radius:var(--radius-sm)">
+        <span class="material-symbols-outlined" style="font-size:0.9rem;color:{% if e.state_code == 'upcoming' %}var(--accent,#6366f1){% else %}var(--muted){% endif %}">
+          {% if e.state_code == 'upcoming' %}event{% else %}lock_clock{% endif %}
+        </span>
+        <span class="body-sm" style="color:{% if e.state_code == 'upcoming' %}var(--accent,#6366f1){% else %}var(--muted){% endif %}">
+          {{ e.availability_message }}
+        </span>
+      </div>
+      {% endif %}
+
+      <div class="wrap" style="margin-top:10px">
+        {% if e.my_attempt and e.my_attempt.status in ('submitted', 'pending_essay_grading', 'graded') %}
+          <!-- Already submitted -->
+          <a class="btn btn-secondary" href="{{ url_for('student.review_exam_attempt', exam_id=e.id) }}">
+            <span class="material-symbols-outlined">rate_review</span> مراجعة إجاباتي
+          </a>
+          <a class="btn btn-ghost" href="{{ url_for('student.results') }}">
+            <span class="material-symbols-outlined">insights</span> نتائجي
+          </a>
+        {% elif e.state_code == 'open' %}
+          <a class="btn btn-primary" href="{{ url_for('student.exam_detail', exam_id=e.id) }}">
+            <span class="material-symbols-outlined">play_arrow</span> دخول قاعة الاختبار
+          </a>
+        {% elif e.state_code == 'upcoming' %}
+          <button class="btn btn-secondary" type="button" disabled title="{{ e.availability_message }}">
+            <span class="material-symbols-outlined">schedule</span> يبدأ في موعده
+          </button>
+        {% elif e.state_code == 'expired' %}
+          <button class="btn btn-ghost" type="button" disabled>
+            <span class="material-symbols-outlined">lock_clock</span> انتهى وقت الاختبار
+          </button>
         {% else %}
-          <button class="btn btn-secondary" type="button" disabled>يبدأ في الموعد المحدد</button>
+          <button class="btn btn-secondary" type="button" disabled>{{ e.status_label }}</button>
         {% endif %}
       </div>
     </div>
   </article>
   {% endfor %}
+
+  {% if not exams %}
+  <div class="card" style="text-align:center;padding:2.5rem;grid-column:1/-1">
+    <span class="material-symbols-outlined" style="font-size:3rem;color:var(--muted);display:block;margin-bottom:1rem">quiz</span>
+    <p class="body-md muted">لا توجد امتحانات منشورة حالياً. ترقّب الإعلانات!</p>
+  </div>
+  {% endif %}
 </div>
 {% endblock content %}

@@ -101,11 +101,34 @@
         <span class="body-sm muted">{{ e.duration_minutes }} دقيقة</span>
       </div>
       <h3 class="headline-sm">{{ e.title }}</h3>
-      <p class="body-sm muted">{{ e.scheduled_date or 'موعد غير محدد' }} · {{ e.total_questions }} سؤالاً · نظام فحص النزاهة مفعّل</p>
+      <p class="body-sm muted">{{ e.scheduled_date or 'موعد غير محدد' }} · {{ e.total_questions }} سؤالاً</p>
+      {% if e.starts_at or e.ends_at %}
+      <div class="row" style="gap:0.5rem;flex-wrap:wrap;margin-top:4px">
+        {% if e.starts_at %}
+        <span class="badge badge-neutral" style="font-size:0.7rem">
+          <span class="material-symbols-outlined" style="font-size:0.8rem;vertical-align:middle">play_circle</span>
+          يبدأ: {{ e.starts_at | string | truncate(16, True, '') }}
+        </span>
+        {% endif %}
+        {% if e.ends_at %}
+        <span class="badge badge-neutral" style="font-size:0.7rem">
+          <span class="material-symbols-outlined" style="font-size:0.8rem;vertical-align:middle">stop_circle</span>
+          ينتهي: {{ e.ends_at | string | truncate(16, True, '') }}
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
       <div class="wrap" style="margin-top:12px">
         {% if e.status == 'active' %}
           <div class="progress"><span style="width:{{ e.progress }}%"></span></div>
           <a class="btn btn-primary" href="{{ url_for('admin.results') }}">رصد النتائج الحية</a>
+        {% endif %}
+        {% if e.status in ('completed', 'closed') %}
+        <form method="POST" action="{{ url_for('admin.republish_exam', exam_id=e.id) }}" style="display:inline">
+          <button class="btn btn-secondary" type="submit" title="إعادة نشر وتفعيل الاختبار">
+            <span class="material-symbols-outlined">replay</span> إعادة نشر
+          </button>
+        </form>
         {% endif %}
         <a class="btn btn-secondary" href="{{ url_for('admin.exam_builder', exam_id=e.id) }}">إدارة الأسئلة</a>
         <a class="btn btn-ghost" href="{{ url_for('admin.preview_exam', exam_id=e.id) }}" title="معاينة الاختبار كما يراه الطالب">
@@ -184,12 +207,23 @@
           </div>
         </div>
         <div class="field">
-          <label>تاريخ ووقت البدء (مجدول)</label>
+          <label>تاريخ ووقت البدء (مجدول - للعرض)</label>
           <div class="row" style="gap:0.5rem;align-items:center;">
             <input class="input date-target" name="scheduled_date" placeholder="مثال: 22 سبتمبر 2026 · 08:00 م" />
             <input class="input" type="datetime-local" style="max-width:44px;padding:0 8px;cursor:pointer;" onchange="applyArabicDate(this)" title="اختر من التقويم" />
           </div>
-          <span class="body-sm muted" style="margin-top:4px;display:block">سيتم إرسال إشعار تذكيري تلقائي للطلاب بموعد الاختبار.</span>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>وقت فتح الاختبار (starts_at)</label>
+            <input class="input" type="datetime-local" name="starts_at" title="الوقت الفعلي الذي يُفتح فيه الاختبار للطلاب" />
+            <span class="body-sm muted" style="margin-top:4px;display:block">اتركه فارغاً إذا كان مفتوحاً فوراً.</span>
+          </div>
+          <div class="field">
+            <label>وقت إغلاق الاختبار (ends_at)</label>
+            <input class="input" type="datetime-local" name="ends_at" title="الوقت الذي يُغلق فيه الاختبار تلقائياً" />
+            <span class="body-sm muted" style="margin-top:4px;display:block">اتركه فارغاً إذا لم يكن له وقت انتهاء.</span>
+          </div>
         </div>
         <div class="field">
           <label>الحالة</label>
@@ -197,6 +231,7 @@
             <option value="scheduled">مجدول</option>
             <option value="active">جارٍ الآن</option>
             <option value="completed">منتهي</option>
+            <option value="draft">مسودة</option>
           </select>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">
@@ -234,10 +269,26 @@
           </div>
         </div>
         <div class="field">
-          <label>تاريخ ووقت البدء</label>
+          <label>تاريخ ووقت البدء (للعرض)</label>
           <div class="row" style="gap:0.5rem;align-items:center;">
             <input class="input date-target" name="scheduled_date" value="{{ e.scheduled_date or '' }}" placeholder="مثال: 22 سبتمبر 2026 · 08:00 م" />
             <input class="input" type="datetime-local" style="max-width:44px;padding:0 8px;cursor:pointer;" onchange="applyArabicDate(this)" title="اختر من التقويم" />
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>وقت فتح الاختبار (starts_at)</label>
+            <input class="input" type="datetime-local" name="starts_at"
+              value="{% if e.starts_at %}{{ e.starts_at | string | replace(' ', 'T') | truncate(16, True, '') }}{% endif %}"
+              title="الوقت الفعلي الذي يُفتح فيه الاختبار" />
+            <span class="body-sm muted" style="margin-top:4px;display:block">اتركه فارغاً إذا كان مفتوحاً فوراً.</span>
+          </div>
+          <div class="field">
+            <label>وقت إغلاق الاختبار (ends_at)</label>
+            <input class="input" type="datetime-local" name="ends_at"
+              value="{% if e.ends_at %}{{ e.ends_at | string | replace(' ', 'T') | truncate(16, True, '') }}{% endif %}"
+              title="الوقت الذي يُغلق فيه الاختبار تلقائياً" />
+            <span class="body-sm muted" style="margin-top:4px;display:block">اتركه فارغاً إذا لم يكن له وقت انتهاء.</span>
           </div>
         </div>
         <div class="field">
@@ -246,6 +297,7 @@
             <option value="scheduled" {% if e.status == 'scheduled' %}selected{% endif %}>مجدول</option>
             <option value="active" {% if e.status == 'active' %}selected{% endif %}>جارٍ الآن</option>
             <option value="completed" {% if e.status == 'completed' %}selected{% endif %}>منتهي</option>
+            <option value="draft" {% if e.status == 'draft' %}selected{% endif %}>مسودة</option>
           </select>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:1rem">

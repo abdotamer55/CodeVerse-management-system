@@ -40,67 +40,88 @@
   </div>
 </section>
 
-<!-- Section 1: Pending Essay Questions Grading -->
+<!-- Section 1: Pending Essay Questions Grading Grouped by Exam -->
 <section style="margin-top:2rem">
   <div class="between" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
     <div>
-      <h2 class="headline-sm">📝 محاولات بانتظار تصحيح الأسئلة المقالية</h2>
-      <p class="body-sm muted">الأسئلة الموضوعية صُححت آلياً. قم بمراجعة الإجابة المقالية ورصد درجتها لاعتماد النتيجة الكلية.</p>
+      <h2 class="headline-sm">📝 تصحيح ورصد الأسئلة المقالية حسب الامتحانات</h2>
+      <p class="body-sm muted">جميع الأسئلة المقالية مجمعة داخل اسم كل امتحان. افتح الامتحان ورصد درجات إجابات الطلاب مباشرة.</p>
     </div>
-    {% if pending_essays %}
-      <span class="badge badge-warn">{{ pending_essays|length }} محاولة</span>
+    {% if pending_essay_exams %}
+      <span class="badge badge-warn">{{ pending_essay_exams|length }} امتحانات بانتظار التصحيح</span>
     {% endif %}
   </div>
 
-  {% if pending_essays %}
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>الطالب</th>
-          <th>الاختبار</th>
-          <th>درجة الموضوعي</th>
-          <th>السؤال المقالي وإجابة الطالب</th>
-          <th>أقصى درجة</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for pe in pending_essays %}
-        <tr>
-          <td>
-            <strong>{{ pe.student_name }}</strong>
-            <div class="ltr accent">{{ pe.student_code }}</div>
-          </td>
-          <td>
-            <strong>{{ pe.exam_title }}</strong>
-            <div class="body-sm muted">{{ pe.submitted_at }}</div>
-          </td>
-          <td>
-            <span class="badge badge-info">{{ pe.mcq_score }} / {{ pe.total_score }}</span>
-          </td>
-          <td style="max-width:320px;">
-            <div style="font-weight:600;font-size:13px;">{{ pe.question_prompt }}</div>
-            <div style="margin-top:4px;padding:6px 10px;background:var(--surface-dim);border-radius:6px;font-size:12px;color:var(--text-color, #e2e8f0);max-height:80px;overflow-y:auto;">
-              {{ pe.essay_text or '— لا توجد إجابة مكتوبة —' }}
-            </div>
-          </td>
-          <td>
-            <strong>{{ pe.question_points }} درجات</strong>
-          </td>
-          <td>
-            <button class="btn btn-primary" type="button" data-open="#grade-essay-modal-{{ pe.answer_id }}" style="padding:4px 12px;font-size:13px">
-              <span class="material-symbols-outlined" style="font-size:16px">fact_check</span> رصد الدرجة
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% if pending_essay_exams %}
+  <div style="display:flex;flex-direction:column;gap:1.5rem;">
+    {% for exam_group in pending_essay_exams %}
+    <div class="card" style="border:1px solid rgba(255,255,255,0.08);background:var(--surface-lowest);padding:1.25rem;border-radius:12px;">
+      <!-- Header with Exam Name -->
+      <div class="between" style="flex-wrap:wrap;gap:0.75rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div style="width:44px;height:44px;border-radius:10px;background:rgba(99,102,241,0.15);color:var(--accent,#818cf8);display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-outlined" style="font-size:26px">assignment</span>
+          </div>
+          <div>
+            <h3 class="headline-sm" style="margin:0;font-size:1.15rem;color:var(--text-color,#fff);display:flex;align-items:center;gap:8px;">
+              {{ exam_group.exam_title }}
+              <span class="badge badge-neutral" style="font-size:11px">امتحان #{{ exam_group.exam_id }}</span>
+            </h3>
+            <span class="body-sm muted">يتضمن {{ exam_group.total_questions_count }} إجابة مقالية تتطلب الرصد والاعتماد</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span class="badge badge-info">{{ exam_group.attempts_count }} طالب</span>
+          <span class="badge badge-warn">{{ exam_group.total_questions_count }} سؤال مقالي</span>
+        </div>
+      </div>
+
+      <!-- Students Attempts Table under this Exam -->
+      <div class="table-wrap" style="margin-top:1rem;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>الطالب</th>
+              <th>درجة الموضوعي الآلية</th>
+              <th>عدد الأسئلة المقالية</th>
+              <th>وقت التسليم</th>
+              <th style="text-align:left;">إجراء التصحيح</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for att in exam_group.attempts %}
+            <tr>
+              <td>
+                <strong>{{ att.student_name }}</strong>
+                <div class="ltr accent" style="font-size:12px">{{ att.student_code }}</div>
+              </td>
+              <td>
+                <span class="badge badge-info">{{ att.mcq_score }} / {{ att.total_score }}</span>
+              </td>
+              <td>
+                <strong class="accent">{{ att.questions|length }} أسئلة مقالية</strong>
+              </td>
+              <td class="body-sm muted">
+                {{ att.submitted_at }}
+              </td>
+              <td style="text-align:left;">
+                <button class="btn btn-primary" type="button" data-open="#grade-attempt-modal-{{ att.attempt_id }}" style="padding:6px 14px;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:18px">fact_check</span>
+                  تصحيح الأسئلة ورصد الدرجة
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
   </div>
   {% else %}
-  <div class="card" style="padding:1.25rem;text-align:center;background:var(--surface-lowest);border:1px dashed rgba(255,255,255,0.15)">
-    <p class="body-sm muted" style="margin:0">✅ لا توجد أسئلة مقالية بانتظار التصحيح حالياً. جميع إجابات الطلاب مصححة ومعتمدة.</p>
+  <div class="card" style="padding:1.5rem;text-align:center;background:var(--surface-lowest);border:1px dashed rgba(255,255,255,0.15);border-radius:12px;">
+    <span class="material-symbols-outlined" style="font-size:36px;color:var(--success,#10b981);display:block;margin-bottom:0.5rem;">task_alt</span>
+    <p class="body-sm muted" style="margin:0">✅ لا توجد أسئلة مقالية بانتظار التصحيح حالياً. جميع إجابات الطلاب مصححة ومعتمدة بالكامل.</p>
   </div>
   {% endif %}
 </section>
@@ -226,7 +247,97 @@
 {% block modals %}
   {{ super() }}
 
-  <!-- Grade Essay Modals -->
+  <!-- Grade Attempt All Essays Grouped Modal -->
+  {% for exam_group in pending_essay_exams %}
+    {% for att in exam_group.attempts %}
+    <div class="modal-backdrop" id="grade-attempt-modal-{{ att.attempt_id }}">
+      <div class="modal modal-lg" style="max-width:800px;width:95%;max-height:90vh;display:flex;flex-direction:column;border-radius:14px;border:1px solid rgba(255,255,255,0.12);background:var(--surface-lower, #1e293b);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.08);padding:1.25rem 1.5rem;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-outlined" style="color:var(--accent);font-size:22px">rate_review</span>
+              <h2 class="headline-sm" style="margin:0;font-size:1.2rem;">تصحيح ورصد إجابات: {{ exam_group.exam_title }}</h2>
+            </div>
+            <div class="body-sm muted" style="margin-top:4px;">
+              طالب: <strong style="color:var(--text-color,#fff);">{{ att.student_name }}</strong> ({{ att.student_code }}) · تاريخ التسليم: {{ att.submitted_at }}
+            </div>
+          </div>
+          <button class="btn-icon" data-close="#grade-attempt-modal-{{ att.attempt_id }}" type="button"><span class="material-symbols-outlined">close</span></button>
+        </div>
+
+        <form class="modal-body" style="overflow-y:auto;flex:1;padding:1.5rem;" method="POST" action="{{ url_for('admin.grade_attempt_essays') }}">
+          <input type="hidden" name="attempt_id" value="{{ att.attempt_id }}" />
+
+          <!-- Attempt Quick Stats Banner -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:0.75rem;margin-bottom:1.5rem;background:rgba(255,255,255,0.03);padding:1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
+            <div>
+              <span class="body-xs muted" style="display:block;">درجة الموضوعي (آلي)</span>
+              <strong style="color:var(--success);font-size:1.1rem;">{{ att.mcq_score }}</strong>
+            </div>
+            <div>
+              <span class="body-xs muted" style="display:block;">إجمالي أسئلة المقالي</span>
+              <strong style="color:var(--accent);font-size:1.1rem;">{{ att.questions|length }} أسئلة</strong>
+            </div>
+            <div>
+              <span class="body-xs muted" style="display:block;">الدرجة الكلية للامتحان</span>
+              <strong style="color:var(--text-color);font-size:1.1rem;">{{ att.total_score }}</strong>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1rem;">
+            <h4 class="headline-sm" style="font-size:1rem;margin-bottom:0.25rem;">الأسئلة المقالية وإجابات الطالب:</h4>
+            <p class="body-xs muted" style="margin:0;">راجع إجابة الطالب لكل سؤال وضع الدرجة المستحقة وملاحظاتك إن وجدت.</p>
+          </div>
+
+          <!-- List of All Essay Questions in this Exam -->
+          <div style="display:flex;flex-direction:column;gap:1.25rem;">
+            {% for q in att.questions %}
+            <div class="card" style="background:var(--surface-lowest);padding:1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+              <div class="between" style="margin-bottom:0.5rem;align-items:center;">
+                <span style="font-weight:700;color:var(--accent);font-size:14px;">السؤال {{ loop.index }}:</span>
+                <span class="badge badge-neutral" style="font-size:12px;">أقصى درجة: {{ q.points }}</span>
+              </div>
+              <p style="margin:0 0 0.75rem 0;color:var(--text-color,#e2e8f0);font-weight:600;font-size:14px;line-height:1.5;">{{ q.prompt }}</p>
+
+              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;">إجابة الطالب:</div>
+              <div style="padding:10px 12px;background:var(--surface-dim);border-radius:8px;font-size:13px;line-height:1.6;color:#f8fafc;max-height:150px;overflow-y:auto;white-space:pre-wrap;border:1px solid rgba(255,255,255,0.06);">
+                {{ q.essay_text or '— لا توجد إجابة مكتوبة من الطالب —' }}
+              </div>
+
+              <div class="grid" style="grid-template-columns:1fr 2fr;gap:0.75rem;margin-top:0.75rem;align-items:end;">
+                <div class="field" style="margin:0;">
+                  <label style="font-size:12px;margin-bottom:4px;">الدرجة المستحقة (من {{ q.points }}) *</label>
+                  <input class="input" type="number" step="0.25" min="0" max="{{ q.points }}" name="marks_{{ q.answer_id }}" required value="{{ q.marks_awarded if q.marks_awarded is not none else q.points }}" style="font-weight:bold;color:var(--accent);font-size:14px;" />
+                </div>
+                <div class="field" style="margin:0;">
+                  <label style="font-size:12px;margin-bottom:4px;">تعليق المعلم على السؤال (اختياري)</label>
+                  <input class="input" type="text" name="feedback_{{ q.answer_id }}" placeholder="ملاحظة توضيحية للطالب..." style="font-size:13px;" />
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Overall Feedback -->
+          <div class="field" style="margin-top:1.5rem;">
+            <label style="font-weight:600;font-size:13px;">ملاحظات عامة واعتماد النتيجة النهائية</label>
+            <textarea class="textarea" name="overall_feedback" rows="2" placeholder="ملاحظات عامة على أداء الطالب في الامتحان..."></textarea>
+          </div>
+
+          <div class="modal-footer" style="padding:1rem 0 0 0;margin-top:1rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end;gap:0.75rem;">
+            <button class="btn btn-ghost" type="button" data-close="#grade-attempt-modal-{{ att.attempt_id }}">إلغاء</button>
+            <button class="btn btn-primary" type="submit" style="display:inline-flex;align-items:center;gap:8px;">
+              <span class="material-symbols-outlined" style="font-size:18px">verified</span>
+              اعتماد درجات الامتحان بالكامل ورصد النتيجة النهائية
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% endfor %}
+
+  <!-- Grade Single Essay Modals (fallback) -->
   {% for pe in pending_essays %}
   <div class="modal-backdrop" id="grade-essay-modal-{{ pe.answer_id }}">
     <div class="modal">

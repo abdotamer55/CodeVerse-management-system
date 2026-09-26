@@ -9,14 +9,14 @@
     {% else %}
       <label class="field" style="margin-top:1rem">
         <span>إجابتك المقالية</span>
-        <textarea class="textarea" name="{{ q.id }}" data-answer-field="essay_text" rows="5" required placeholder="اكتب إجابتك هنا..."></textarea>
+        <textarea class="textarea" name="{{ q.id }}" data-answer-field="essay_text" rows="5" placeholder="اكتب إجابتك هنا..."></textarea>
       </label>
     {% endif %}
   {% else %}
     <div class="stack" style="gap:.5rem;margin-top:1rem">
     {% for option in q.options %}
       <label class="option {% if show_answers and loop.index0 == q.correct_index %}is-selected{% endif %}">
-        {% if not show_answers %}<input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" required>{% endif %}
+        {% if not show_answers %}<input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}">{% endif %}
         {{ option }} {% if show_answers and loop.index0 == q.correct_index %}<span class="badge badge-success">الإجابة الصحيحة</span>{% endif %}
       </label>
     {% endfor %}

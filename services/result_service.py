@@ -171,10 +171,70 @@ def get_pending_essay_attempts():
     return []
 
 
+def get_pending_essays_by_exam():
+    """
+    Retrieve all pending essay submissions grouped by Exam, then by Student Attempt,
+    so that teachers can review all essay questions organized directly under the Exam Name.
+    """
+    rows = get_pending_essay_attempts()
+    if not rows:
+        return []
+
+    exams_map = {}
+    for r in rows:
+        eid = r["exam_id"]
+        if eid not in exams_map:
+            exams_map[eid] = {
+                "exam_id": eid,
+                "exam_title": r["exam_title"],
+                "attempts_dict": {},
+                "total_questions_count": 0,
+            }
+
+        att_id = r["attempt_id"]
+        if att_id not in exams_map[eid]["attempts_dict"]:
+            exams_map[eid]["attempts_dict"][att_id] = {
+                "attempt_id": att_id,
+                "exam_id": eid,
+                "exam_title": r["exam_title"],
+                "student_id": r["student_id"],
+                "student_name": r["student_name"],
+                "student_code": r["student_code"],
+                "submitted_at": r["submitted_at"],
+                "mcq_score": r["mcq_score"],
+                "total_score": r["total_score"],
+                "status": r["status"],
+                "questions": [],
+            }
+
+        exams_map[eid]["attempts_dict"][att_id]["questions"].append({
+            "answer_id": r["answer_id"],
+            "question_id": r["question_id"],
+            "prompt": r["question_prompt"],
+            "essay_text": r["essay_text"],
+            "points": r["question_points"],
+            "marks_awarded": r["marks_awarded"],
+        })
+        exams_map[eid]["total_questions_count"] += 1
+
+    result = []
+    for eid, edata in exams_map.items():
+        attempts_list = list(edata["attempts_dict"].values())
+        result.append({
+            "exam_id": eid,
+            "exam_title": edata["exam_title"],
+            "attempts_count": len(attempts_list),
+            "total_questions_count": edata["total_questions_count"],
+            "attempts": attempts_list,
+        })
+
+    return result
+
+
 def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, feedback: str = None):
     """
-    Award marks for an essay answer, update the overall attempt score,
-    set attempt status to 'graded', and create a finalized record in the results table.
+    Award marks for a single essay answer, update the overall attempt score,
+    set attempt status to 'graded', and create/update a finalized record in the results table.
     """
     if is_db_active():
         try:
@@ -193,24 +253,24 @@ def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, f
             )
             final_score = float(score_rows[0]["final_score"]) if score_rows else float(marks_awarded)
 
-            # 3. Update attempt record
+            # 3. Update attempt record (percentage is computed in python, not in DB column)
             att_rows = execute_query(
                 """UPDATE assessment_attempts
                    SET score = %s,
-                       percentage = ROUND((%s::numeric / NULLIF(total_score, 0)::numeric) * 100, 2),
                        status = 'graded'
                    WHERE id = %s
-                   RETURNING assessment_id, student_id, score, total_score, percentage;""",
-                (final_score, final_score, int(attempt_id)),
+                   RETURNING assessment_id, student_id, score, total_score;""",
+                (final_score, int(attempt_id)),
                 fetch=True, commit=True
             )
 
             if att_rows:
                 att = att_rows[0]
-                total = att["total_score"] or 100
-                percentage = float(att["percentage"] or round((final_score / total) * 100, 2))
-                grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 70 else "فرصة إعادة"))
-                grade_badge = "badge-success" if percentage >= 70 else "badge-danger"
+                total = float(att["total_score"] or 100)
+                percentage = round((final_score / total) * 100, 2) if total > 0 else 0.0
+                status_val = "passed" if percentage >= 50 else "repeat"
+                grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 65 else ("مقبول" if percentage >= 50 else "فرصة إعادة")))
+                grade_badge = "badge-success" if percentage >= 50 else "badge-danger"
 
                 # Get exam and student details
                 exam_rows = execute_query("SELECT title FROM exams WHERE id = %s;", (att["assessment_id"],), fetch=True)
@@ -224,16 +284,30 @@ def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, f
                 )
                 if user_rows:
                     u = user_rows[0]
-                    # Insert or update into results
-                    res_sql = """
-                        INSERT INTO results (student_id, student_name, student_code, exam_id, assessment, score_percent, score_display, date, status, grade_badge, grade_label)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_DATE::text, 'passed', %s, %s);
-                    """
-                    execute_query(res_sql, (
-                        u["id"], u["full_name"], u["student_code"],
-                        att["assessment_id"], exam_title, percentage, f"{final_score:g} / {total:g}",
-                        grade_badge, grade_label
-                    ), fetch=False, commit=True)
+                    st_id = str(u["id"])
+                    st_name = u["full_name"] or "طالب"
+                    st_code = u["student_code"] or ""
+                    score_disp = f"{final_score:g} / {total:g}"
+
+                    existing_res = execute_query(
+                        "SELECT id FROM results WHERE CAST(student_id AS TEXT) = %s AND exam_id = %s LIMIT 1;",
+                        (st_id, int(att["assessment_id"])), fetch=True
+                    )
+                    if existing_res:
+                        execute_query("""
+                            UPDATE results 
+                            SET score_percent=%s, score_display=%s, date=CURRENT_DATE::text, status=%s, grade_badge=%s, grade_label=%s
+                            WHERE id=%s;
+                        """, (percentage, score_disp, status_val, grade_badge, grade_label, existing_res[0]["id"]), fetch=False, commit=True)
+                    else:
+                        execute_query("""
+                            INSERT INTO results (student_id, student_name, student_code, exam_id, assessment, score_percent, score_display, date, status, grade_badge, grade_label)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_DATE::text, %s, %s, %s);
+                        """, (
+                            st_id, st_name, st_code,
+                            att["assessment_id"], exam_title, percentage, score_disp,
+                            status_val, grade_badge, grade_label
+                        ), fetch=False, commit=True)
 
                     # Send student notification
                     try:
@@ -252,4 +326,107 @@ def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, f
             logger.error(f"Error grading essay attempt: {e}")
             raise
     return False
+
+
+def grade_attempt_all_essays(attempt_id: int, grades: list, overall_feedback: str = None):
+    """
+    Grade all essay questions of an attempt at once, compute final score,
+    mark attempt as 'graded', and create/update the final record in the results table.
+    grades format: [{'answer_id': 123, 'marks': 2.5, 'feedback': '...'}, ...]
+    """
+    if is_db_active():
+        try:
+            # 1. Update each essay answer
+            for g in grades:
+                ans_id = g.get("answer_id")
+                marks = float(g.get("marks", 0))
+                fb = g.get("feedback")
+                execute_query(
+                    "UPDATE student_answers SET marks_awarded = %s, feedback = %s WHERE id = %s;",
+                    (marks, fb, int(ans_id)),
+                    fetch=False, commit=True
+                )
+
+            # 2. Recalculate total attempt score (sum of all question marks awarded)
+            score_rows = execute_query(
+                "SELECT COALESCE(SUM(marks_awarded), 0) as final_score FROM student_answers WHERE attempt_id = %s;",
+                (int(attempt_id),),
+                fetch=True
+            )
+            final_score = float(score_rows[0]["final_score"]) if score_rows else 0.0
+
+            # 3. Update assessment_attempts status to graded
+            att_rows = execute_query(
+                """UPDATE assessment_attempts
+                   SET score = %s,
+                       status = 'graded'
+                   WHERE id = %s
+                   RETURNING assessment_id, student_id, score, total_score;""",
+                (final_score, int(attempt_id)),
+                fetch=True, commit=True
+            )
+
+            if att_rows:
+                att = att_rows[0]
+                total = float(att["total_score"] or 100)
+                percentage = round((final_score / total) * 100, 2) if total > 0 else 0.0
+                status_val = "passed" if percentage >= 50 else "repeat"
+                grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 65 else ("مقبول" if percentage >= 50 else "فرصة إعادة")))
+                grade_badge = "badge-success" if percentage >= 50 else "badge-danger"
+
+                # Get exam and student details
+                exam_rows = execute_query("SELECT title FROM exams WHERE id = %s;", (att["assessment_id"],), fetch=True)
+                exam_title = exam_rows[0]["title"] if exam_rows else "اختبار أكاديمي"
+
+                user_rows = execute_query(
+                    """SELECT u.id, u.full_name, COALESCE(s.student_code, '#ST-DEMO') as student_code 
+                       FROM users u LEFT JOIN students s ON CAST(s.id AS TEXT) = CAST(u.id AS TEXT)
+                       WHERE CAST(u.id AS TEXT) = %s;""",
+                    (str(att["student_id"]),), fetch=True
+                )
+                if user_rows:
+                    u = user_rows[0]
+                    st_id = str(u["id"])
+                    st_name = u["full_name"] or "طالب"
+                    st_code = u["student_code"] or ""
+                    score_disp = f"{final_score:g} / {total:g}"
+
+                    existing_res = execute_query(
+                        "SELECT id FROM results WHERE CAST(student_id AS TEXT) = %s AND exam_id = %s LIMIT 1;",
+                        (st_id, int(att["assessment_id"])), fetch=True
+                    )
+                    if existing_res:
+                        execute_query("""
+                            UPDATE results 
+                            SET score_percent=%s, score_display=%s, date=CURRENT_DATE::text, status=%s, grade_badge=%s, grade_label=%s, feedback=%s
+                            WHERE id=%s;
+                        """, (percentage, score_disp, status_val, grade_badge, grade_label, overall_feedback, existing_res[0]["id"]), fetch=False, commit=True)
+                    else:
+                        execute_query("""
+                            INSERT INTO results (student_id, student_name, student_code, exam_id, assessment, score_percent, score_display, date, status, grade_badge, grade_label, feedback)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_DATE::text, %s, %s, %s, %s);
+                        """, (
+                            st_id, st_name, st_code,
+                            att["assessment_id"], exam_title, percentage, score_disp,
+                            status_val, grade_badge, grade_label, overall_feedback
+                        ), fetch=False, commit=True)
+
+                    # Send notification
+                    try:
+                        from services import notification_service
+                        notification_service.create_notification({
+                            "user_id": u["id"],
+                            "title": f"تم اعتماد نتيجتك في {exam_title}",
+                            "content": f"اعتمد المعلم درجة الأسئلة المقالية. نتيجتك النهائية هي {final_score:g} من {total:g} بنسبة {percentage}%.",
+                            "type": "exam",
+                        })
+                    except Exception as ne:
+                        logger.warning(f"Could not send grade notification: {ne}")
+
+            return True
+        except Exception as e:
+            logger.error(f"Error in grade_attempt_all_essays: {e}")
+            raise
+    return False
+
 

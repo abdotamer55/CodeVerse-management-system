@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}مراجعة الامتحان | {{ exam.title }}{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="between" style="flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div class="row" style="gap:0.5rem;align-items:center;flex-wrap:wrap;">
+        <a class="btn btn-ghost" href="{{ url_for('student.exams') }}" style="padding:0.3rem 0.6rem">
+          <span class="material-symbols-outlined">arrow_back</span> العودة
+        </a>
+        <span class="badge {% if attempt.status == 'graded' %}badge-success{% elif attempt.status == 'pending_essay_grading' %}badge-warn{% else %}badge-info{% endif %}">
+          {% if attempt.status == 'graded' %}مصحَّح ومعتمد{% elif attempt.status == 'pending_essay_grading' %}بانتظار تصحيح المقالي{% else %}تم التسليم{% endif %}
+        </span>
+      </div>
+      <h1 class="headline-lg" style="margin-top:0.6rem">مراجعة الاختبار: {{ exam.title }}</h1>
+      <p class="body-md muted">استعراض شامل لإجاباتك مع تصحيح كل سؤال، نموذج الإجابة الصحيحة، وملاحظات المعلم.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('student.results') }}">
+      <span class="material-symbols-outlined">insights</span> سجل نتائجي
+    </a>
+  </div>
+</section>
+
+<!-- Summary Stats -->
+{% if attempt.status == 'pending_essay_grading' %}
+<div class="card" style="margin-bottom:1.5rem;padding:1.25rem 1.5rem;border:1px solid rgba(245,158,11,0.35);background:linear-gradient(135deg,rgba(245,158,11,0.07) 0%,rgba(59,130,246,0.03) 100%);">
+  <div class="row" style="gap:1rem;align-items:center;flex-wrap:wrap;">
+    <span class="stat-icon amber" style="width:48px;height:48px;flex-shrink:0">
+      <span class="material-symbols-outlined" style="font-size:28px">edit_note</span>
+    </span>
+    <div>
+      <h3 class="headline-sm" style="margin:0;color:var(--warning,#f59e0b)">الأسئلة المقالية قيد المراجعة</h3>
+      <p class="body-sm muted" style="margin:4px 0 0">تم رصد درجات الأسئلة الموضوعية تلقائياً. درجات الأسئلة المقالية ستُضاف بعد مراجعة المعلم.</p>
+    </div>
+    <span class="badge badge-warn" style="margin-right:auto">بانتظار اعتماد المقالي</span>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-3" style="margin-bottom:2rem">
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon {% if review.percentage >= 50 %}green{% else %}red{% endif %}">
+        <span class="material-symbols-outlined">verified</span>
+      </div>
+    </div>
+    <div>
+      <span class="label-sm muted">{% if attempt.status == 'pending_essay_grading' %}الدرجة المبدئية (موضوعي فقط){% else %}الدرجة النهائية{% endif %}</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero {% if review.percentage >= 50 %}success{% else %}danger{% endif %}">{{ review.score | int }}</span>
+        <span class="label-md muted">/ {{ review.total_score | int }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">fact_check</span></div>
+    </div>
+    <div>
+      <span class="label-sm muted">الإجابات الصحيحة (موضوعي)</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        <span class="display-hero">{{ review.correct_count }}</span>
+        <span class="label-md muted">/ {{ review.total_questions }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon {% if review.percentage >= 50 %}green{% else %}amber{% endif %}">
+        <span class="material-symbols-outlined">percent</span>
+      </div>
+    </div>
+    <div>
+      <span class="label-sm muted">النسبة المئوية</span>
+      <div class="row" style="align-items:baseline;margin-top:6px">
+        {% if attempt.status == 'pending_essay_grading' %}
+          <span class="headline-lg warning">قيد التدقيق</span>
+        {% else %}
+          <span class="display-hero {% if review.percentage >= 50 %}success{% else %}danger{% endif %}">{{ review.percentage }}%</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Questions Review -->
+<div class="stack" style="gap:1.25rem">
+  {% for q in review.questions %}
+  <article class="card" style="padding:1.5rem;border-right:4px solid
+    {% if q.status_tag == 'correct' %}var(--green,#22c55e)
+    {% elif q.status_tag == 'incorrect' %}var(--red,#ef4444)
+    {% elif q.status_tag == 'partial' %}var(--warning,#f59e0b)
+    {% else %}var(--surface-border,rgba(66,71,84,.3))
+    {% endif %};">
+
+    <!-- Question Header -->
+    <div class="between" style="flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
+      <div class="row" style="gap:0.75rem;align-items:center;flex-wrap:wrap">
+        <span class="label-sm muted">سؤال {{ q.order }}</span>
+        <span class="badge
+          {% if q.type == 'mcq' %}badge-info
+          {% elif q.type == 'boolean' %}badge-neutral
+          {% else %}badge-warn
+          {% endif %}" style="font-size:0.7rem">
+          {% if q.type == 'mcq' %}اختيار متعدد{% elif q.type == 'boolean' %}صح / خطأ{% else %}مقالي{% endif %}
+        </span>
+        <span class="badge
+          {% if q.status_tag == 'correct' %}badge-success
+          {% elif q.status_tag == 'incorrect' %}badge-danger
+          {% elif q.status_tag == 'partial' %}badge-warn
+          {% else %}badge-neutral
+          {% endif %}">
+          <span class="material-symbols-outlined" style="font-size:0.9rem;vertical-align:middle">
+            {% if q.status_tag == 'correct' %}check_circle
+            {% elif q.status_tag == 'incorrect' %}cancel
+            {% elif q.status_tag == 'partial' %}radio_button_partial
+            {% else %}hourglass_top
+            {% endif %}
+          </span>
+          {% if q.status_tag == 'correct' %}صحيح
+          {% elif q.status_tag == 'incorrect' %}خطأ
+          {% elif q.status_tag == 'partial' %}جزئي
+          {% else %}قيد التصحيح
+          {% endif %}
+        </span>
+      </div>
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <span class="label-sm muted">الدرجة:</span>
+        <strong class="{% if q.marks_awarded == q.points %}success{% elif q.marks_awarded > 0 %}warning{% else %}danger{% endif %}" style="font-size:1rem">
+          {{ q.marks_awarded | int }} / {{ q.points | int }}
+        </strong>
+      </div>
+    </div>
+
+    <!-- Question Text -->
+    <h3 class="headline-sm" style="margin:0 0 1.25rem">{{ q.prompt }}</h3>
+
+    <!-- MCQ / Boolean Options -->
+    {% if q.type in ('mcq', 'boolean') %}
+    <div class="stack" style="gap:0.5rem">
+      {% for opt in q.options %}
+      <div class="row" style="gap:0.75rem;align-items:center;padding:0.7rem 1rem;border-radius:var(--radius-md);
+        {% if opt.is_correct and opt.is_selected %}background:rgba(34,197,94,0.12);border:1.5px solid rgba(34,197,94,0.5);
+        {% elif opt.is_correct %}background:rgba(34,197,94,0.07);border:1.5px solid rgba(34,197,94,0.3);
+        {% elif opt.is_selected and not opt.is_correct %}background:rgba(239,68,68,0.09);border:1.5px solid rgba(239,68,68,0.4);
+        {% else %}background:var(--surface-lowest);border:1px solid rgba(66,71,84,.25);
+        {% endif %}">
+        <span class="material-symbols-outlined" style="font-size:1.1rem;
+          {% if opt.is_correct %}color:var(--green,#22c55e)
+          {% elif opt.is_selected and not opt.is_correct %}color:var(--red,#ef4444)
+          {% else %}color:var(--muted)
+          {% endif %}">
+          {% if opt.is_correct %}check_circle
+          {% elif opt.is_selected and not opt.is_correct %}cancel
+          {% else %}radio_button_unchecked
+          {% endif %}
+        </span>
+        <span class="body-md" style="flex:1">{{ opt.text }}</span>
+        {% if opt.is_selected %}
+          <span class="badge badge-neutral" style="font-size:0.68rem">إجابتك</span>
+        {% endif %}
+        {% if opt.is_correct %}
+          <span class="badge badge-success" style="font-size:0.68rem">الإجابة الصحيحة</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Essay Type -->
+    {% elif q.type == 'essay' %}
+    <div class="stack" style="gap:1rem">
+      <!-- Student Answer -->
+      <div>
+        <p class="label-sm muted" style="margin-bottom:0.4rem">إجابتك:</p>
+        <div class="card" style="background:var(--surface-lowest);padding:1rem;border-radius:var(--radius-md);white-space:pre-wrap;line-height:1.7">
+          {% if q.student_essay_text %}
+            {{ q.student_essay_text }}
+          {% else %}
+            <span class="muted" style="font-style:italic">لم يتم كتابة إجابة.</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Teacher Feedback -->
+      {% if q.feedback %}
+      <div>
+        <p class="label-sm muted" style="margin-bottom:0.4rem">
+          <span class="material-symbols-outlined" style="font-size:0.9rem;vertical-align:middle">rate_review</span>
+          ملاحظات المعلم:
+        </p>
+        <div class="card" style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.25);padding:1rem;border-radius:var(--radius-md);line-height:1.7">
+          {{ q.feedback }}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if q.status_tag == 'pending_grading' %}
+      <div class="row" style="gap:0.5rem;align-items:center;padding:0.75rem 1rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-md)">
+        <span class="material-symbols-outlined" style="color:var(--warning,#f59e0b)">hourglass_top</span>
+        <span class="body-sm" style="color:var(--warning,#f59e0b)">هذا السؤال قيد المراجعة من قِبل المعلم. ستظهر الدرجة بعد الاعتماد.</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Explanation (if any) -->
+    {% if q.explanation and q.type != 'essay' %}
+    <div class="row" style="gap:0.5rem;align-items:flex-start;margin-top:1rem;padding:0.75rem 1rem;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:var(--radius-md)">
+      <span class="material-symbols-outlined" style="font-size:1rem;color:var(--accent,#6366f1);flex-shrink:0;margin-top:2px">info</span>
+      <p class="body-sm muted" style="margin:0">{{ q.explanation }}</p>
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+
+<!-- Bottom Actions -->
+<div class="wrap" style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(66,71,84,.25)">
+  <a class="btn btn-ghost" href="{{ url_for('student.exams') }}">
+    <span class="material-symbols-outlined">arrow_back</span> العودة للامتحانات
+  </a>
+  <a class="btn btn-primary" href="{{ url_for('student.results') }}">
+    <span class="material-symbols-outlined">insights</span> سجل نتائجي الأكاديمية
+  </a>
+</div>
+{% endblock content %}

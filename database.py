@@ -122,17 +122,26 @@ def get_sanitized_db_host() -> str:
     return f"{diag['host']}:{diag['port']}"
 
 
-def get_connection(timeout: int = 3):
+def get_connection(timeout: int = 10, retries: int = 2):
     """
     Establish a connection to the PostgreSQL database.
     Raises ValueError if DATABASE_URL is not configured.
     Raises psycopg2.Error on connection failure.
-    Uses a short timeout (3s default) to prevent Serverless function timeouts on Vercel.
+    Retries on transient connection error.
     """
     db_url = get_database_url()
     if not db_url:
         raise ValueError("DATABASE_URL is not configured")
-    return psycopg2.connect(db_url, connect_timeout=timeout)
+
+    last_err = None
+    for attempt in range(retries):
+        try:
+            return psycopg2.connect(db_url, connect_timeout=timeout)
+        except (psycopg2.OperationalError, psycopg2.DatabaseError) as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(0.5)
+    raise last_err
 
 
 def check_connection(force: bool = False, ttl: float = 30.0):

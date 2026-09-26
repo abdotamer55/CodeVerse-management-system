@@ -6,25 +6,163 @@
 <div class="toolbar">
   <div>
     <h1 class="headline-lg">الإشعارات والتنبيهات</h1>
-    <p class="body-md muted">تنبيهات مواعيد الاختبارات القادمة، فتح التكاليف البرمجية، وتحديثات المعامل.</p>
+    <p class="body-md muted">تنبيهاتك الشخصية، ومواعيد الاختبارات، والتعاميم الأكاديمية العامة.</p>
+  </div>
+  {% set unread_count = notifications | rejectattr('is_read') | list | length %}
+  {% if unread_count > 0 %}
+  <div class="wrap">
+    <form method="POST" action="{{ url_for('student.mark_all_notifications_read') }}" style="display:inline">
+      <button class="btn btn-secondary" type="submit">
+        <span class="material-symbols-outlined">done_all</span> تحديد الكل كمقروء
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Filter Tabs & Stats -->
+<div class="row" style="gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center">
+  <button class="btn btn-sm btn-ghost notif-filter active" data-filter="all" type="button" onclick="filterNotifs('all', this)">
+    <span class="material-symbols-outlined" style="font-size:1rem">inbox</span>
+    الكل ({{ notifications | length }})
+  </button>
+  <button class="btn btn-sm btn-ghost notif-filter" data-filter="personal" type="button" onclick="filterNotifs('personal', this)">
+    <span class="material-symbols-outlined" style="font-size:1rem;color:var(--green, #22c55e)">person</span>
+    إشعارات شخصية ({{ notifications | rejectattr('user_id', 'none') | list | length }})
+  </button>
+  <button class="btn btn-sm btn-ghost notif-filter" data-filter="broadcast" type="button" onclick="filterNotifs('broadcast', this)">
+    <span class="material-symbols-outlined" style="font-size:1rem;color:var(--accent, #6366f1)">campaign</span>
+    تعاميم عامة ({{ notifications | selectattr('user_id', 'none') | list | length }})
+  </button>
+  <button class="btn btn-sm btn-ghost notif-filter" data-filter="unread" type="button" onclick="filterNotifs('unread', this)">
+    <span class="material-symbols-outlined" style="font-size:1rem;color:var(--amber, #f59e0b)">mark_chat_unread</span>
+    غير مقروءة ({{ unread_count }})
+  </button>
+</div>
+
+<div class="stack" id="notif-list" style="gap:0.85rem">
+  {% for n in notifications %}
+  {% set is_personal = (n.user_id is not none) %}
+  <article class="notif-item {% if not n.is_read %}unread{% endif %} notif-card"
+           data-target="{% if is_personal %}personal{% else %}broadcast{% endif %}"
+           data-read="{% if n.is_read %}read{% else %}unread{% endif %}"
+           style="
+             border-right: 4px solid {% if is_personal %}var(--green, #22c55e){% else %}var(--accent, #6366f1){% endif %};
+             background: {% if not n.is_read %}rgba(99, 102, 241, 0.04){% else %}var(--surface, #1e293b){% endif %};
+             padding: 1.15rem 1.25rem;
+             border-radius: var(--radius-md, 10px);
+             display: flex;
+             align-items: flex-start;
+             gap: 1rem;
+             transition: all 0.2s ease;
+           ">
+    <!-- Icon Indicator -->
+    <div class="stat-icon {% if is_personal %}green{% else %}blue{% endif %}"
+         style="width:42px;height:42px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                background:{% if is_personal %}rgba(34,197,94,0.12){% else %}rgba(99,102,241,0.12){% endif %};
+                color:{% if is_personal %}var(--green, #22c55e){% else %}var(--accent, #6366f1){% endif %};">
+      <span class="material-symbols-outlined" style="font-size:1.35rem">
+        {% if is_personal %}person{% else %}{{ n.icon or 'campaign' }}{% endif %}
+      </span>
+    </div>
+
+    <!-- Body -->
+    <div style="flex:1;min-width:0">
+      <div class="row" style="gap:0.5rem;flex-wrap:wrap;align-items:center;margin-bottom:0.35rem">
+        <strong style="font-size:1rem;color:var(--text, #fff)">{{ n.title }}</strong>
+
+        {% if is_personal %}
+          <span class="badge badge-success" style="font-size:0.72rem;padding:2px 8px;display:inline-flex;align-items:center;gap:3px">
+            <span class="material-symbols-outlined" style="font-size:0.8rem">lock</span>
+            إشعار شخصي خاص لك
+          </span>
+        {% else %}
+          <span class="badge badge-info" style="font-size:0.72rem;padding:2px 8px;display:inline-flex;align-items:center;gap:3px">
+            <span class="material-symbols-outlined" style="font-size:0.8rem">groups</span>
+            تعميم عام لجميع الطلاب
+          </span>
+        {% endif %}
+
+        {% if not n.is_read %}
+          <span class="badge badge-warn" style="font-size:0.7rem;background:rgba(245,158,11,0.15);color:var(--amber, #f59e0b);border:1px solid rgba(245,158,11,0.3)">
+            جديد
+          </span>
+        {% endif %}
+      </div>
+
+      <p class="body-sm" style="color:var(--text-muted, #94a3b8);margin:0;line-height:1.6;white-space:pre-wrap">{{ n.content }}</p>
+
+      <div class="row" style="gap:1rem;align-items:center;margin-top:0.6rem">
+        <span class="label-sm muted" style="display:inline-flex;align-items:center;gap:4px">
+          <span class="material-symbols-outlined" style="font-size:0.85rem">schedule</span>
+          {{ n.created_at or 'اليوم' }}
+        </span>
+
+        {% if not n.is_read %}
+        <form method="POST" action="{{ url_for('student.mark_notification_read', notif_id=n.id) }}" style="display:inline;margin-right:auto">
+          <button class="btn btn-sm btn-ghost" type="submit" style="font-size:0.75rem;padding:3px 8px;color:var(--accent, #6366f1);height:auto" title="تحديد كمقروء">
+            <span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle">done</span> تحديد كمقروء
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+  {% else %}
+  <div class="card" style="text-align:center;padding:3rem 1.5rem">
+    <span class="material-symbols-outlined" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:0.75rem">notifications_off</span>
+    <h3 class="headline-sm" style="margin:0 0 0.5rem">لا توجد إشعارات حالياً</h3>
+    <p class="body-md muted" style="margin:0">عندما يقوم المشرف بإرسال تعاميم عامة أو إشعارات شخصية لك، ستظهر جميعها هنا.</p>
+  </div>
+  {% endfor %}
+
+  <!-- Filter Empty State (Hidden by default) -->
+  <div id="filter-empty-state" class="card" style="display:none;text-align:center;padding:3rem 1.5rem">
+    <span class="material-symbols-outlined" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:0.75rem">filter_alt_off</span>
+    <h3 class="headline-sm" style="margin:0 0 0.5rem">لا توجد إشعارات مطابقة لهذا التصنيف</h3>
+    <p class="body-md muted" style="margin:0">جرّب اختيار تصنيف آخر لعرض الإشعارات.</p>
   </div>
 </div>
 
-<div class="stack" style="gap:1rem">
-  {% if notifications %}
-    {% for n in notifications %}
-    <article class="notif-item {% if not n.is_read %}unread{% endif %}">
-      <span class="material-symbols-outlined">{{ n.icon | default('notifications') }}</span>
-      <div>
-        <strong>{{ n.title }}</strong>
-        <p class="body-sm muted">{{ n.content }}</p>
-      </div>
-    </article>
-    {% endfor %}
-  {% else %}
-    <div class="card" style="text-align:center;padding:2rem">
-      <p class="body-md muted">لا توجد إشعارات حالياً.</p>
-    </div>
-  {% endif %}
-</div>
+<script>
+function filterNotifs(type, btn) {
+  // Update button active state
+  document.querySelectorAll('.notif-filter').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = '';
+    b.style.color = '';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.background = 'var(--surface-hover, rgba(255,255,255,0.08))';
+  }
+
+  const items = document.querySelectorAll('.notif-card');
+  let visibleCount = 0;
+
+  items.forEach(item => {
+    const target = item.getAttribute('data-target');
+    const read = item.getAttribute('data-read');
+
+    let show = false;
+    if (type === 'all') {
+      show = true;
+    } else if (type === 'personal' && target === 'personal') {
+      show = true;
+    } else if (type === 'broadcast' && target === 'broadcast') {
+      show = true;
+    } else if (type === 'unread' && read === 'unread') {
+      show = true;
+    }
+
+    item.style.display = show ? 'flex' : 'none';
+    if (show) visibleCount++;
+  });
+
+  const emptyState = document.getElementById('filter-empty-state');
+  if (emptyState) {
+    emptyState.style.display = (items.length > 0 && visibleCount === 0) ? 'block' : 'none';
+  }
+}
+</script>
 {% endblock content %}

@@ -78,6 +78,348 @@ def save_exam_questions(exam_id: int, questions: list):
     return exam
 
 
+def _parse_iso_datetime(val):
+    if not val:
+        return None
+    if isinstance(val, datetime):
+        return val if val.tzinfo else val.replace(tzinfo=timezone.utc)
+    s = str(val).strip()
+    if not s:
+        return None
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
+def is_exam_available_now(exam: dict) -> tuple:
+    """
+    Check if an exam is currently open based on real schedule window (starts_at, ends_at) and status.
+    Returns: (can_take: bool, state_code: str, message: str)
+    state_code: 'open' | 'upcoming' | 'expired' | 'closed'
+    """
+    if not exam:
+        return False, "closed", "الاختبار غير متوفر."
+
+    status = (exam.get("status") or "").lower()
+    if status in ("completed", "closed", "draft"):
+        return False, "closed", "هذا الاختبار مغلق حالياً من قِبل الإدارة."
+
+    now = datetime.now(timezone.utc)
+    starts_at = _parse_iso_datetime(exam.get("starts_at"))
+    ends_at = _parse_iso_datetime(exam.get("ends_at"))
+
+    if starts_at and now < starts_at:
+        local_time_str = starts_at.strftime("%Y-%m-%d %H:%M")
+        return False, "upcoming", f"الاختبار مجدول وسيبدأ في: {local_time_str}"
+
+    if ends_at and now > ends_at:
+        local_time_str = ends_at.strftime("%Y-%m-%d %H:%M")
+        return False, "expired", f"انتهت فترة الاختبار المحددة في: {local_time_str}"
+
+    return True, "open", "الاختبار متاح الآن للبدء والتسليم."
+
+
+def create_exam(data: dict):
+    title = (data.get("title") or "").strip()
+    if not title:
+        raise ValueError("عنوان الاختبار مطلوب.")
+
+    duration_minutes = int(data.get("duration_minutes") or 60)
+    total_questions = int(data.get("total_questions") or 0)
+    scheduled_date = (data.get("scheduled_date") or "").strip()
+    starts_at = _parse_iso_datetime(data.get("starts_at"))
+    ends_at = _parse_iso_datetime(data.get("ends_at"))
+    status = (data.get("status") or "scheduled").strip()
+    status_map = {
+        "active": "جارٍ الآن",
+        "published": "منشور",
+        "scheduled": "مجدول",
+        "completed": "منتهي ومغلق",
+        "draft": "مسودة",
+    }
+    status_label = status_map.get(status, "مجدول")
+
+    if is_db_active():
+        try:
+            sql = """
+                INSERT INTO exams (title, short_title, duration_minutes, duration_seconds, total_questions, scheduled_date, starts_at, ends_at, status, status_label, progress, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, NOW(), NOW())
+                RETURNING *;
+            """
+            rows = execute_query(sql, (
+                title, title[:30], duration_minutes, duration_minutes * 60, total_questions,
+                scheduled_date, starts_at, ends_at, status, status_label
+            ), fetch=True, commit=True)
+            if rows:
+                return dict(rows[0])
+        except Exception as e:
+            logger.error(f"Error creating exam in DB: {e}")
+            raise
+
+    exam = {
+        "id": max([e["id"] for e in _EXAMS_DB], default=100) + 1,
+        "title": title,
+        "short_title": title[:30],
+        "duration_minutes": duration_minutes,
+        "duration_seconds": duration_minutes * 60,
+        "total_questions": total_questions,
+        "scheduled_date": scheduled_date,
+        "starts_at": starts_at.isoformat() if starts_at else None,
+        "ends_at": ends_at.isoformat() if ends_at else None,
+        "status": status,
+        "status_label": status_label,
+        "progress": 0,
+        "questions": [],
+    }
+    _EXAMS_DB.append(exam)
+    return exam
+
+
+def update_exam(exam_id: int, data: dict):
+    if not exam_id:
+        raise ValueError("معرّف الاختبار مطلوب.")
+
+    title = (data.get("title") or "").strip() if "title" in data else None
+    duration_minutes = int(data.get("duration_minutes") or 60) if data.get("duration_minutes") else None
+    total_questions = int(data.get("total_questions")) if data.get("total_questions") is not None else None
+    scheduled_date = (data.get("scheduled_date") or "").strip() if "scheduled_date" in data else None
+    starts_at = _parse_iso_datetime(data.get("starts_at")) if "starts_at" in data else None
+    ends_at = _parse_iso_datetime(data.get("ends_at")) if "ends_at" in data else None
+    status = data.get("status")
+    status_label = None
+    if status:
+        status_map = {
+            "active": "جارٍ الآن",
+            "published": "منشور",
+            "scheduled": "مجدول",
+            "completed": "منتهي ومغلق",
+            "draft": "مسودة",
+        }
+        status_label = status_map.get(status, "مجدول")
+
+    if is_db_active():
+        try:
+            sql = """
+                UPDATE exams
+                SET title = COALESCE(NULLIF(%s, ''), title),
+                    short_title = COALESCE(NULLIF(%s, ''), short_title),
+                    duration_minutes = COALESCE(%s, duration_minutes),
+                    duration_seconds = COALESCE(%s * 60, duration_seconds),
+                    total_questions = COALESCE(%s, total_questions),
+                    scheduled_date = COALESCE(%s, scheduled_date),
+                    starts_at = COALESCE(%s, starts_at),
+                    ends_at = COALESCE(%s, ends_at),
+                    status = COALESCE(%s, status),
+                    status_label = COALESCE(%s, status_label),
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING *;
+            """
+            rows = execute_query(sql, (
+                title, title[:30] if title else None, duration_minutes, duration_minutes,
+                total_questions, scheduled_date, starts_at, ends_at,
+                status, status_label, int(exam_id)
+            ), fetch=True, commit=True)
+            if rows:
+                return dict(rows[0])
+        except Exception as e:
+            logger.error(f"Error updating exam in DB: {e}")
+            raise
+
+    for e in _EXAMS_DB:
+        if e["id"] == int(exam_id):
+            if title: e["title"] = title; e["short_title"] = title[:30]
+            if duration_minutes: e["duration_minutes"] = duration_minutes; e["duration_seconds"] = duration_minutes * 60
+            if total_questions is not None: e["total_questions"] = total_questions
+            if scheduled_date is not None: e["scheduled_date"] = scheduled_date
+            if "starts_at" in data: e["starts_at"] = starts_at.isoformat() if starts_at else None
+            if "ends_at" in data: e["ends_at"] = ends_at.isoformat() if ends_at else None
+            if status: e["status"] = status; e["status_label"] = status_label
+            return e
+    return None
+
+
+def republish_exam(exam_id: int):
+    """Re-activate and republish an exam regardless of whether it ended or was completed."""
+    if not exam_id:
+        raise ValueError("معرّف الاختبار مطلوب.")
+
+    if is_db_active():
+        try:
+            sql = """
+                UPDATE exams
+                SET status = 'active',
+                    status_label = 'جارٍ الآن',
+                    ends_at = CASE WHEN ends_at IS NOT NULL AND ends_at < NOW() THEN NULL ELSE ends_at END,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING *;
+            """
+            rows = execute_query(sql, (int(exam_id),), fetch=True, commit=True)
+            if rows:
+                return dict(rows[0])
+        except Exception as e:
+            logger.error(f"Error republishing exam in DB: {e}")
+            raise
+
+    for e in _EXAMS_DB:
+        if e["id"] == int(exam_id):
+            e["status"] = "active"
+            e["status_label"] = "جارٍ الآن"
+            return e
+    return None
+
+
+def delete_exam(exam_id: int):
+    """Delete an exam and its associated questions relations."""
+    if not exam_id:
+        raise ValueError("معرّف الاختبار مطلوب.")
+
+    if is_db_active():
+        try:
+            execute_query("DELETE FROM exam_questions WHERE exam_id = %s;", (int(exam_id),), fetch=False, commit=True)
+            execute_query("DELETE FROM exams WHERE id = %s;", (int(exam_id),), fetch=False, commit=True)
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting exam in DB: {e}")
+            raise
+
+    global _EXAMS_DB
+    before = len(_EXAMS_DB)
+    _EXAMS_DB = [e for e in _EXAMS_DB if e["id"] != int(exam_id)]
+    return len(_EXAMS_DB) < before
+
+
+def get_student_exam_review(exam_id: int, student_id):
+    """
+    Retrieve full question-by-question review of a student's completed exam attempt,
+    highlighting correct/incorrect answers, model answers, teacher feedback, and scores.
+    """
+    exam = get_exam_by_id(exam_id)
+    if not exam:
+        return None
+
+    attempt = get_student_attempt(exam_id, student_id)
+    if not attempt or attempt.get("status") not in ("submitted", "pending_essay_grading", "graded"):
+        return None
+
+    attempt_id = attempt.get("id")
+    answers_map = {}
+    if is_db_active() and attempt_id:
+        try:
+            ans_rows = execute_query(
+                "SELECT * FROM student_answers WHERE attempt_id = %s;",
+                (int(attempt_id),), fetch=True
+            )
+            for a in (ans_rows or []):
+                answers_map[int(a["question_id"])] = dict(a)
+        except Exception as e:
+            logger.warning(f"Error loading student_answers for review: {e}")
+
+    raw_answers = attempt.get("answers") or attempt.get("submitted_answers") or {}
+
+    questions = exam.get("questions", [])
+    questions_review = []
+    correct_count = 0
+    incorrect_count = 0
+
+    for idx, q in enumerate(questions, 1):
+        qid = int(q["id"])
+        qtype = str(q.get("type", q.get("category", "mcq"))).lower()
+        points = float(q.get("points") or 1)
+        db_ans = answers_map.get(qid, {})
+
+        student_selected_opt = db_ans.get("selected_option")
+        student_essay_text = db_ans.get("essay_text") or db_ans.get("selected_text")
+        if student_selected_opt is None and str(qid) in raw_answers:
+            raw_val = str(raw_answers[str(qid)])
+            if raw_val.isdigit():
+                student_selected_opt = int(raw_val)
+            else:
+                student_essay_text = raw_val
+
+        marks_awarded = float(db_ans.get("marks_awarded") or 0.0) if db_ans.get("marks_awarded") is not None else None
+        feedback = db_ans.get("feedback")
+
+        options = q.get("options") or []
+        if isinstance(options, str):
+            try:
+                options = json.loads(options)
+            except Exception:
+                options = [o.strip() for o in options.split("|") if o.strip()]
+
+        correct_idx = q.get("correct_index")
+        correct_ans = q.get("correct_answer") or (options[correct_idx] if (correct_idx is not None and 0 <= correct_idx < len(options)) else "")
+
+        is_correct = False
+        status_tag = "incorrect"
+
+        if qtype in ("mcq", "boolean"):
+            if student_selected_opt is not None and correct_idx is not None and student_selected_opt == correct_idx:
+                is_correct = True
+                status_tag = "correct"
+                correct_count += 1
+                if marks_awarded is None:
+                    marks_awarded = points
+            else:
+                is_correct = False
+                status_tag = "incorrect"
+                incorrect_count += 1
+                if marks_awarded is None:
+                    marks_awarded = 0.0
+        elif qtype == "essay":
+            if attempt.get("status") == "pending_essay_grading" and marks_awarded is None:
+                status_tag = "pending_grading"
+            elif marks_awarded is not None and marks_awarded >= (points / 2.0):
+                is_correct = True
+                status_tag = "correct"
+            else:
+                status_tag = "partial" if (marks_awarded and marks_awarded > 0) else "incorrect"
+
+        options_review = []
+        for opt_idx, opt_text in enumerate(options):
+            options_review.append({
+                "index": opt_idx,
+                "text": opt_text,
+                "is_selected": (student_selected_opt == opt_idx),
+                "is_correct": (correct_idx == opt_idx),
+            })
+
+        questions_review.append({
+            "order": idx,
+            "id": qid,
+            "prompt": q.get("prompt"),
+            "type": qtype,
+            "points": points,
+            "marks_awarded": marks_awarded if marks_awarded is not None else 0.0,
+            "is_correct": is_correct,
+            "status_tag": status_tag,
+            "options": options_review,
+            "correct_index": correct_idx,
+            "correct_answer": correct_ans,
+            "student_selected_index": student_selected_opt,
+            "student_essay_text": student_essay_text,
+            "explanation": q.get("explanation"),
+            "feedback": feedback,
+        })
+
+    return {
+        "exam": exam,
+        "attempt": attempt,
+        "questions": questions_review,
+        "score": float(attempt.get("score") or 0.0),
+        "total_score": float(attempt.get("total_score") or 0.0),
+        "percentage": float(attempt.get("percentage") or round((float(attempt.get("score") or 0.0) / max(1.0, float(attempt.get("total_score") or 1.0))) * 100, 2)),
+        "correct_count": correct_count,
+        "incorrect_count": incorrect_count,
+        "total_questions": len(questions_review),
+    }
+
+
 def publish_exam(exam_id: int):
     """Publish only a reviewed, complete exam; drafts are never student-visible."""
     exam = get_exam_by_id(exam_id)
@@ -109,8 +451,14 @@ def _attempts_table_available():
 
 def get_student_attempt(exam_id: int, student_id):
     if is_db_active() and _attempts_table_available():
-        rows = execute_query("SELECT * FROM assessment_attempts WHERE assessment_type='exam' AND assessment_id=%s AND student_id=%s LIMIT 1;", (exam_id, student_id), fetch=True)
-        return dict(rows[0]) if rows else None
+        try:
+            rows = execute_query(
+                "SELECT * FROM assessment_attempts WHERE assessment_type='exam' AND assessment_id=%s AND CAST(student_id AS TEXT)=%s LIMIT 1;",
+                (int(exam_id), str(student_id)), fetch=True
+            )
+            return dict(rows[0]) if rows else None
+        except Exception as e:
+            logger.warning(f"Error in get_student_attempt: {e}")
     return _ATTEMPTS_DB.get(("exam", int(exam_id), str(student_id)))
 
 
@@ -191,6 +539,11 @@ def _ensure_question_record(question):
 
 def _save_student_answers(attempt_id, questions, answers):
     """Persist normalized answers after a successful attempt insert."""
+    try:
+        execute_query("DELETE FROM student_answers WHERE attempt_id = %s;", (attempt_id,), fetch=False)
+    except Exception as e:
+        logger.warning(f"Could not clean old student answers: {e}")
+
     for question in questions:
         raw_answer = answers.get(str(question["id"]), "")
         answer_type = question["type"]
@@ -200,18 +553,21 @@ def _save_student_answers(attempt_id, questions, answers):
         if answer_type in ("mcq", "boolean") and str(raw_answer).lstrip("-").isdigit():
             selected_option = int(raw_answer)
         is_correct = answer_type != "essay" and str(raw_answer) == str(question["correct_index"])
-        execute_query("""INSERT INTO student_answers
-            (attempt_id, question_id, answer_type, selected_option, selected_text, essay_text, marks_awarded)
-            VALUES (%s, %s, %s, %s, %s, %s, %s);""", (
-            attempt_id, int(question["id"]), answer_type, selected_option,
-            selected_text, essay_text, question["points"] if is_correct else 0,
-        ), fetch=False)
+        try:
+            execute_query("""INSERT INTO student_answers
+                (attempt_id, question_id, answer_type, selected_option, selected_text, essay_text, marks_awarded)
+                VALUES (%s, %s, %s, %s, %s, %s, %s);""", (
+                attempt_id, int(question["id"]), answer_type, selected_option,
+                selected_text, essay_text, question["points"] if is_correct else 0,
+            ), fetch=False)
+        except Exception as e:
+            logger.warning(f"Error inserting student_answer for q {question['id']}: {e}")
 
 
 def submit_exam(exam_id: int, student_id, answers: dict):
     """Score and lock a single student attempt. The unique DB constraint is the race-safe lock."""
     existing_attempt = get_student_attempt(exam_id, student_id)
-    if existing_attempt and existing_attempt.get("status") not in ("in_progress", "expired"):
+    if existing_attempt and existing_attempt.get("status") in ("submitted", "graded"):
         raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل.")
     exam = get_exam_by_id(exam_id)
     if exam.get("status") not in ("active", "published"):
@@ -235,13 +591,13 @@ def submit_exam(exam_id: int, student_id, answers: dict):
         "submitted_answers": answers, "submit_time": datetime.now(timezone.utc).isoformat()
     }
     if is_db_active() and _attempts_table_available():
-        if existing_attempt and existing_attempt.get("status") in ("in_progress", "expired"):
+        if existing_attempt and existing_attempt.get("status") in ("in_progress", "expired", "pending_essay_grading"):
             rows = execute_query("""UPDATE assessment_attempts
                 SET answers=%s, submitted_answers=%s, score=%s, total_score=%s,
                     correct_count=%s, total_questions=%s, locked=TRUE,
                     status=%s, submit_time=CURRENT_TIMESTAMP,
                     submitted_at=CURRENT_TIMESTAMP
-                WHERE id=%s AND status IN ('in_progress', 'expired') RETURNING *;""", (
+                WHERE id=%s RETURNING *;""", (
                 json.dumps(answers), json.dumps(answers), score, total,
                 correct, len(questions), attempt_status, existing_attempt["id"]
             ), fetch=True)
@@ -260,27 +616,48 @@ def submit_exam(exam_id: int, student_id, answers: dict):
         saved_attempt["mcq_score"] = score
         saved_attempt["mcq_total"] = mcq_total
 
-        # If purely MCQ (no essay), record in results table immediately
-        if not has_essay:
-            try:
-                from services import student_service
-                student = student_service.get_student_by_id(str(student_id))
-                if student:
-                    grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 70 else "فرصة إعادة"))
-                    grade_badge = "badge-success" if percentage >= 70 else "badge-danger"
-                    res_sql = """
+        # Safely record or update in the results table so it shows in student results & teacher dashboard
+        try:
+            from services import student_service
+            student = student_service.get_student_by_id(str(student_id))
+            if student:
+                if has_essay:
+                    status_val = "pending_essay_grading"
+                    grade_label = "بانتظار تصحيح المقالي"
+                    grade_badge = "badge-warn"
+                    score_disp = f"{score} / {total} (مبدئي)"
+                else:
+                    status_val = "passed" if percentage >= 50 else "repeat"
+                    grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 65 else ("مقبول" if percentage >= 50 else "فرصة إعادة")))
+                    grade_badge = "badge-success" if percentage >= 50 else "badge-danger"
+                    score_disp = f"{score} / {total}"
+
+                existing_res = execute_query(
+                    "SELECT id FROM results WHERE CAST(student_id AS TEXT) = %s AND exam_id = %s LIMIT 1;",
+                    (str(student["id"]), int(exam["id"])), fetch=True
+                )
+                st_code = student.get("student_code") or student.get("code") or ""
+                st_name = student.get("name") or student.get("username") or "طالب"
+                if existing_res:
+                    execute_query("""
+                        UPDATE results 
+                        SET score_percent=%s, score_display=%s, date=CURRENT_DATE::text, status=%s, grade_badge=%s, grade_label=%s
+                        WHERE id=%s;
+                    """, (percentage, score_disp, status_val, grade_badge, grade_label, existing_res[0]["id"]), fetch=False, commit=True)
+                else:
+                    execute_query("""
                         INSERT INTO results (student_id, student_name, student_code, exam_id, assessment, score_percent, score_display, date, status, grade_badge, grade_label)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_DATE::text, 'passed', %s, %s);
-                    """
-                    execute_query(res_sql, (
-                        student["id"], student["name"], student["student_code"],
-                        exam["id"], exam["title"], percentage, f"{score} / {total}",
-                        grade_badge, grade_label
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_DATE::text, %s, %s, %s);
+                    """, (
+                        student["id"], st_name, st_code,
+                        exam["id"], exam["title"], percentage, score_disp,
+                        status_val, grade_badge, grade_label
                     ), fetch=False, commit=True)
-            except Exception as re:
-                logger.warning(f"Could not auto-insert finalized MCQ result into results table: {re}")
+        except Exception as re:
+            logger.warning(f"Could not auto-insert/update result into results table: {re}")
 
         return saved_attempt
+
     _ATTEMPTS_DB[("exam", int(exam_id), str(student_id))] = attempt
     return attempt
 

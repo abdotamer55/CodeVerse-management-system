@@ -19,20 +19,52 @@
 {% if not attempt %}
 <section class="card" style="margin-top:1.5rem">
   <h2 class="headline-sm">ابدأ محاولة الاختبار</h2>
-  <p class="body-md muted">سيتم إنشاء محاولة قيد التنفيذ عند البدء. لا يبدأ التصحيح أو الإرسال قبل تأكيدك النهائي.</p>
+  <p class="body-md muted">سيتم فتح الأسئلة وتسجيل المحاولة في النظام. يمكنك مراجعة وتعديل أي إجابة قبل تأكيد التسليم النهائي.</p>
   <div class="wrap">
     <form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}">
-      <button class="btn btn-primary" type="submit">بدء المحاولة</button>
+      <button class="btn btn-primary" type="submit">بدء المحاولة الآن</button>
     </form>
     <a class="btn btn-ghost" href="{{ url_for('student.exams') }}">إلغاء والعودة</a>
   </div>
 </section>
-{% elif attempt.status == 'submitted' %}
-<div class="alert" style="margin-top:1rem"><p>تم تسليم هذه المحاولة وهي مقفلة. النتيجة: {{ attempt.score }} / {{ attempt.total_score }} ({{ attempt.percentage|default('') }}%).</p></div>
+
+{% elif attempt.status in ('submitted', 'pending_essay_grading', 'graded') %}
+<section class="card card-lg stack" style="gap:1.5rem;margin-top:1.5rem">
+  <div class="alert alert-success">
+    <span class="material-symbols-outlined" style="font-size:1.5rem">check_circle</span>
+    <div>
+      <strong>تم تسليم هذه المحاولة بنجاح وحفظها في سجلك الأكاديمي.</strong>
+      {% if attempt.status == 'pending_essay_grading' %}
+        <p class="body-sm" style="margin-top:4px">تم رصد درجات الأسئلة الموضوعية ({{ attempt.mcq_score or attempt.score }} من إجمالي {{ attempt.mcq_total or attempt.total_score }} درجة)، والأسئلة المقالية قيد المراجعة والتقدير من قِبل المعلم.</p>
+      {% else %}
+        <p class="body-sm" style="margin-top:4px">النتيجة النهائية: {{ attempt.score }} من إجمالي {{ attempt.total_score }} درجة ({{ attempt.percentage|default('') }}%).</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="wrap">
+    <a class="btn btn-primary" href="{{ url_for('student.review_exam_attempt', exam_id=exam.id) }}">
+      <span class="material-symbols-outlined">rate_review</span> مراجعة إجاباتي
+    </a>
+    <a class="btn btn-secondary" href="{{ url_for('student.exams') }}">
+      <span class="material-symbols-outlined">arrow_forward</span> العودة لقائمة الامتحانات
+    </a>
+    <a class="btn btn-ghost" href="{{ url_for('student.results') }}">
+      <span class="material-symbols-outlined">insights</span> سجل نتائجي الأكاديمية
+    </a>
+  </div>
+</section>
+
 {% elif attempt.status == 'expired' %}
-<section class="card" style="margin-top:1.5rem"><h2 class="headline-sm">انتهت المحاولة</h2><p class="body-md muted">لا يمكن متابعة الإجابة في هذه المحاولة. يمكنك بدء محاولة جديدة حسب حالة الاختبار.</p><form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}"><button class="btn btn-secondary" type="submit">إعادة بدء المحاولة</button></form></section>
+<section class="card" style="margin-top:1.5rem">
+  <h2 class="headline-sm">انتهت المحاولة</h2>
+  <p class="body-md muted">انقضى الوقت المحدد للاختبار. يمكنك إعادة بدء المحاولة إذا كانت حالة الاختبار تسمح بذلك.</p>
+  <form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}">
+    <button class="btn btn-secondary" type="submit">إعادة بدء المحاولة</button>
+  </form>
+</section>
+
 {% else %}
-<form method="POST" action="{{ url_for('student.submit_exam', exam_id=exam.id) }}" class="exam-layout" data-assessment-submit style="margin-top:1.5rem">
+<form method="POST" action="{{ url_for('student.submit_exam', exam_id=exam.id) }}" class="exam-layout" data-assessment-submit style="margin-top:1.5rem" novalidate>
   <!-- Active Questions Deck -->
   <section class="card card-lg stack" style="gap:1.5rem">
     {% for q in exam.questions %}
@@ -46,12 +78,12 @@
       {% if q_type == 'essay' %}
         <div class="field" style="margin-top:1rem">
           <label for="q-{{ q.id }}" class="label-md">إجابتك المقالية:</label>
-          <textarea class="textarea" id="q-{{ q.id }}" name="{{ q.id }}" data-answer-field="essay_text" rows="5" required placeholder="اكتب إجابتك الشاملة هنا..."></textarea>
+          <textarea class="textarea" id="q-{{ q.id }}" name="{{ q.id }}" data-answer-field="essay_text" rows="5" placeholder="اكتب إجابتك الشاملة هنا..."></textarea>
         </div>
       {% else %}
         <div class="stack" style="gap:8px;margin-top:1rem">
           {% for opt in q.options %}
-          <label class="option"><input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" required> {{ opt }}</label>
+          <label class="option"><input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}"> {{ opt }}</label>
           {% endfor %}
         </div>
       {% endif %}
@@ -73,10 +105,11 @@
       {% endfor %}
     </div>
     <div class="alert" style="background:var(--surface-lowest);padding:0.75rem;border-radius:var(--radius-md)">
-      <p class="body-sm muted" style="margin:0">يمكنك مراجعة أي سؤال قبل تسليم المحاولة النهائية.</p>
+      <p class="body-sm muted" style="margin:0">يمكنك مراجعة وتعديل أي سؤال قبل تأكيد التسليم النهائي.</p>
     </div>
-    <button class="btn btn-primary" type="submit" style="width:100%">
-      إنهاء وتسليم الاختبار
+    <button class="btn btn-primary" type="submit" id="submit-exam-btn" style="width:100%;gap:8px;padding:0.8rem">
+      <span class="material-symbols-outlined">send</span>
+      <span>إنهاء وتسليم الاختبار</span>
     </button>
   </aside>
 </form>

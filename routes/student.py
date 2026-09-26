@@ -197,7 +197,14 @@ def submit_homework_route():
 @student_bp.route("/exams")
 @role_required("student")
 def exams():
+    user_id = session.get("user_id")
     exams_list = exam_service.get_published_exams()
+    for e in exams_list:
+        can_take, state_code, msg = exam_service.is_exam_available_now(e)
+        e["is_available"] = can_take
+        e["state_code"] = state_code
+        e["availability_message"] = msg
+        e["my_attempt"] = exam_service.get_student_attempt(e["id"], user_id)
     return render_template(
         "student/exams.html",
         user_role="student",
@@ -210,22 +217,36 @@ def exams():
 @role_required("student")
 def exam_detail(exam_id):
     exam = exam_service.get_exam_by_id(exam_id)
-    if exam.get("status") not in ("active", "published"):
-        flash("هذا الاختبار غير منشور.", "error")
+    if not exam or exam.get("status") not in ("active", "published", "scheduled"):
+        flash("هذا الاختبار غير منشور أو مغلق.", "error")
         return redirect(url_for("student.exams"))
-    attempt = exam_service.get_student_attempt(exam_id, session.get("user_id"))
+    user_id = session.get("user_id")
+    attempt = exam_service.get_student_attempt(exam_id, user_id)
+    can_take, state_code, state_msg = exam_service.is_exam_available_now(exam)
+    availability = {
+        "can_take": can_take,
+        "state_code": state_code,
+        "message": state_msg,
+    }
     return render_template(
         "student/exam.html",
         user_role="student",
         page_id="exams",
         exam=exam,
         attempt=attempt,
+        availability=availability,
     )
 
 
 @student_bp.route("/exams/<int:exam_id>/start", methods=["POST"])
 @role_required("student")
 def start_exam_attempt(exam_id):
+    exam = exam_service.get_exam_by_id(exam_id)
+    can_take, state_code, state_msg = exam_service.is_exam_available_now(exam)
+    if not can_take:
+        flash(state_msg, "error")
+        return redirect(url_for("student.exam_detail", exam_id=exam_id))
+
     try:
         exam_service.start_exam_attempt(exam_id, session.get("user_id"))
     except ValueError as error:
@@ -237,15 +258,50 @@ def start_exam_attempt(exam_id):
 @role_required("student")
 def submit_exam(exam_id):
     try:
-        attempt = exam_service.get_student_attempt(exam_id, session.get("user_id"))
-        if not attempt or attempt.get("status") != "in_progress":
-            raise ValueError("ابدأ المحاولة قبل إرسال الإجابات.")
-        attempt = exam_service.submit_exam(exam_id, session.get("user_id"), request.form.to_dict())
-        return render_template("student/assessment-result.html", user_role="student", page_id="exams",
-                               assessment=exam_service.get_exam_by_id(exam_id), attempt=attempt)
+        user_id = session.get("user_id")
+        attempt = exam_service.get_student_attempt(exam_id, user_id)
+        if not attempt:
+            # If attempt not explicitly started yet, start it automatically so answers are preserved
+            attempt = exam_service.start_exam_attempt(exam_id, user_id)
+        elif attempt.get("status") in ("submitted", "graded", "pending_essay_grading"):
+            flash("تم تسليم هذا الاختبار مسبقاً وهو مقفل.", "info")
+            return redirect(url_for("student.review_exam_attempt", exam_id=exam_id))
+
+        attempt = exam_service.submit_exam(exam_id, user_id, request.form.to_dict())
+        flash("تم إرسال وحفظ إجابات الاختبار بنجاح!", "success")
+        return render_template(
+            "student/assessment-result.html",
+            user_role="student",
+            page_id="exams",
+            assessment=exam_service.get_exam_by_id(exam_id),
+            attempt=attempt,
+        )
     except ValueError as error:
         flash(str(error), "error")
         return redirect(url_for("student.exam_detail", exam_id=exam_id))
+    except Exception as error:
+        flash(f"حدث خطأ أثناء حفظ إجابات الاختبار: {str(error)}", "error")
+        return redirect(url_for("student.exam_detail", exam_id=exam_id))
+
+
+@student_bp.route("/exams/<int:exam_id>/review")
+@role_required("student")
+def review_exam_attempt(exam_id):
+    user_id = session.get("user_id")
+    review_data = exam_service.get_student_exam_review(exam_id, user_id)
+    if not review_data:
+        flash("لا توجد محاولة مكتملة لهذا الاختبار لمراجعتها حتى الآن.", "info")
+        return redirect(url_for("student.exam_detail", exam_id=exam_id))
+
+    return render_template(
+        "student/exam-review.html",
+        user_role="student",
+        page_id="exams",
+        review=review_data,
+        exam=review_data["exam"],
+        attempt=review_data["attempt"],
+    )
+
 
 
 @student_bp.route("/results")
@@ -290,7 +346,7 @@ def files():
 @student_bp.route("/notifications")
 @role_required("student")
 def notifications():
-    user_id = session.get("user_id")
+    user_id = session.get("user_id") or _get_student_id()
     notifications_list = notification_service.get_student_notifications(user_id=user_id)
     return render_template(
         "student/notifications.html",
@@ -298,6 +354,24 @@ def notifications():
         page_id="notifications",
         notifications=notifications_list,
     )
+
+
+@student_bp.route("/notifications/<int:notif_id>/read", methods=["POST"])
+@role_required("student")
+def mark_notification_read(notif_id):
+    user_id = session.get("user_id") or _get_student_id()
+    notification_service.mark_notification_read(notif_id, user_id)
+    return redirect(request.referrer or url_for("student.notifications"))
+
+
+@student_bp.route("/notifications/read-all", methods=["POST"])
+@role_required("student")
+def mark_all_notifications_read():
+    user_id = session.get("user_id") or _get_student_id()
+    notification_service.mark_all_read(user_id)
+    return redirect(request.referrer or url_for("student.notifications"))
+
+
 
 
 

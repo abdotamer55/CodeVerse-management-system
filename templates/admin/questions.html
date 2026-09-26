@@ -53,9 +53,35 @@
 <section data-tab-panel-group="q" data-tab-panel="{{ category }}" class="hidden stack" style="gap:1rem">
   {% for q in questions if q.category == category %}
   <article class="card">
-    <div class="between"><span class="badge {{ q.difficulty_badge|default('badge-info') }}">{{ label }}</span><span class="badge badge-neutral">{{ q.points|default(1) }} درجة</span><button class="btn btn-secondary" type="button" data-open="#edit-q-modal-{{ q.id }}">تعديل</button></div>
+    <div class="between">
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <span class="badge {{ q.difficulty_badge|default('badge-info') }}">{{ label }}</span>
+        <span class="badge badge-neutral">{{ q.points|default(1) }} درجات</span>
+        <span class="body-sm muted">{{ q.track }}</span>
+      </div>
+      <div class="row" style="gap:0.5rem;align-items:center">
+        <button class="btn btn-secondary" type="button" data-open="#edit-q-modal-{{ q.id }}" style="padding:4px 12px;font-size:13px">
+          <span class="material-symbols-outlined" style="font-size:16px">edit</span> تعديل
+        </button>
+        <form method="POST" action="{{ url_for('admin.delete_question', question_id=q.id) }}" onsubmit="return confirm('هل أنت متأكد من حذف هذا السؤال نهائياً؟');" style="display:inline">
+          <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);padding:4px 12px;font-size:13px">
+            <span class="material-symbols-outlined" style="font-size:16px">delete</span> حذف
+          </button>
+        </form>
+      </div>
+    </div>
     <h3 class="headline-sm" style="margin-top:10px">{{ q.prompt }}</h3>
-    {% if category == 'essay' %}<p class="body-sm muted">إجابة مقالية، تصحيح يدوي</p>{% else %}<p class="body-sm muted">الإجابة الصحيحة: {{ q.correct_index }}</p>{% endif %}
+    {% if category == 'essay' %}
+      <div class="card" style="background:var(--surface-lowest);margin-top:10px;padding:0.75rem">
+        <span class="label-sm muted">نموذج الإجابة / معايير التصحيح:</span>
+        <p class="body-sm" style="margin-top:4px;color:var(--text-color, #e2e8f0)">{{ q.correct_answer or q.answer_preview or 'تصحيح يدوي من قِبل المعلم' }}</p>
+      </div>
+    {% else %}
+      <div class="card" style="background:var(--surface-lowest);margin-top:10px;padding:0.75rem">
+        <span class="label-sm muted">الإجابة المعتمدة:</span>
+        <strong class="accent" style="display:block;margin-top:4px">{{ q.correct_answer or ('صح' if q.correct_index == 0 else 'خطأ') }}</strong>
+      </div>
+    {% endif %}
   </article>
   {% endfor %}
 </section>
@@ -82,7 +108,7 @@
       </div>
     </div>
     <h3 class="headline-sm" style="margin-top:10px">{{ q.prompt }}</h3>
-    <pre class="code-block" style="background:var(--surface-lowest);padding:1rem;border-radius:var(--radius-md);margin-top:10px;direction:ltr;text-align:left;overflow-x:auto"><code>{{ q.answer_preview }}</code></pre>
+    <pre class="code-block" style="background:var(--surface-lowest);padding:1rem;border-radius:var(--radius-md);margin-top:10px;direction:ltr;text-align:left;overflow-x:auto"><code>{{ q.answer_preview or q.correct_answer }}</code></pre>
   </article>
   {% endfor %}
 </section>
@@ -108,9 +134,22 @@
             <label>نوع السؤال</label>
             <select class="select" name="category" data-question-category>
               <option value="mcq">اختيار من متعدد (MCQ)</option>
-              <option value="code">مسألة كود برمجي</option>
               <option value="boolean">صح / خطأ</option>
-              <option value="essay">سؤال مقالي</op        <div class="field">
+              <option value="essay">سؤال مقالي</option>
+              <option value="code">مسألة كود برمجي</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>مستوى الصعوبة</label>
+            <select class="select" name="difficulty">
+              <option value="مبتدئ">مبتدئ</option>
+              <option value="متوسط" selected>متوسط</option>
+              <option value="متقدم">متقدم</option>
+              <option value="تحدي برمجي">تحدي برمجي</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
           <label>المسار الأكاديمي</label>
           <input class="input" name="track" value="الخوارزميات" placeholder="مثال: هياكل البيانات، هندسة الويب..." />
         </div>
