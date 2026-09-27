@@ -5,7 +5,7 @@ Flask Application Factory & Core Server
 import os
 import sys
 import traceback
-from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
+from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify, send_from_directory
 from config import config_by_name
 
 # Capture import errors for blueprints/services at module level
@@ -85,6 +85,18 @@ def create_app(config_name=None):
                 return redirect(url_for("auth.teacher_dashboard"))
             return redirect(url_for("student.dashboard"))
         return render_template("landing.html", user_role="student", page_id="landing")
+
+    # PWA Service Worker & Manifest Endpoints
+    @app.route("/manifest.json")
+    def serve_manifest():
+        return send_from_directory(app.static_folder, "manifest.json", mimetype="application/manifest+json")
+
+    @app.route("/sw.js")
+    def serve_sw():
+        response = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
 
     # Global Context Processors (Provides authenticated user data & role to all templates)
     @app.context_processor
