@@ -5,6 +5,7 @@ Routes remain thin and delegate business logic to the service layer.
 """
 import os
 import time
+import logging
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
 import json
 from routes.auth import role_required
@@ -16,64 +17,64 @@ from services import (
     result_service,
     file_service,
     notification_service,
+    storage_service,
 )
+
+logger = logging.getLogger(__name__)
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
 def _save_uploaded_file(file_storage, subfolder="uploads"):
-    """Save a file uploaded via request.files and return (relative_url, size_display, filename, category)."""
+    """
+    Upload a file to Supabase Storage (persistent, works on Vercel).
+    Falls back to local disk only in development if Supabase is not configured.
+    Returns (public_url, size_display, original_filename, category).
+    """
     if not file_storage or not getattr(file_storage, "filename", None):
         return None, None, None, None
+
+    # ── Primary: Supabase Storage (persistent, CDN-backed) ─────────────────
+    if storage_service.is_configured():
+        public_url, size_display, orig_name, category = storage_service.upload_file(
+            file_storage, subfolder=subfolder
+        )
+        if public_url:
+            return public_url, size_display, orig_name, category
+        # If upload failed but file is valid, fall through to local
+        if orig_name is None:
+            return None, None, None, None
+
+    # ── Fallback: Local disk (development only) ─────────────────────────────
     orig_name = file_storage.filename.strip()
     if not orig_name:
         return None, None, None, None
 
     ext = orig_name.rsplit(".", 1)[-1].lower() if "." in orig_name else ""
-    # Validate extension — reject dangerous or unknown extensions
     allowed_exts = {"pdf", "zip", "rar", "7z", "tar", "gz", "ppt", "pptx",
                     "mp4", "mov", "avi", "webm", "mkv", "doc", "docx", "txt", "md",
                     "jpg", "jpeg", "jfif", "png", "gif", "webp", "svg"}
-    if ext and ext not in allowed_exts:
-        ext = "bin"
+    if ext not in allowed_exts:
+        logger.warning(f"[Upload] Blocked local upload with extension: {ext!r}")
+        return None, None, orig_name, "other"
 
     timestamp = int(time.time())
     raw_stem = orig_name.rsplit(".", 1)[0] if "." in orig_name else orig_name
-    safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_")).strip() or "file"
-    # Truncate to 60 chars max — prevents Windows MAX_PATH (260 chars) errors
-    safe_stem = safe_stem[:60]
+    safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_"))[:60] or "file"
     safe_filename = f"{timestamp}_{safe_stem}.{ext}" if ext else f"{timestamp}_{safe_stem}"
 
-    # Always build the full path from root_path + static + subfolder
-    # (ignores UPLOAD_FOLDER which may point to base uploads only)
     upload_folder = os.path.join(current_app.root_path, "static", subfolder)
     os.makedirs(upload_folder, exist_ok=True)
     dest_path = os.path.join(upload_folder, safe_filename)
+    file_storage.seek(0)
     file_storage.save(dest_path)
 
     file_size = os.path.getsize(dest_path)
-    if file_size >= 1024 * 1024:
-        size_display = f"{file_size / (1024 * 1024):.1f} MB"
-    else:
-        size_display = f"{max(1, round(file_size / 1024))} KB"
-
+    size_display = f"{file_size / (1024*1024):.1f} MB" if file_size >= 1024*1024 else f"{max(1, round(file_size/1024))} KB"
     rel_url = url_for("static", filename=f"{subfolder}/{safe_filename}")
+    category = storage_service._ext_to_category(ext)
 
-    if ext in ("pdf",):
-        category = "pdf"
-    elif ext in ("zip", "rar", "7z", "tar", "gz"):
-        category = "zip"
-    elif ext in ("ppt", "pptx"):
-        category = "slides"
-    elif ext in ("mp4", "mov", "avi", "webm", "mkv"):
-        category = "video"
-    elif ext in ("doc", "docx", "txt", "md"):
-        category = "doc"
-    elif ext in ("jpg", "jpeg", "jfif", "png", "gif", "webp", "svg"):
-        category = "image"
-    else:
-        category = "pdf"
-
+    logger.info(f"[Upload] Saved locally (Supabase not configured): {safe_filename}")
     return rel_url, size_display, orig_name, category
 
 

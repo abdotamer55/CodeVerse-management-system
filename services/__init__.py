@@ -10,6 +10,7 @@ from . import exam_service
 from . import result_service
 from . import file_service
 from . import notification_service
+from . import storage_service
 
 __all__ = [
     "auth_service",
@@ -20,4 +21,5 @@ __all__ = [
     "result_service",
     "file_service",
     "notification_service",
+    "storage_service",
 ]
