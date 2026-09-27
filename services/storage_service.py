@@ -62,8 +62,8 @@ def _get_auth_key():
 
 
 def is_configured():
-    """Check if Supabase storage is configured."""
-    return bool(SUPABASE_URL and (SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY))
+    """Check if Supabase storage is properly configured with write access."""
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
 
 
 def upload_file(file_storage, subfolder: str = "uploads") -> tuple:
@@ -104,7 +104,7 @@ def upload_file(file_storage, subfolder: str = "uploads") -> tuple:
         return None, None, orig_name, _ext_to_category(ext)
 
     mime = MIME_TYPES.get(ext, "application/octet-stream")
-    api_key = _get_auth_key()
+    api_key = SUPABASE_SERVICE_ROLE_KEY  # Must be service_role — anon key has no write access
     upload_url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{storage_path}"
 
     headers = {
@@ -122,6 +122,12 @@ def upload_file(file_storage, subfolder: str = "uploads") -> tuple:
             category = _ext_to_category(ext)
             logger.info(f"[Storage] Uploaded {safe_filename} ({size_display}) → {public_url}")
             return public_url, size_display, orig_name, category
+        elif resp.status_code in (400, 403):
+            logger.error(
+                f"[Storage] Upload rejected ({resp.status_code}): {resp.text[:200]}. "
+                "Ensure SUPABASE_SERVICE_ROLE_KEY is set correctly in environment variables."
+            )
+            return None, None, orig_name, _ext_to_category(ext)
         else:
             logger.error(f"[Storage] Upload failed {resp.status_code}: {resp.text[:200]}")
             return None, None, orig_name, _ext_to_category(ext)
