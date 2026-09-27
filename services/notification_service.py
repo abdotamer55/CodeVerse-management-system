@@ -10,32 +10,7 @@ from database import execute_query, check_connection
 
 logger = logging.getLogger(__name__)
 
-_NOTIFICATIONS_DB = [
-    {
-        "id": 1,
-        "title": "تذكير أكاديمي: موعد الاختبار النصفي لهياكل البيانات والخوارزميات",
-        "content": "يُرجى من جميع الطلاب مراجعة بنك الأسئلة والاستعداد الجيد.",
-        "type": "exam",
-        "icon": "campaign",
-        "is_read": False,
-        "created_at": "اليوم 11:20 ص",
-        "target": "broadcast",
-        "user_id": None,
-        "recipient_label": "جميع الطلاب",
-    },
-    {
-        "id": 2,
-        "title": "فتح باب تسليم التكليف البرمجي: مشروع REST API و Redis",
-        "content": "الموعد النهائي للتسليم: 18 سبتمبر 2024.",
-        "type": "assignment",
-        "icon": "assignment",
-        "is_read": True,
-        "created_at": "قبل يومين",
-        "target": "broadcast",
-        "user_id": None,
-        "recipient_label": "جميع الطلاب",
-    },
-]
+_NOTIFICATIONS_DB = []
 
 
 def is_db_active():
@@ -53,10 +28,10 @@ def get_all_notifications():
             sql = """
                 SELECT n.id, n.title, n.content, n.type, n.icon, n.is_read,
                        n.user_id,
-                       COALESCE(s.name, s.username, 'جميع الطلاب') AS recipient_label,
+                       COALESCE(u.full_name, u.username, 'جميع الطلاب') AS recipient_label,
                        TO_CHAR(n.created_at, 'YYYY-MM-DD HH24:MI') as created_at
                 FROM notifications n
-                LEFT JOIN students s ON CAST(s.id AS TEXT) = CAST(n.user_id AS TEXT)
+                LEFT JOIN users u ON CAST(u.id AS TEXT) = CAST(n.user_id AS TEXT)
                 ORDER BY n.created_at DESC;
             """
             rows = execute_query(sql, fetch=True)
@@ -199,14 +174,15 @@ def mark_all_read(user_id=None):
 
 
 def delete_notification(notification_id: int):
-    """Delete a notification."""
+    """Delete a notification by id from DB and memory."""
     if not notification_id:
         raise ValueError("معرّف الإشعار مطلوب للحذف.")
 
+    deleted = False
     if is_db_active():
         try:
             execute_query("DELETE FROM notifications WHERE id = %s;", (int(notification_id),), fetch=False, commit=True)
-            return True
+            deleted = True
         except Exception as e:
             logger.error(f"Error deleting notification from DB: {e}")
             raise
@@ -214,4 +190,20 @@ def delete_notification(notification_id: int):
     global _NOTIFICATIONS_DB
     before = len(_NOTIFICATIONS_DB)
     _NOTIFICATIONS_DB = [n for n in _NOTIFICATIONS_DB if n["id"] != int(notification_id)]
-    return len(_NOTIFICATIONS_DB) < before
+    if len(_NOTIFICATIONS_DB) < before:
+        deleted = True
+    return deleted
+
+
+def delete_all_notifications():
+    """Delete all notifications from DB and in-memory list."""
+    if is_db_active():
+        try:
+            execute_query("DELETE FROM notifications;", fetch=False, commit=True)
+        except Exception as e:
+            logger.error(f"Error deleting all notifications from DB: {e}")
+            raise
+
+    global _NOTIFICATIONS_DB
+    _NOTIFICATIONS_DB = []
+    return True

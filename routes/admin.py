@@ -1241,3 +1241,16 @@ def delete_notification(notification_id):
         flash(f"فشل حذف الإشعار: {e}", "error")
 
     return redirect(url_for("admin.notifications"))
+
+
+@admin_bp.route("/notifications/clear-all", methods=["POST"])
+@role_required("admin")
+def clear_all_notifications():
+    try:
+        notification_service.delete_all_notifications()
+        flash("تم مسح جميع الإشعارات بنجاح.", "success")
+    except Exception as e:
+        flash(f"فشل مسح الإشعارات: {e}", "error")
+
+    return redirect(url_for("admin.notifications"))
+

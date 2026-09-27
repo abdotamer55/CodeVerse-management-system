@@ -83,19 +83,34 @@
   <div class="card stat-card">
     <div class="between">
       <div class="stat-icon blue"><span class="material-symbols-outlined">emoji_events</span></div>
+      {% if student.graded_exams_count and student.graded_exams_count > 0 %}
+        <a href="{{ url_for('student.results') }}" class="badge badge-info" style="font-size:0.75rem;text-decoration:none" title="عرض تفاصيل درجات الامتحانات">
+          {{ student.graded_exams_count }} اختبارات مرصودة
+        </a>
+      {% else %}
+        <span class="badge badge-neutral" style="font-size:0.75rem">لا توجد اختبارات</span>
+      {% endif %}
     </div>
     <div>
-      <span class="label-sm muted">المعدل التراكمي</span>
+      <span class="label-sm muted">المعدل التراكمي (GPA)</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="display-hero {% if student.overall_grade >= 90 %}success{% elif student.overall_grade >= 70 %}warning{% else %}danger{% endif %}">
+        <span class="display-hero {% if student.overall_grade >= 85 %}success{% elif student.overall_grade >= 65 %}warning{% elif student.overall_grade >= 50 %}info{% elif student.overall_grade > 0 %}danger{% endif %}">
           {{ "%.1f"|format(student.overall_grade) }}%
         </span>
       </div>
+      <div class="progress success" style="height:6px;margin-top:8px">
+        <span style="width:{{ student.overall_grade|int }}%;background:{% if student.overall_grade >= 85 %}var(--green, #22c55e){% elif student.overall_grade >= 65 %}var(--accent, #6366f1){% elif student.overall_grade >= 50 %}var(--amber, #f59e0b){% else %}var(--red, #ef4444){% endif %}"></span>
+      </div>
     </div>
-    <div class="stat-foot">
-      <span>التقدير</span>
+    <div class="stat-foot" style="margin-top:8px">
+      <span>التقدير الأكاديمي</span>
       <strong>
-        {% if student.overall_grade >= 90 %}ممتاز{% elif student.overall_grade >= 80 %}جيد جداً{% elif student.overall_grade >= 70 %}جيد{% elif student.overall_grade > 0 %}مقبول{% else %}لا توجد نتائج{% endif %}
+        {% if student.overall_grade >= 90 %}ممتاز
+        {% elif student.overall_grade >= 80 %}جيد جداً
+        {% elif student.overall_grade >= 65 %}جيد
+        {% elif student.overall_grade >= 50 %}مقبول
+        {% elif student.overall_grade > 0 %}بحاجة لتحسين
+        {% else %}لا توجد نتائج{% endif %}
       </strong>
     </div>
   </div>

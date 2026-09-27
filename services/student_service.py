@@ -119,7 +119,11 @@ def get_student_dashboard_stats(student_id):
                         WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT)
                         AND status IN ('submitted','graded','pending_essay_grading')) AS completed_hw_real,
                     (SELECT COUNT(*) FROM homework) AS real_total_hw,
-                    (SELECT COUNT(*) FROM exams) AS total_exams
+                    (SELECT COUNT(*) FROM exams) AS total_exams,
+                    (SELECT COUNT(*) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status != 'pending_essay_grading') AS graded_exams_count,
+                    (SELECT ROUND(AVG(score_percent), 2) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status != 'pending_essay_grading') AS live_gpa,
+                    (SELECT MAX(score_percent) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status != 'pending_essay_grading') AS highest_exam_score,
+                    (SELECT COUNT(*) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status = 'passed') AS passed_exams_count
                 FROM students s
                 WHERE CAST(s.id AS TEXT) = %s
                 LIMIT 1;
@@ -130,16 +134,46 @@ def get_student_dashboard_stats(student_id):
                 total_lessons = int(r["real_total_lessons"]) if (r.get("real_total_lessons") is not None) else actual_total_lessons
                 completed_hw = int(r["completed_hw_real"] or r["completed_homework"] or 0)
                 total_hw = int(r["real_total_hw"]) if (r.get("real_total_hw") is not None) else actual_total_hw
+                live_gpa = float(r["live_gpa"]) if r.get("live_gpa") is not None else float(r["overall_grade"] or 0.0)
                 return {
                     "completed_lessons": actual_completed_lessons,
                     "total_lessons": total_lessons,
                     "completed_homework": completed_hw,
                     "total_homework": total_hw,
-                    "overall_grade": float(r["overall_grade"] or 0),
+                    "overall_grade": live_gpa,
                     "active_exams": int(r["active_exams"] or 0),
+                    "graded_exams_count": int(r.get("graded_exams_count") or 0),
+                    "highest_exam_score": float(r.get("highest_exam_score") or 0.0),
+                    "passed_exams_count": int(r.get("passed_exams_count") or 0),
                 }
         except Exception as e:
             logger.warning(f"Error querying student dashboard stats: {e}")
+
+
+def recalculate_student_overall_grade(student_id: str):
+    """Recalculate and persist overall_grade for a student in DB based on exam results."""
+    if not student_id:
+        return 0.0
+    if is_db_active():
+        try:
+            sql = """
+                UPDATE students s
+                SET overall_grade = COALESCE(
+                    (SELECT ROUND(AVG(score_percent), 2)
+                     FROM results r
+                     WHERE CAST(r.student_id AS TEXT) = CAST(s.id AS TEXT)
+                     AND r.status != 'pending_essay_grading'),
+                    0.00
+                )
+                WHERE CAST(s.id AS TEXT) = %s
+                RETURNING overall_grade;
+            """
+            rows = execute_query(sql, (str(student_id),), fetch=True, commit=True)
+            if rows:
+                return float(rows[0]["overall_grade"] or 0.0)
+        except Exception as e:
+            logger.warning(f"Error recalculating overall_grade for student {student_id}: {e}")
+    return 0.0
 
     student = None
     for s in _STUDENTS_DB:

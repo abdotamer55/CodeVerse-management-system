@@ -9,6 +9,15 @@
     <p class="body-md muted">إرسال تعاميم لجميع الطلاب، أو إشعارات شخصية لطالب محدد.</p>
   </div>
   <div class="wrap">
+    {% if notifications %}
+    <form method="POST" action="{{ url_for('admin.clear_all_notifications') }}"
+          onsubmit="return confirm('هل أنت متأكد من مسح جميع الإشعارات والتعاميم بالكامل؟ لا يمكن التراجع عن هذه الخطوة.');"
+          style="display:inline">
+      <button class="btn btn-ghost" type="submit" style="color:var(--red, #ef4444);border:1px solid rgba(239,68,68,0.3)">
+        <span class="material-symbols-outlined">delete_sweep</span> مسح جميع الإشعارات
+      </button>
+    </form>
+    {% endif %}
     <button class="btn btn-primary" data-open="#broadcast-modal" type="button">
       <span class="material-symbols-outlined">campaign</span> تعميم لجميع الطلاب
     </button>

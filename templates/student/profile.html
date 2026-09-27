@@ -47,8 +47,8 @@
       <div class="stat-icon green"><span class="material-symbols-outlined">emoji_events</span></div>
     </div>
     <div>
-      <span class="label-sm muted">المعدل التراكمي</span>
-      <div class="display-hero {% if student.overall_grade >= 90 %}success{% elif student.overall_grade >= 70 %}warning{% else %}danger{% endif %}" style="margin-top:4px">
+      <span class="label-sm muted">المعدل التراكمي (GPA)</span>
+      <div class="display-hero {% if student.overall_grade >= 85 %}success{% elif student.overall_grade >= 65 %}warning{% elif student.overall_grade >= 50 %}info{% elif student.overall_grade > 0 %}danger{% endif %}" style="margin-top:4px">
         {{ "%.1f"|format(student.overall_grade) }}%
       </div>
     </div>
@@ -57,8 +57,9 @@
       <strong>
         {% if student.overall_grade >= 90 %}ممتاز
         {% elif student.overall_grade >= 80 %}جيد جداً
-        {% elif student.overall_grade >= 70 %}جيد
-        {% elif student.overall_grade > 0 %}مقبول
+        {% elif student.overall_grade >= 65 %}جيد
+        {% elif student.overall_grade >= 50 %}مقبول
+        {% elif student.overall_grade > 0 %}بحاجة لتحسين
         {% else %}لا توجد نتائج{% endif %}
       </strong>
     </div>
@@ -210,11 +211,11 @@
 
     <div>
       <div class="between" style="margin-bottom:6px">
-        <span class="body-sm">المعدل التراكمي الكلي</span>
+        <span class="body-sm">المعدل التراكمي الكلي (GPA)</span>
         <span class="label-sm muted">{{ "%.1f"|format(student.overall_grade) }}%</span>
       </div>
-      <div class="progress {% if student.overall_grade >= 90 %}success{% elif student.overall_grade >= 70 %}warning{% else %}danger{% endif %}" style="height:10px">
-        <span style="width:{{ student.overall_grade|int }}%"></span>
+      <div class="progress success" style="height:10px">
+        <span style="width:{{ student.overall_grade|int }}%;background:{% if student.overall_grade >= 85 %}var(--green, #22c55e){% elif student.overall_grade >= 65 %}var(--accent, #6366f1){% elif student.overall_grade >= 50 %}var(--amber, #f59e0b){% else %}var(--red, #ef4444){% endif %}"></span>
       </div>
     </div>
 

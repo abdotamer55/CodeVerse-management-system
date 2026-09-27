@@ -309,6 +309,13 @@ def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, f
                             status_val, grade_badge, grade_label
                         ), fetch=False, commit=True)
 
+                    # Recalculate student's cumulative GPA / overall_grade
+                    try:
+                        from services import student_service
+                        student_service.recalculate_student_overall_grade(st_id)
+                    except Exception as gpa_err:
+                        logger.warning(f"Could not update overall grade: {gpa_err}")
+
                     # Send student notification
                     try:
                         from services import notification_service

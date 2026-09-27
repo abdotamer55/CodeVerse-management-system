@@ -1,39 +1,135 @@
 {% extends "base.html" %}
 
-{% block title %}سجل نتائجي الأكاديمية{% endblock %}
+{% block title %}سجل نتائجي والمعدل التراكمي{% endblock %}
 
 {% block content %}
 <div class="toolbar">
   <div>
-    <h1 class="headline-lg">سجل نتائجي الأكاديمية</h1>
-    <p class="body-md muted">رصد الدرجات التفصيلية للاختبارات والمشاريع البرمجية التراكمية.</p>
+    <h1 class="headline-lg">سجل نتائجي والمعدل التراكمي</h1>
+    <p class="body-md muted">رصد الدرجات التفصيلية للاختبارات والمشاريع البرمجية التراكمية معتمدة على درجاتك الحقيقية.</p>
   </div>
   <a class="btn btn-ghost" href="{{ url_for('student.dashboard') }}">
     <span class="material-symbols-outlined">arrow_back</span> لوحة الطالب
   </a>
 </div>
 
+<!-- GPA & Performance Insights Section -->
+{% set avg_val = summary.overall_average|replace('%','')|float if summary.overall_average else 0.0 %}
+<section class="card card-lg" style="margin-bottom:1.5rem;background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(34,197,94,0.04) 100%);border:1px solid rgba(99,102,241,0.2)">
+  <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem">
+    <div style="flex:1;min-width:240px">
+      <div class="row" style="gap:8px;align-items:center;margin-bottom:6px">
+        <span class="stat-icon blue" style="width:36px;height:36px">
+          <span class="material-symbols-outlined" style="font-size:1.25rem">insights</span>
+        </span>
+        <h2 class="headline-sm" style="margin:0">انسايت المعدل التراكمي العام (GPA)</h2>
+      </div>
+      <p class="body-sm muted" style="margin:0 0 12px">
+        {% if results %}
+          تم احتساب المعدل التراكمي بناءً على نتائج <strong>{{ results|length }}</strong> اختبارات وتقييمات معتمدة في سجلك الأكاديمي.
+        {% else %}
+          لم تقم بإتمام أي امتحانات بعد. ابدأ بأداء الامتحانات المتاحة ليتم احتساب معدلك التراكمي تلقائياً.
+        {% endif %}
+      </p>
+
+      {% if results %}
+      <div class="row" style="gap:1rem;flex-wrap:wrap">
+        <span class="badge {% if avg_val >= 85 %}badge-success{% elif avg_val >= 65 %}badge-info{% elif avg_val >= 50 %}badge-neutral{% else %}badge-danger{% endif %}" style="font-size:0.85rem;padding:4px 10px">
+          {% if avg_val >= 90 %}مستوى متفوق (ممتاز)
+          {% elif avg_val >= 80 %}مستوى متقدم (جيد جداً)
+          {% elif avg_val >= 65 %}مستوى جيد
+          {% elif avg_val >= 50 %}مستوى متوسط (مقبول)
+          {% else %}بحاجة إلى مراجعة وتكثيف المران{% endif %}
+        </span>
+        <span class="badge badge-neutral" style="font-size:0.85rem;padding:4px 10px">
+          الاختبارات الناجحة: {{ results | selectattr('status', 'equalto', 'passed') | list | length }} من {{ results|length }}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Big GPA Display Box -->
+    <div style="text-align:center;padding:1rem 2rem;background:var(--surface, rgba(255,255,255,0.04));border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.08);min-width:180px">
+      <span class="label-sm muted">المعدل التراكمي الحالي</span>
+      <div class="display-hero {% if avg_val >= 85 %}success{% elif avg_val >= 65 %}info{% elif avg_val >= 50 %}warning{% elif avg_val > 0 %}danger{% endif %}" style="margin:4px 0">
+        {{ "%.1f"|format(avg_val) }}%
+      </div>
+      <div class="progress success" style="height:6px;width:120px;margin:0 auto">
+        <span style="width:{{ avg_val|int }}%;background:{% if avg_val >= 85 %}var(--green, #22c55e){% elif avg_val >= 65 %}var(--accent, #6366f1){% elif avg_val >= 50 %}var(--amber, #f59e0b){% else %}var(--red, #ef4444){% endif %}"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats Grid -->
 <section class="grid-4">
-  <div class="card">
-    <span class="label-sm muted">متوسط درجاتي</span>
-    <div class="headline-lg success" style="margin-top:4px">
-      {% if summary.overall_average %}{{ summary.overall_average }}{% else %}<span class="muted body-md">لا توجد بيانات</span>{% endif %}
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon blue"><span class="material-symbols-outlined">analytics</span></div>
+      <span class="badge badge-info">تراكمي</span>
+    </div>
+    <div>
+      <span class="label-sm muted">متوسط الدرجات</span>
+      <div class="headline-lg success" style="margin-top:4px">
+        {% if summary.overall_average %}{{ summary.overall_average }}{% else %}<span class="muted body-md">لا توجد بيانات</span>{% endif %}
+      </div>
+    </div>
+    <div class="stat-foot">
+      <span>الحالة</span>
+      <strong>{% if avg_val >= 50 %}ناجح ومستمر{% elif avg_val > 0 %}فرصة إعادة{% else %}بانتظار الرصد{% endif %}</strong>
     </div>
   </div>
-  <div class="card">
-    <span class="label-sm muted">درجة آخر تقييم</span>
-    <div class="headline-lg" style="margin-top:4px">
-      {% if summary.last_score %}{{ summary.last_score }}{% else %}<span class="muted body-md">—</span>{% endif %}
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon green"><span class="material-symbols-outlined">quiz</span></div>
+      <span class="badge badge-success">أحدث تقييم</span>
+    </div>
+    <div>
+      <span class="label-sm muted">درجة آخر تقييم</span>
+      <div class="headline-lg" style="margin-top:4px">
+        {% if summary.last_score %}{{ summary.last_score }}{% else %}<span class="muted body-md">—</span>{% endif %}
+      </div>
+    </div>
+    <div class="stat-foot">
+      <span>تاريخ آخر اختبار</span>
+      <strong class="muted">{{ results[0].date if results else '—' }}</strong>
     </div>
   </div>
-  <div class="card">
-    <span class="label-sm muted">عدد التقييمات المرصودة</span>
-    <div class="headline-lg" style="margin-top:4px">{{ summary.total_graded }}</div>
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon amber"><span class="material-symbols-outlined">assignment_turned_in</span></div>
+      <span class="badge badge-warn">مرصود</span>
+    </div>
+    <div>
+      <span class="label-sm muted">عدد التقييمات المرصودة</span>
+      <div class="headline-lg" style="margin-top:4px">{{ summary.total_graded }}</div>
+    </div>
+    <div class="stat-foot">
+      <span>الامتحانات الناجحة</span>
+      <strong class="success">{{ results | selectattr('status', 'equalto', 'passed') | list | length }}</strong>
+    </div>
   </div>
-  <div class="card">
-    <span class="label-sm muted">الواجبات المسلّمة</span>
-    <div class="headline-lg" style="margin-top:4px">
-      {{ results | selectattr('grade_label', 'defined') | list | length if results else 0 }}
+
+  <div class="card stat-card">
+    <div class="between">
+      <div class="stat-icon purple"><span class="material-symbols-outlined">emoji_events</span></div>
+      <span class="badge badge-info">أفضل نتيجة</span>
+    </div>
+    <div>
+      <span class="label-sm muted">أعلى درجة تم تحقيقها</span>
+      <div class="headline-lg" style="margin-top:4px">
+        {% set scores = [] %}
+        {% for r in results if r.score_percent is not none %}
+          {% set _ = scores.append(r.score_percent|float) %}
+        {% endfor %}
+        {% if scores %}{{ "%.1f"|format(scores | max) }}%{% else %}—{% endif %}
+      </div>
+    </div>
+    <div class="stat-foot">
+      <span>مستوى الإتقان</span>
+      <strong class="success">{% if scores and (scores|max) >= 90 %}متميز{% elif scores and (scores|max) >= 70 %}جيد جداً{% elif scores %}جيد{% else %}—{% endif %}</strong>
     </div>
   </div>
 </section>
@@ -46,8 +142,10 @@
         <th>التقييم الأكاديمي</th>
         <th>النوع</th>
         <th>الدرجة المرصودة</th>
+        <th>النسبة المئوية</th>
         <th>التاريخ</th>
-        <th>التقدير العام</th>
+        <th>التقدير</th>
+        <th style="text-align:center">الإجراءات</th>
       </tr>
     </thead>
     <tbody>
@@ -56,9 +154,9 @@
         <td><strong>{{ r.assessment }}</strong></td>
         <td>
           {% if r.get('exam_id') %}
-            <span class="badge badge-info">امتحان</span>
+            <span class="badge badge-info">امتحان رسمي</span>
           {% elif r.get('homework_id') %}
-            <span class="badge badge-neutral">واجب</span>
+            <span class="badge badge-neutral">تكليف برمجي</span>
           {% else %}
             <span class="badge badge-neutral">تقييم</span>
           {% endif %}
@@ -70,8 +168,26 @@
             <strong class="headline-sm success">{{ r.score_display }}</strong>
           {% endif %}
         </td>
+        <td>
+          {% if r.score_percent is not none %}
+            <span class="badge {% if r.score_percent|float >= 85 %}badge-success{% elif r.score_percent|float >= 65 %}badge-info{% elif r.score_percent|float >= 50 %}badge-neutral{% else %}badge-danger{% endif %}">
+              {{ "%.1f"|format(r.score_percent|float) }}%
+            </span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
         <td>{{ r.date }}</td>
         <td><span class="badge {{ r.grade_badge }}">{{ r.grade_label }}</span></td>
+        <td style="text-align:center">
+          {% if r.get('exam_id') %}
+          <a class="btn btn-sm btn-ghost" href="{{ url_for('student.exam_review', exam_id=r.exam_id) }}" title="معاينة إجاباتي والصح والخطأ">
+            <span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle">visibility</span> معاينة
+          </a>
+          {% else %}
+          <span class="muted body-sm">—</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -81,7 +197,7 @@
 <div class="card" style="margin-top:1.5rem;text-align:center;padding:3rem">
   <span class="material-symbols-outlined" style="font-size:48px;color:var(--muted)">assignment</span>
   <p class="body-md muted" style="margin-top:1rem">لا توجد نتائج مرصودة لك حتى الآن.</p>
-  <a class="btn btn-secondary" href="{{ url_for('student.exams') }}" style="margin-top:1rem">استعرض الامتحانات</a>
+  <a class="btn btn-secondary" href="{{ url_for('student.exams') }}" style="margin-top:1rem">استعرض الامتحانات المتاحة</a>
 </div>
 {% endif %}
 {% endblock content %}

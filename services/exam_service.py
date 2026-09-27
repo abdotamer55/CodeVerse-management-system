@@ -653,6 +653,13 @@ def submit_exam(exam_id: int, student_id, answers: dict):
                         exam["id"], exam["title"], percentage, score_disp,
                         status_val, grade_badge, grade_label
                     ), fetch=False, commit=True)
+
+                # Automatically recalculate student's cumulative GPA / overall_grade
+                try:
+                    from services import student_service
+                    student_service.recalculate_student_overall_grade(student["id"])
+                except Exception as gpa_err:
+                    logger.warning(f"Could not update overall grade: {gpa_err}")
         except Exception as re:
             logger.warning(f"Could not auto-insert/update result into results table: {re}")
 

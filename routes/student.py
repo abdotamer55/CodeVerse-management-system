@@ -47,6 +47,9 @@ def dashboard():
             "total_homework": db_stats["total_homework"],
             "overall_grade": db_stats["overall_grade"],
             "active_exams": db_stats["active_exams"],
+            "graded_exams_count": db_stats.get("graded_exams_count", 0),
+            "highest_exam_score": db_stats.get("highest_exam_score", 0.0),
+            "passed_exams_count": db_stats.get("passed_exams_count", 0),
         })
     return render_template(
         "student/dashboard.html",
@@ -390,6 +393,9 @@ def profile():
             "completed_homework": db_stats["completed_homework"],
             "total_homework": db_stats["total_homework"],
             "overall_grade": db_stats["overall_grade"],
+            "graded_exams_count": db_stats.get("graded_exams_count", 0),
+            "highest_exam_score": db_stats.get("highest_exam_score", 0.0),
+            "passed_exams_count": db_stats.get("passed_exams_count", 0),
         })
     return render_template(
         "student/profile.html",
