@@ -47,6 +47,7 @@ def create_app(config_name=None):
         except Exception as e:
             db_err = str(e)
 
+        from services import storage_service
         return jsonify({
             "python_version": sys.version,
             "flask_env": os.environ.get("FLASK_ENV"),
@@ -59,6 +60,10 @@ def create_app(config_name=None):
             "import_error": _import_error,
             "secret_key_set": bool(os.environ.get("SECRET_KEY")),
             "supabase_url_set": bool(os.environ.get("SUPABASE_URL")),
+            "supabase_service_role_key_set": bool(os.environ.get("SUPABASE_SERVICE_ROLE_KEY")),
+            "supabase_storage_bucket": os.environ.get("SUPABASE_STORAGE_BUCKET", "codeverse-files"),
+            "supabase_storage_configured": storage_service.is_configured(),
+            "is_vercel": bool(os.environ.get("VERCEL")),
         })
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -74,6 +79,24 @@ def create_app(config_name=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(student_bp)
+
+    # Persistent uploads handler: serves from local disk if present, else redirects to Supabase Storage
+    @app.route("/static/uploads/<path:filename>")
+    def serve_uploaded_file(filename):
+        local_dir = os.path.join(app.root_path, "static", "uploads")
+        local_path = os.path.join(local_dir, filename)
+        if os.path.isfile(local_path):
+            return send_from_directory(local_dir, filename)
+
+        from services import storage_service
+        if storage_service.is_configured():
+            supabase_url = storage_service._get_supabase_url()
+            bucket_name = storage_service._get_bucket_name()
+            cloud_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/uploads/{filename}"
+            return redirect(cloud_url)
+
+        flash("الملف المطلوب غير متاح على السيرفر، يرجى إعادة رفعه.", "warning")
+        return redirect(url_for("index"))
 
     # Root Gateway / Landing Page Route
     @app.route("/")

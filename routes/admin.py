@@ -34,6 +34,8 @@ def _save_uploaded_file(file_storage, subfolder="uploads"):
     if not file_storage or not getattr(file_storage, "filename", None):
         return None, None, None, None
 
+    is_serverless = bool(os.environ.get("VERCEL")) or os.environ.get("FLASK_ENV") == "production"
+
     # ── Primary: Supabase Storage (persistent, CDN-backed) ─────────────────
     if storage_service.is_configured():
         public_url, size_display, orig_name, category = storage_service.upload_file(
@@ -41,11 +43,25 @@ def _save_uploaded_file(file_storage, subfolder="uploads"):
         )
         if public_url:
             return public_url, size_display, orig_name, category
-        # If upload failed but file is valid, fall through to local
-        if orig_name is None:
-            return None, None, None, None
+        # Upload to Supabase failed — do NOT fall through to local on production/serverless
+        logger.error("[Upload] Supabase upload failed. Check SUPABASE_SERVICE_ROLE_KEY and storage bucket.")
+        orig_name = orig_name or getattr(file_storage, "filename", None)
+        if is_serverless:
+            return None, None, orig_name, storage_service._ext_to_category(
+                orig_name.rsplit(".", 1)[-1].lower() if orig_name and "." in orig_name else ""
+            )
 
-    # ── Fallback: Local disk (development only) ─────────────────────────────
+    # ── If Supabase not configured and on serverless: never write to disk ───
+    if is_serverless:
+        logger.error(
+            "[Upload] Supabase Storage is not configured and local disk is read-only on Vercel. "
+            "Add SUPABASE_SERVICE_ROLE_KEY to environment variables."
+        )
+        orig_name = getattr(file_storage, "filename", None)
+        ext = orig_name.rsplit(".", 1)[-1].lower() if orig_name and "." in orig_name else ""
+        return None, None, orig_name, storage_service._ext_to_category(ext)
+
+    # ── Fallback: Local disk (development only — NOT available on Vercel) ───
     orig_name = file_storage.filename.strip()
     if not orig_name:
         return None, None, None, None
@@ -58,24 +74,33 @@ def _save_uploaded_file(file_storage, subfolder="uploads"):
         logger.warning(f"[Upload] Blocked local upload with extension: {ext!r}")
         return None, None, orig_name, "other"
 
-    timestamp = int(time.time())
-    raw_stem = orig_name.rsplit(".", 1)[0] if "." in orig_name else orig_name
-    safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_"))[:60] or "file"
-    safe_filename = f"{timestamp}_{safe_stem}.{ext}" if ext else f"{timestamp}_{safe_stem}"
+    try:
+        timestamp = int(time.time())
+        raw_stem = orig_name.rsplit(".", 1)[0] if "." in orig_name else orig_name
+        safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_"))[:60] or "file"
+        safe_filename = f"{timestamp}_{safe_stem}.{ext}" if ext else f"{timestamp}_{safe_stem}"
 
-    upload_folder = os.path.join(current_app.root_path, "static", subfolder)
-    os.makedirs(upload_folder, exist_ok=True)
-    dest_path = os.path.join(upload_folder, safe_filename)
-    file_storage.seek(0)
-    file_storage.save(dest_path)
+        upload_folder = os.path.join(current_app.root_path, "static", subfolder)
+        os.makedirs(upload_folder, exist_ok=True)
+        dest_path = os.path.join(upload_folder, safe_filename)
+        file_storage.seek(0)
+        file_storage.save(dest_path)
 
-    file_size = os.path.getsize(dest_path)
-    size_display = f"{file_size / (1024*1024):.1f} MB" if file_size >= 1024*1024 else f"{max(1, round(file_size/1024))} KB"
-    rel_url = url_for("static", filename=f"{subfolder}/{safe_filename}")
-    category = storage_service._ext_to_category(ext)
+        file_size = os.path.getsize(dest_path)
+        size_display = f"{file_size / (1024*1024):.1f} MB" if file_size >= 1024*1024 else f"{max(1, round(file_size/1024))} KB"
+        rel_url = url_for("static", filename=f"{subfolder}/{safe_filename}")
+        category = storage_service._ext_to_category(ext)
 
-    logger.info(f"[Upload] Saved locally (Supabase not configured): {safe_filename}")
-    return rel_url, size_display, orig_name, category
+        logger.info(f"[Upload] Saved locally (Supabase not configured): {safe_filename}")
+        return rel_url, size_display, orig_name, category
+
+    except OSError as e:
+        # Read-only filesystem (e.g. Vercel) — cannot save locally
+        logger.error(
+            f"[Upload] Local disk write failed: {e}. "
+            "Set SUPABASE_SERVICE_ROLE_KEY + SUPABASE_STORAGE_BUCKET in environment variables."
+        )
+        return None, None, orig_name, storage_service._ext_to_category(ext)
 
 
 @admin_bp.route("")
@@ -827,6 +852,8 @@ def create_lesson():
                     })
                 except Exception:
                     pass
+            else:
+                flash(f"تنبيه: تعذر رفع المذكرة المرفقة ({f_orig or uploaded_mat.filename}) إلى التخزين السحابي. يرجى التأكد من إعدادات Supabase Storage في Vercel.", "warning")
 
         # Handle image file upload from device
         image_url = request.form.get("image_url", "").strip()
@@ -835,6 +862,8 @@ def create_lesson():
             img_url, _, _, _ = _save_uploaded_file(uploaded_img, subfolder="uploads/images")
             if img_url:
                 image_url = img_url
+            else:
+                flash("تنبيه: تعذر رفع صورة الغلاف إلى التخزين السحابي.", "warning")
 
         is_live = request.form.get("is_live") in ("true", "1", "on")
         video_url = request.form.get("video_url", "").strip()
@@ -887,6 +916,8 @@ def edit_lesson(lesson_id):
                     })
                 except Exception:
                     pass
+            else:
+                flash(f"تنبيه: تعذر رفع المذكرة المرفقة ({f_orig or uploaded_mat.filename}) إلى التخزين السحابي. يرجى التأكد من إعدادات Supabase Storage في Vercel.", "warning")
 
         # Handle image file upload from device
         image_url = request.form.get("image_url", "").strip()
@@ -895,6 +926,8 @@ def edit_lesson(lesson_id):
             img_url, _, _, _ = _save_uploaded_file(uploaded_img, subfolder="uploads/images")
             if img_url:
                 image_url = img_url
+            else:
+                flash("تنبيه: تعذر رفع صورة الغلاف إلى التخزين السحابي.", "warning")
 
         is_live = request.form.get("is_live") in ("true", "1", "on") if "is_live" in request.form else None
         video_url = request.form.get("video_url")

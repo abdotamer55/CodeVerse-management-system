@@ -10,11 +10,22 @@ import requests as http_requests
 
 logger = logging.getLogger(__name__)
 
-# ─── Configuration ─────────────────────────────────────────────────────────────
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "").strip()
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-BUCKET_NAME = os.environ.get("SUPABASE_STORAGE_BUCKET", "codeverse-files")
+# ─── Dynamic Configuration Getters ─────────────────────────────────────────────
+def _get_supabase_url() -> str:
+    return os.environ.get("SUPABASE_URL", "").rstrip("/")
+
+def _get_anon_key() -> str:
+    return (os.environ.get("SUPABASE_ANON_KEY") or "").strip()
+
+def _get_service_role_key() -> str:
+    return (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+
+def _get_bucket_name() -> str:
+    return (os.environ.get("SUPABASE_STORAGE_BUCKET") or "codeverse-files").strip()
+
+def _get_auth_key() -> str:
+    """Use service role key if available, else fall back to anon key."""
+    return _get_service_role_key() or _get_anon_key()
 
 # Allowed file extensions (same as config.py ALLOWED_EXTENSIONS)
 ALLOWED_EXTENSIONS = {
@@ -56,14 +67,9 @@ MIME_TYPES = {
 }
 
 
-def _get_auth_key():
-    """Use service role key if available, else fall back to anon key."""
-    return SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
-
-
-def is_configured():
-    """Check if Supabase storage is properly configured with write access."""
-    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+def is_configured() -> bool:
+    """Check if Supabase storage is properly configured with an auth key."""
+    return bool(_get_supabase_url() and (_get_service_role_key() or _get_anon_key()))
 
 
 def upload_file(file_storage, subfolder: str = "uploads") -> tuple:
@@ -104,20 +110,22 @@ def upload_file(file_storage, subfolder: str = "uploads") -> tuple:
         return None, None, orig_name, _ext_to_category(ext)
 
     mime = MIME_TYPES.get(ext, "application/octet-stream")
-    api_key = SUPABASE_SERVICE_ROLE_KEY  # Must be service_role — anon key has no write access
-    upload_url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{storage_path}"
+    api_key = _get_auth_key()
+    supabase_url = _get_supabase_url()
+    bucket_name = _get_bucket_name()
+    upload_url = f"{supabase_url}/storage/v1/object/{bucket_name}/{storage_path}"
 
     headers = {
         "apikey": api_key,
         "Authorization": f"Bearer {api_key}",
         "Content-Type": mime,
-        "x-upsert": "false",
+        "x-upsert": "true",
     }
 
     try:
         resp = http_requests.post(upload_url, data=file_bytes, headers=headers, timeout=60)
         if resp.status_code in (200, 201):
-            public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
+            public_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{storage_path}"
             size_display = _format_size(file_size)
             category = _ext_to_category(ext)
             logger.info(f"[Storage] Uploaded {safe_filename} ({size_display}) → {public_url}")
@@ -145,7 +153,9 @@ def delete_file(storage_path: str) -> bool:
         return False
 
     api_key = _get_auth_key()
-    delete_url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{storage_path}"
+    supabase_url = _get_supabase_url()
+    bucket_name = _get_bucket_name()
+    delete_url = f"{supabase_url}/storage/v1/object/{bucket_name}/{storage_path}"
     headers = {
         "apikey": api_key,
         "Authorization": f"Bearer {api_key}",
@@ -168,9 +178,10 @@ def extract_storage_path_from_url(public_url: str) -> str | None:
     e.g. '.../object/public/codeverse-files/uploads/123_file.pdf'
     → 'uploads/123_file.pdf'
     """
-    if not public_url or not BUCKET_NAME:
+    bucket_name = _get_bucket_name()
+    if not public_url or not bucket_name:
         return None
-    marker = f"/object/public/{BUCKET_NAME}/"
+    marker = f"/object/public/{bucket_name}/"
     if marker in public_url:
         return public_url.split(marker, 1)[1]
     return None
