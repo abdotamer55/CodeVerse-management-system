@@ -77,8 +77,9 @@ def _save_uploaded_file(file_storage, subfolder="uploads"):
     try:
         timestamp = int(time.time())
         raw_stem = orig_name.rsplit(".", 1)[0] if "." in orig_name else orig_name
-        safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_"))[:60] or "file"
-        safe_filename = f"{timestamp}_{safe_stem}.{ext}" if ext else f"{timestamp}_{safe_stem}"
+        ascii_stem = "".join(c for c in raw_stem if c.isascii() and (c.isalnum() or c in ("-", "_")))[:40]
+        token = str(int(time.time() * 1000))[-6:]
+        safe_filename = f"{timestamp}_{ascii_stem}_{token}.{ext}" if ascii_stem else f"{timestamp}_file_{token}.{ext}"
 
         upload_folder = os.path.join(current_app.root_path, "static", subfolder)
         os.makedirs(upload_folder, exist_ok=True)

@@ -6,6 +6,8 @@ Works on Vercel (serverless) since it doesn't rely on local filesystem.
 import os
 import time
 import logging
+import re
+import uuid
 import requests as http_requests
 
 logger = logging.getLogger(__name__)
@@ -92,12 +94,16 @@ def upload_file(file_storage, subfolder: str = "uploads") -> tuple:
         logger.warning(f"[Storage] Blocked upload with disallowed extension: {ext!r}")
         return None, None, None, None
 
-    # Build a clean, timestamped filename (no Arabic/special chars in path)
+    # Build a clean, timestamped filename (strict ASCII only for Supabase/S3 key compatibility)
     timestamp = int(time.time())
     raw_stem = orig_name.rsplit(".", 1)[0] if "." in orig_name else orig_name
-    # Keep only alphanumeric, hyphens, underscores
-    safe_stem = "".join(c for c in raw_stem if c.isalnum() or c in ("-", "_"))[:60] or "file"
-    safe_filename = f"{timestamp}_{safe_stem}.{ext}" if ext else f"{timestamp}_{safe_stem}"
+    # Keep only ASCII alphanumeric characters (a-z, A-Z, 0-9, -, _)
+    ascii_stem = re.sub(r"[^a-zA-Z0-9_\-]", "", raw_stem)[:40]
+    token = uuid.uuid4().hex[:8]
+    if ascii_stem:
+        safe_filename = f"{timestamp}_{ascii_stem}_{token}.{ext}" if ext else f"{timestamp}_{ascii_stem}_{token}"
+    else:
+        safe_filename = f"{timestamp}_file_{token}.{ext}" if ext else f"{timestamp}_file_{token}"
     storage_path = f"{subfolder}/{safe_filename}"
 
     # Read file bytes
