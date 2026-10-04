@@ -74,20 +74,29 @@
   </div>
 </section>
 
-<div class="card">
+<form method="GET" action="{{ url_for('admin.students') }}" class="card" style="margin-bottom:1rem">
   <div class="toolbar">
     <div class="navbar-search" style="max-width:none;flex:1">
       <span class="material-symbols-outlined">search</span>
-      <input class="search-input" data-table-search="#students-table" placeholder="بحث باسم الطالب، رقم القيد الأكاديمي، أو البريد..." />
+      <input 
+        id="students-search-input"
+        name="q"
+        type="search"
+        class="search-input" 
+        data-table-search="#students-table" 
+        value="{{ request.args.get('q', '') }}"
+        placeholder="بحث باسم الطالب، رقم القيد الأكاديمي (CV-XXXX)، أو البريد..." 
+        autocomplete="off"
+      />
     </div>
-    <select class="select" data-filter-select="#students-table" style="max-width:220px">
-      <option value="all">الحالة: الكل</option>
-      <option value="online">متصل</option>
-      <option value="active">نشط</option>
-      <option value="risk">متأخر</option>
+    <select name="status" class="select" data-filter-select="#students-table" style="max-width:220px">
+      <option value="all" {% if not request.args.get('status') or request.args.get('status') == 'all' %}selected{% endif %}>الحالة: الكل</option>
+      <option value="online" {% if request.args.get('status') == 'online' %}selected{% endif %}>متصل</option>
+      <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>نشط</option>
+      <option value="risk" {% if request.args.get('status') == 'risk' %}selected{% endif %}>متأخر</option>
     </select>
   </div>
-</div>
+</form>
 
 <div class="table-wrap">
   <table class="data-table" id="students-table">

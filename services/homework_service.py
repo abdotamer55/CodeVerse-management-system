@@ -29,6 +29,94 @@ def is_db_active():
         return False
 
 
+def _record_attempt_in_submissions(homework_id: int, student_id, score, total, correct_count, total_questions):
+    """Mirror a completed homework attempt from assessment_attempts into submissions table for Admin dashboard."""
+    if not is_db_active():
+        return
+    try:
+        st_info = execute_query(
+            """SELECT u.full_name, s.student_code, s.id as st_id 
+               FROM students s 
+               JOIN users u ON s.id = u.id 
+               WHERE CAST(s.id AS TEXT) = %s OR s.student_code = %s 
+               LIMIT 1;""",
+            (str(student_id), str(student_id)), fetch=True
+        )
+        if not st_info:
+            return
+        st = st_info[0]
+        st_name = st["full_name"]
+        st_code = st["student_code"]
+        st_uuid = str(st["st_id"])
+
+        pct = round(float(score) * 100.0 / float(total), 1) if total and float(total) > 0 else 0.0
+        grade_str = f"{score} / {total}"
+        tests_summary = f"إجابة الأسئلة ({correct_count}/{total_questions})"
+        passed = (pct >= 50.0)
+
+        existing = execute_query(
+            "SELECT id FROM submissions WHERE homework_id = %s AND (CAST(student_id AS TEXT) = %s OR student_code = %s) LIMIT 1;",
+            (int(homework_id), st_uuid, st_code), fetch=True
+        )
+        if existing:
+            execute_query("""
+                UPDATE submissions
+                SET grade = %s,
+                    status = 'submitted',
+                    pipeline_passed = %s,
+                    tests_summary = %s,
+                    submitted_at = CURRENT_TIMESTAMP
+                WHERE id = %s;
+            """, (grade_str, passed, tests_summary, existing[0]["id"]), fetch=False, commit=True)
+        else:
+            execute_query("""
+                INSERT INTO submissions (homework_id, student_id, student_name, student_code, grade, pipeline_passed, tests_summary, status, submitted_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'submitted', CURRENT_TIMESTAMP);
+            """, (int(homework_id), st_uuid, st_name, st_code, grade_str, passed, tests_summary), fetch=False, commit=True)
+
+        # Update completed_homework counter in students table
+        execute_query("""
+            UPDATE students
+            SET completed_homework = (
+                SELECT COUNT(DISTINCT hw_id) FROM (
+                    SELECT sub.homework_id as hw_id FROM submissions sub WHERE (CAST(sub.student_id AS TEXT) = %s OR sub.student_code = %s) AND sub.status IN ('submitted', 'graded')
+                    UNION
+                    SELECT aa.assessment_id as hw_id FROM assessment_attempts aa WHERE CAST(aa.student_id AS TEXT) = %s AND aa.assessment_type = 'homework' AND aa.status IN ('submitted', 'graded')
+                ) hws
+            )
+            WHERE CAST(id AS TEXT) = %s;
+        """, (st_uuid, st_code, st_uuid, st_uuid), fetch=False, commit=True)
+    except Exception as e:
+        logger.error(f"Error mirroring homework attempt to submissions: {e}")
+
+
+def _sync_homework_attempts_to_submissions():
+    """Sync all completed homework attempts from assessment_attempts into submissions table."""
+    if not is_db_active():
+        return
+    try:
+        attempts = execute_query("""
+            SELECT aa.assessment_id, aa.student_id, aa.score, aa.total_score, aa.correct_count, aa.total_questions, aa.status, aa.submit_time
+            FROM assessment_attempts aa
+            WHERE aa.assessment_type = 'homework'
+            AND aa.status IN ('submitted', 'graded')
+            AND NOT EXISTS (
+                SELECT 1 FROM submissions sub
+                WHERE sub.homework_id = aa.assessment_id
+                AND (CAST(sub.student_id AS TEXT) = CAST(aa.student_id AS TEXT)
+                     OR sub.student_code = (SELECT student_code FROM students WHERE CAST(id AS TEXT) = CAST(aa.student_id AS TEXT)))
+            );
+        """, fetch=True)
+        if attempts:
+            for a in attempts:
+                _record_attempt_in_submissions(
+                    a["assessment_id"], a["student_id"], a["score"], a["total_score"],
+                    a.get("correct_count") or 0, a.get("total_questions") or 0
+                )
+    except Exception as e:
+        logger.warning(f"Error during _sync_homework_attempts_to_submissions: {e}")
+
+
 def get_homework_summary():
     """
     Returns aggregated homework metrics computed directly from the live database.
@@ -36,6 +124,7 @@ def get_homework_summary():
     """
     if is_db_active():
         try:
+            _sync_homework_attempts_to_submissions()
             sql_hw = """
                 SELECT 
                     COUNT(*) as active_count,
@@ -48,6 +137,7 @@ def get_homework_summary():
             sql_sub = """
                 SELECT 
                     COUNT(*) as total_submissions,
+                    COUNT(CASE WHEN status IN ('submitted', 'grading') THEN 1 END) as pending_submissions,
                     COUNT(CASE WHEN pipeline_passed = true THEN 1 END) as auto_evaluated,
                     COUNT(CASE WHEN status = 'late' THEN 1 END) as overdue_count
                 FROM submissions;
@@ -55,9 +145,10 @@ def get_homework_summary():
             sub_rows = execute_query(sql_sub, fetch=True)
             sub_info = sub_rows[0] if sub_rows else {"total_submissions": 0, "auto_evaluated": 0, "overdue_count": 0}
 
+            pending_count = int(hw_info.get("pending_reviews") or 0) + int(sub_info.get("pending_submissions") or 0)
             return {
                 "active_count": hw_info.get("active_count") or 0,
-                "pending_reviews": hw_info.get("pending_reviews") or 0,
+                "pending_reviews": pending_count,
                 "auto_evaluated": sub_info.get("auto_evaluated") or 0,
                 "overdue_count": sub_info.get("overdue_count") or 0,
             }
@@ -80,7 +171,20 @@ def get_all_homework(student_id=None):
     """
     if is_db_active():
         try:
-            sql = "SELECT * FROM homework ORDER BY id ASC;"
+            _sync_homework_attempts_to_submissions()
+            sql = """
+                SELECT h.*,
+                    COALESCE((SELECT COUNT(*) FROM students), 0) as total_students,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT sub_st) FROM (
+                            SELECT CAST(student_id AS TEXT) as sub_st FROM submissions WHERE homework_id = h.id
+                            UNION
+                            SELECT CAST(student_id AS TEXT) as sub_st FROM assessment_attempts WHERE assessment_type = 'homework' AND assessment_id = h.id AND status IN ('submitted', 'graded')
+                        ) s
+                    ), 0) as submissions_count
+                FROM homework h
+                ORDER BY h.id ASC;
+            """
             rows = execute_query(sql, fetch=True)
             if rows:
                 homework_list = [dict(r) for r in rows]
@@ -165,6 +269,22 @@ def get_student_submission(homework_id: int, student_id):
             rows = execute_query(sql, (int(homework_id), str(student_id), str(student_id)), fetch=True)
             if rows:
                 return dict(rows[0])
+
+            # Check assessment_attempts as fallback
+            attempt = get_homework_attempt(homework_id, student_id)
+            if attempt and attempt.get("status") in ("submitted", "graded"):
+                score = attempt.get("score", 0)
+                total = attempt.get("total_score", 0)
+                return {
+                    "id": attempt.get("id"),
+                    "homework_id": int(homework_id),
+                    "student_id": str(student_id),
+                    "grade": f"{score} / {total}",
+                    "status": attempt.get("status"),
+                    "submitted_at": str(attempt.get("submit_time", "") or attempt.get("submitted_at", ""))[:16],
+                    "tests_summary": f"إجابة الأسئلة ({attempt.get('correct_count', 0)}/{attempt.get('total_questions', 0)})",
+                    "pipeline_passed": bool(total and float(score) / float(total) >= 0.5),
+                }
             return None
         except Exception as e:
             logger.error(f"Error querying student submission from DB: {e}")
@@ -305,6 +425,7 @@ def get_homework_submissions(homework_id: int = None):
     """
     if is_db_active():
         try:
+            _sync_homework_attempts_to_submissions()
             sql = """
                 SELECT 
                     sub.id,
@@ -326,7 +447,7 @@ def get_homework_submissions(homework_id: int = None):
                     sub.graded_at
                 FROM submissions sub
                 JOIN homework h ON sub.homework_id = h.id
-                JOIN students s ON sub.student_id = s.id
+                JOIN students s ON CAST(sub.student_id AS TEXT) = CAST(s.id AS TEXT) OR sub.student_code = s.student_code
                 JOIN users u ON s.id = u.id
                 WHERE (%s IS NULL OR sub.homework_id = %s)
                 ORDER BY sub.submitted_at DESC;
@@ -621,6 +742,10 @@ def submit_homework_answers(homework_id: int, student_id, answers: dict):
                 ), fetch=True)
             saved_attempt = dict(rows[0])
             exam_service._save_student_answers(saved_attempt["id"], questions, answers)
+            try:
+                _record_attempt_in_submissions(homework_id, student_id, score, total, correct_count, len(questions))
+            except Exception as e:
+                logger.error(f"Error mirroring homework attempt to submissions: {e}")
             return saved_attempt
         except Exception as error:
             if "unique" in str(error).lower():

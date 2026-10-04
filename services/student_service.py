@@ -115,13 +115,23 @@ def get_student_dashboard_stats(student_id):
                     s.overall_grade,
                     (SELECT COUNT(*) FROM lessons) AS real_total_lessons,
                     (SELECT COUNT(*) FROM exams WHERE status IN ('active','published')) AS active_exams,
-                    (SELECT COUNT(*) FROM assessment_attempts
-                        WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT)
-                        AND status IN ('submitted','graded','pending_essay_grading')) AS completed_hw_real,
+                    (SELECT COUNT(DISTINCT hw_id) FROM (
+                        SELECT sub.homework_id as hw_id FROM submissions sub WHERE (CAST(sub.student_id AS TEXT) = CAST(s.id AS TEXT) OR sub.student_code = s.student_code) AND sub.status IN ('submitted', 'graded')
+                        UNION
+                        SELECT aa.assessment_id as hw_id FROM assessment_attempts aa WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT) AND aa.assessment_type = 'homework' AND aa.status IN ('submitted', 'graded')
+                    ) hws) AS completed_hw_real,
                     (SELECT COUNT(*) FROM homework) AS real_total_hw,
                     (SELECT COUNT(*) FROM exams) AS total_exams,
                     (SELECT COUNT(*) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status != 'pending_essay_grading') AS graded_exams_count,
-                    (SELECT ROUND(AVG(score_percent), 2) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status != 'pending_essay_grading') AS live_gpa,
+                    COALESCE(
+                        NULLIF(s.overall_grade, 0.00),
+                        (SELECT ROUND(AVG(aa.score * 100.0 / NULLIF(aa.total_score, 0)), 1)
+                         FROM assessment_attempts aa
+                         WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT)
+                         AND aa.status IN ('submitted', 'graded')
+                         AND aa.total_score > 0),
+                        0.0
+                    ) AS live_gpa,
                     (SELECT MAX(score_percent) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status != 'pending_essay_grading') AS highest_exam_score,
                     (SELECT COUNT(*) FROM results WHERE CAST(student_id AS TEXT) = CAST(s.id AS TEXT) AND status = 'passed') AS passed_exams_count
                 FROM students s
@@ -132,7 +142,7 @@ def get_student_dashboard_stats(student_id):
             if rows:
                 r = rows[0]
                 total_lessons = int(r["real_total_lessons"]) if (r.get("real_total_lessons") is not None) else actual_total_lessons
-                completed_hw = int(r["completed_hw_real"] or r["completed_homework"] or 0)
+                completed_hw = int(r["completed_hw_real"] if r.get("completed_hw_real") is not None else (r.get("completed_homework") or 0))
                 total_hw = int(r["real_total_hw"]) if (r.get("real_total_hw") is not None) else actual_total_hw
                 live_gpa = float(r["live_gpa"]) if r.get("live_gpa") is not None else float(r["overall_grade"] or 0.0)
                 return {
@@ -191,8 +201,21 @@ def recalculate_student_overall_grade(student_id: str):
     }
 
 
+def _normalize_arabic(text: str) -> str:
+    """Normalize Arabic text and convert to lowercase for flexible search matching."""
+    if not text:
+        return ""
+    import re
+    t = str(text).lower()
+    t = re.sub(r"[أإآ]", "ا", t)
+    t = re.sub(r"ة", "ه", t)
+    t = re.sub(r"ى", "ي", t)
+    t = re.sub(r"[\u064B-\u065F]", "", t)
+    return t.strip()
+
+
 def get_all_students(query=None, status_filter=None):
-    """Retrieve students with optional search and status filtering."""
+    """Retrieve students with real live stats (completed lessons, completed homework, real grades) and optional filtering."""
     if is_db_active():
         try:
             sql = """
@@ -205,18 +228,41 @@ def get_all_students(query=None, status_filter=None):
                     u.email,
                     s.track,
                     s.level,
-                    s.completed_lessons,
-                    s.total_lessons,
-                    s.completed_homework,
-                    s.total_homework,
-                    s.overall_grade,
+                    (SELECT COUNT(DISTINCT lc.lesson_id) 
+                     FROM lesson_completions lc 
+                     WHERE lc.student_id = CAST(s.id AS TEXT) OR lc.student_id = s.student_code) as completed_lessons,
+                    (SELECT COUNT(*) FROM lessons) as total_lessons,
+                    (SELECT COUNT(DISTINCT hw_id) FROM (
+                        SELECT sub.homework_id as hw_id 
+                        FROM submissions sub 
+                        WHERE (CAST(sub.student_id AS TEXT) = CAST(s.id AS TEXT) OR sub.student_code = s.student_code) 
+                        AND sub.status IN ('submitted', 'graded')
+                        UNION
+                        SELECT aa.assessment_id as hw_id 
+                        FROM assessment_attempts aa 
+                        WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT) 
+                        AND aa.assessment_type = 'homework' 
+                        AND aa.status IN ('submitted', 'graded')
+                    ) hw) as completed_homework,
+                    (SELECT COUNT(*) FROM homework) as total_homework,
+                    COALESCE(
+                        NULLIF(s.overall_grade, 0.00),
+                        (
+                            SELECT ROUND(AVG(aa.score * 100.0 / NULLIF(aa.total_score, 0)), 1)
+                            FROM assessment_attempts aa
+                            WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT)
+                            AND aa.status IN ('submitted', 'graded')
+                            AND aa.total_score > 0
+                        ),
+                        0.0
+                    ) as overall_grade,
                     s.status,
                     s.status_label,
                     s.is_honor,
                     s.last_active
                 FROM students s
                 JOIN users u ON s.id = u.id
-                ORDER BY s.overall_grade DESC;
+                ORDER BY s.overall_grade DESC, s.created_at DESC;
             """
             rows = execute_query(sql, fetch=True)
             if rows:
@@ -224,18 +270,14 @@ def get_all_students(query=None, status_filter=None):
                 if status_filter and status_filter != "all":
                     results = [s for s in results if s["status"] == status_filter]
                 if query:
-                    q = query.strip().lower()
+                    q = _normalize_arabic(query)
                     results = [
                         s for s in results
-                        if q in s["name"].lower() or q in s["code"].lower() or q in s["email"].lower() or q in s.get("username", "").lower()
+                        if q in _normalize_arabic(s["name"])
+                        or q in _normalize_arabic(s["code"])
+                        or q in _normalize_arabic(s["email"])
+                        or q in _normalize_arabic(s.get("username", ""))
                     ]
-                from services import lesson_service, homework_service
-                act_total_l = len(lesson_service.get_all_lessons())
-                act_total_hw = len(homework_service.get_all_homework())
-                for s in results:
-                    s["total_lessons"] = act_total_l
-                    s["total_homework"] = act_total_hw
-                    s["completed_lessons"] = lesson_service.get_completed_lessons_count(s.get("id") or s.get("code") or s.get("username"))
                 return results
         except Exception as e:
             logger.warning(f"Error querying students list from DB: {e}")
@@ -244,10 +286,13 @@ def get_all_students(query=None, status_filter=None):
     if status_filter and status_filter != "all":
         results = [s for s in results if s["status"] == status_filter]
     if query:
-        q = query.strip().lower()
+        q = _normalize_arabic(query)
         results = [
             s for s in results
-            if q in s["name"].lower() or q in s["code"].lower() or q in s["email"].lower() or q in s.get("username", "").lower()
+            if q in _normalize_arabic(s["name"])
+            or q in _normalize_arabic(s["code"])
+            or q in _normalize_arabic(s["email"])
+            or q in _normalize_arabic(s.get("username", ""))
         ]
     from services import lesson_service, homework_service
     act_total_l = len(lesson_service.get_all_lessons())
@@ -260,7 +305,7 @@ def get_all_students(query=None, status_filter=None):
 
 
 def get_student_by_id(student_id):
-    """Retrieve single student profile by id, student_code, or username."""
+    """Retrieve single student profile by id, student_code, or username with real stats."""
     if is_db_active():
         try:
             sql = """
@@ -273,11 +318,34 @@ def get_student_by_id(student_id):
                     u.email,
                     s.track,
                     s.level,
-                    s.completed_lessons,
-                    s.total_lessons,
-                    s.completed_homework,
-                    s.total_homework,
-                    s.overall_grade,
+                    (SELECT COUNT(DISTINCT lc.lesson_id) 
+                     FROM lesson_completions lc 
+                     WHERE lc.student_id = CAST(s.id AS TEXT) OR lc.student_id = s.student_code) as completed_lessons,
+                    (SELECT COUNT(*) FROM lessons) as total_lessons,
+                    (SELECT COUNT(DISTINCT hw_id) FROM (
+                        SELECT sub.homework_id as hw_id 
+                        FROM submissions sub 
+                        WHERE (CAST(sub.student_id AS TEXT) = CAST(s.id AS TEXT) OR sub.student_code = s.student_code) 
+                        AND sub.status IN ('submitted', 'graded')
+                        UNION
+                        SELECT aa.assessment_id as hw_id 
+                        FROM assessment_attempts aa 
+                        WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT) 
+                        AND aa.assessment_type = 'homework' 
+                        AND aa.status IN ('submitted', 'graded')
+                    ) hw) as completed_homework,
+                    (SELECT COUNT(*) FROM homework) as total_homework,
+                    COALESCE(
+                        NULLIF(s.overall_grade, 0.00),
+                        (
+                            SELECT ROUND(AVG(aa.score * 100.0 / NULLIF(aa.total_score, 0)), 1)
+                            FROM assessment_attempts aa
+                            WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT)
+                            AND aa.status IN ('submitted', 'graded')
+                            AND aa.total_score > 0
+                        ),
+                        0.0
+                    ) as overall_grade,
                     s.status,
                     s.status_label,
                     s.is_honor,
@@ -292,12 +360,7 @@ def get_student_by_id(student_id):
             sid_str = str(student_id)
             rows = execute_query(sql, (sid_str, sid_str, sid_str), fetch=True)
             if rows:
-                target = dict(rows[0])
-                from services import lesson_service, homework_service
-                target["total_lessons"] = len(lesson_service.get_all_lessons())
-                target["total_homework"] = len(homework_service.get_all_homework())
-                target["completed_lessons"] = lesson_service.get_completed_lessons_count(target.get("id") or student_id)
-                return target
+                return dict(rows[0])
         except Exception as e:
             logger.warning(f"Error querying student by ID from DB: {e}")
 

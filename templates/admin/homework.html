@@ -157,8 +157,14 @@
           <div class="ltr muted">{{ sub.homework_code }}</div>
         </td>
         <td>
-          <a class="ltr accent" href="https://{{ sub.repo_url }}" target="_blank" rel="noopener">{{ sub.repo_url }}</a>
-          <div class="body-sm muted">{{ sub.submitted_at }}</div>
+          {% if sub.repo_url %}
+            <a class="ltr accent" href="{{ sub.repo_url if sub.repo_url.startswith('http') else 'https://' + sub.repo_url }}" target="_blank" rel="noopener">{{ sub.repo_url }}</a>
+          {% else %}
+            <span class="badge badge-neutral" style="font-size:0.75rem;padding:3px 8px;display:inline-flex;align-items:center;gap:4px">
+              <span class="material-symbols-outlined" style="font-size:15px">quiz</span> حل إلكتروني عبر المنصة
+            </span>
+          {% endif %}
+          <div class="body-sm muted" style="margin-top:4px">{{ sub.submitted_at }}</div>
         </td>
         <td>
           {% if sub.tests_summary %}
