@@ -19,48 +19,143 @@ def is_db_active():
         return False
 
 
-def get_results_summary():
-    """Aggregated results metrics."""
-    if is_db_active():
-        try:
-            sql = """
-                SELECT 
-                    COALESCE(ROUND(AVG(score_percent), 1), 0.0) as avg_score,
-                    COUNT(CASE WHEN status = 'passed' THEN 1 END) as passed_cnt,
-                    COUNT(CASE WHEN status = 'repeat' THEN 1 END) as repeat_cnt,
-                    COUNT(*) as total_cnt
-                FROM results;
-            """
-            rows = execute_query(sql, fetch=True)
-            if rows:
-                r = rows[0]
-                total = r["total_cnt"] or 0
-                pass_rate = round((r["passed_cnt"] / total) * 100, 1) if total > 0 else 0.0
-                return {
-                    "cohort_average": f"{r['avg_score']}%",
-                    "pass_rate": f"{pass_rate}%",
-                    "needs_repeat": r["repeat_cnt"],
-                    "graded_exams_count": r["total_cnt"],
-                }
-        except Exception as e:
-            logger.warning(f"Error querying results summary: {e}")
+def _format_attempt_as_result(att, user_id=None, student_name=None, student_code=None):
+    """Format an assessment_attempt row into a standardized result dictionary."""
+    total = float(att.get("total_score") or 1)
+    score = float(att.get("score") or 0)
+    pct = round((score / total) * 100.0, 1) if total > 0 else 0.0
+
+    is_pending_essay = (att.get("status") == "pending_essay_grading")
+    if is_pending_essay:
+        status_val = "pending_essay_grading"
+        grade_badge = "badge-warn"
+        grade_label = "بانتظار تصحيح المقالي"
+        score_disp = f"{score:g} / {total:g} (مبدئي)"
+    else:
+        status_val = "passed" if pct >= 50.0 else "repeat"
+        grade_badge = "badge-success" if pct >= 50.0 else "badge-danger"
+        grade_label = (
+            "ممتاز" if pct >= 90.0 else
+            ("جيد جداً" if pct >= 80.0 else
+            ("جيد" if pct >= 65.0 else
+            ("مقبول" if pct >= 50.0 else "فرصة إعادة")))
+        )
+        score_disp = f"{score:g} / {total:g}"
+
+    sub_time = att.get("submit_time") or att.get("submitted_at")
+    date_str = str(sub_time)[:10] if sub_time else ""
+
+    exam_id = att["assessment_id"] if att.get("assessment_type") == "exam" else None
+    homework_id = att["assessment_id"] if att.get("assessment_type") == "homework" else None
+
+    # Handle clean title
+    title = att.get("assessment_title") or ""
+    if not title or '\ufffd' in title or '?' in title:
+        if homework_id:
+            hw_code = att.get("homework_code") or f"HW-{homework_id}"
+            title = f"تكليف واجب ({hw_code})"
+        else:
+            title = f"اختبار أكاديمي #{exam_id or ''}"
 
     return {
-        "cohort_average": "0.0%",
-        "pass_rate": "0.0%",
-        "needs_repeat": 0,
-        "graded_exams_count": 0,
+        "id": att.get("attempt_id") or att.get("id"),
+        "student_id": str(user_id or att.get("student_id") or ""),
+        "student_name": student_name or att.get("student_name") or "طالب",
+        "student_code": student_code or att.get("student_code") or "",
+        "assessment": title,
+        "exam_id": exam_id,
+        "homework_id": homework_id,
+        "assessment_type": att.get("assessment_type"),
+        "score_percent": pct,
+        "score_display": score_disp,
+        "date": date_str,
+        "status": status_val,
+        "grade_badge": grade_badge,
+        "grade_label": grade_label,
+        "feedback": att.get("feedback"),
+    }
+
+
+def get_results_summary():
+    """Aggregated results metrics across all completed assessments (exams & homework)."""
+    all_res = get_all_results()
+    if not all_res:
+        return {
+            "cohort_average": "0.0%",
+            "pass_rate": "0.0%",
+            "needs_repeat": 0,
+            "graded_exams_count": 0,
+        }
+
+    graded = [r for r in all_res if r.get("status") != "pending_essay_grading" and r.get("score_percent") is not None]
+    if not graded:
+        return {
+            "cohort_average": "0.0%",
+            "pass_rate": "0.0%",
+            "needs_repeat": 0,
+            "graded_exams_count": 0,
+        }
+
+    scores = [float(r["score_percent"]) for r in graded]
+    avg_score = round(sum(scores) / len(scores), 1)
+    passed_count = sum(1 for r in graded if r.get("status") == "passed" or float(r.get("score_percent", 0)) >= 50.0)
+    repeat_count = sum(1 for r in graded if r.get("status") == "repeat" or float(r.get("score_percent", 0)) < 50.0)
+    pass_rate = round((passed_count / len(graded)) * 100.0, 1)
+
+    return {
+        "cohort_average": f"{avg_score}%",
+        "pass_rate": f"{pass_rate}%",
+        "needs_repeat": repeat_count,
+        "graded_exams_count": len(graded),
     }
 
 
 def get_all_results():
-    """Retrieve all grade records for admin view."""
+    """Retrieve all grade records for admin view, combining finalized results and live assessment attempts."""
     if is_db_active():
         try:
-            sql = "SELECT * FROM results ORDER BY id DESC;"
-            rows = execute_query(sql, fetch=True)
-            if rows is not None:
-                return [dict(r) for r in rows]
+            results_rows = execute_query("SELECT * FROM results ORDER BY id DESC;", fetch=True) or []
+            results_list = [dict(r) for r in results_rows]
+            recorded_pairs = {(str(r.get("student_id")), r.get("exam_id")) for r in results_list if r.get("exam_id")}
+
+            sql_attempts = """
+                SELECT 
+                    aa.id as attempt_id,
+                    aa.assessment_type,
+                    aa.assessment_id,
+                    aa.student_id,
+                    aa.score,
+                    aa.total_score,
+                    aa.status,
+                    COALESCE(aa.submit_time, aa.submitted_at) as submit_time,
+                    u.full_name as student_name,
+                    COALESCE(s.student_code, '#ST-DEMO') as student_code,
+                    COALESCE(e.title, h.title, 'تقييم أكاديمي') as assessment_title,
+                    h.code as homework_code
+                FROM assessment_attempts aa
+                JOIN users u ON CAST(aa.student_id AS TEXT) = CAST(u.id AS TEXT)
+                LEFT JOIN students s ON CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT)
+                LEFT JOIN exams e ON aa.assessment_type = 'exam' AND aa.assessment_id = e.id
+                LEFT JOIN homework h ON aa.assessment_type = 'homework' AND aa.assessment_id = h.id
+                WHERE aa.status IN ('submitted', 'graded', 'passed', 'repeat', 'pending_essay_grading')
+                  AND aa.total_score > 0
+                ORDER BY COALESCE(aa.submit_time, aa.submitted_at) DESC, aa.id DESC;
+            """
+            attempts_rows = execute_query(sql_attempts, fetch=True) or []
+
+            for att in attempts_rows:
+                pair = (str(att["student_id"]), att.get("assessment_id"))
+                if att.get("assessment_type") == "exam" and pair in recorded_pairs:
+                    continue
+                results_list.append(_format_attempt_as_result(
+                    att,
+                    user_id=att.get("student_id"),
+                    student_name=att.get("student_name"),
+                    student_code=att.get("student_code")
+                ))
+
+            results_list.sort(key=lambda r: (str(r.get("date") or ""), int(r.get("id") or 0)), reverse=True)
+            return results_list
         except Exception as e:
             logger.warning(f"Error querying all results: {e}")
 
@@ -69,8 +164,17 @@ def get_all_results():
 
 def get_student_results(student_code="#ST-2024-089"):
     """Retrieve grade records for specific student view by student_code."""
+    if not student_code:
+        return []
     if is_db_active():
         try:
+            st = execute_query(
+                "SELECT id FROM students WHERE student_code = %s LIMIT 1;",
+                (student_code,), fetch=True
+            )
+            if st:
+                return get_student_results_by_user_id(str(st[0]["id"]))
+
             sql = "SELECT * FROM results WHERE student_code = %s ORDER BY id DESC;"
             rows = execute_query(sql, (student_code,), fetch=True)
             if rows:
@@ -82,15 +186,48 @@ def get_student_results(student_code="#ST-2024-089"):
 
 
 def get_student_results_by_user_id(user_id):
-    """Retrieve grade records for the authenticated student using their UUID."""
+    """Retrieve grade records for the authenticated student using their UUID,
+    combining finalized records from results and submitted/graded assessment_attempts (exams & homework)."""
     if not user_id:
         return []
     if is_db_active():
         try:
-            sql = "SELECT * FROM results WHERE CAST(student_id AS TEXT) = %s ORDER BY id DESC;"
-            rows = execute_query(sql, (str(user_id),), fetch=True)
-            if rows is not None:
-                return [dict(r) for r in rows]
+            results_rows = execute_query(
+                "SELECT * FROM results WHERE CAST(student_id AS TEXT) = %s ORDER BY id DESC;",
+                (str(user_id),), fetch=True
+            ) or []
+            results_list = [dict(r) for r in results_rows]
+            recorded_exam_ids = {r["exam_id"] for r in results_list if r.get("exam_id")}
+
+            sql_attempts = """
+                SELECT 
+                    aa.id as attempt_id,
+                    aa.assessment_type,
+                    aa.assessment_id,
+                    aa.student_id,
+                    aa.score,
+                    aa.total_score,
+                    aa.status,
+                    COALESCE(aa.submit_time, aa.submitted_at) as submit_time,
+                    COALESCE(e.title, h.title, 'تقييم أكاديمي') as assessment_title,
+                    h.code as homework_code
+                FROM assessment_attempts aa
+                LEFT JOIN exams e ON aa.assessment_type = 'exam' AND aa.assessment_id = e.id
+                LEFT JOIN homework h ON aa.assessment_type = 'homework' AND aa.assessment_id = h.id
+                WHERE CAST(aa.student_id AS TEXT) = %s
+                  AND aa.status IN ('submitted', 'graded', 'passed', 'repeat', 'pending_essay_grading')
+                  AND aa.total_score > 0
+                ORDER BY COALESCE(aa.submit_time, aa.submitted_at) DESC, aa.id DESC;
+            """
+            attempts_rows = execute_query(sql_attempts, (str(user_id),), fetch=True) or []
+
+            for att in attempts_rows:
+                if att.get("assessment_type") == "exam" and att.get("assessment_id") in recorded_exam_ids:
+                    continue
+                results_list.append(_format_attempt_as_result(att, user_id=user_id))
+
+            results_list.sort(key=lambda r: (str(r.get("date") or ""), int(r.get("id") or 0)), reverse=True)
+            return results_list
         except Exception as e:
             logger.warning(f"Error querying student results by user_id: {e}")
 
@@ -99,24 +236,28 @@ def get_student_results_by_user_id(user_id):
 
 
 def get_student_results_summary(results):
-    """Derive a summary dict from a list of result records.
-    Only returns metrics that are actually stored in the results table.
-    Does NOT compute rank or certificates — those are unsupported by this backend.
-    """
+    """Derive a summary dict from a list of result records."""
     if not results:
         return {
             "overall_average": None,
             "last_score": None,
             "total_graded": 0,
         }
-    scores = [float(r["score_percent"]) for r in results if r.get("score_percent") is not None]
-    overall_average = round(sum(scores) / len(scores), 1) if scores else None
-    last_result = results[0]  # Already ordered by id DESC
+    graded = [r for r in results if r.get("status") != "pending_essay_grading" and r.get("score_percent") is not None]
+    if not graded:
+        return {
+            "overall_average": None,
+            "last_score": results[0].get("score_display") if results else None,
+            "total_graded": 0,
+        }
+    scores = [float(r["score_percent"]) for r in graded]
+    overall_average = round(sum(scores) / len(scores), 1)
+    last_result = graded[0]
     last_score = last_result.get("score_display") or (f"{last_result['score_percent']}%" if last_result.get("score_percent") is not None else None)
     return {
-        "overall_average": f"{overall_average}%" if overall_average is not None else None,
+        "overall_average": f"{overall_average}%",
         "last_score": last_score,
-        "total_graded": len(results),
+        "total_graded": len(graded),
     }
 
 

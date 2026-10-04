@@ -86,6 +86,12 @@ def _record_attempt_in_submissions(homework_id: int, student_id, score, total, c
             )
             WHERE CAST(id AS TEXT) = %s;
         """, (st_uuid, st_code, st_uuid, st_uuid), fetch=False, commit=True)
+
+        try:
+            from services import student_service
+            student_service.recalculate_student_overall_grade(st_uuid)
+        except Exception as ge:
+            logger.warning(f"Could not recalculate overall grade for student {st_uuid}: {ge}")
     except Exception as e:
         logger.error(f"Error mirroring homework attempt to submissions: {e}")
 

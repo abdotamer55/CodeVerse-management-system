@@ -42,7 +42,7 @@
           {% else %}بحاجة إلى مراجعة وتكثيف المران{% endif %}
         </span>
         <span class="badge badge-neutral" style="font-size:0.85rem;padding:4px 10px">
-          الاختبارات الناجحة: {{ results | selectattr('status', 'equalto', 'passed') | list | length }} من {{ results|length }}
+          المهام والتقييمات الناجحة: {{ results | selectattr('status', 'equalto', 'passed') | list | length }} من {{ results|length }}
         </span>
       </div>
       {% endif %}
@@ -92,7 +92,7 @@
       </div>
     </div>
     <div class="stat-foot">
-      <span>تاريخ آخر اختبار</span>
+      <span>تاريخ آخر تقييم</span>
       <strong class="muted">{{ results[0].date if results else '—' }}</strong>
     </div>
   </div>
@@ -107,7 +107,7 @@
       <div class="headline-lg" style="margin-top:4px">{{ summary.total_graded }}</div>
     </div>
     <div class="stat-foot">
-      <span>الامتحانات الناجحة</span>
+      <span>التقييمات الناجحة</span>
       <strong class="success">{{ results | selectattr('status', 'equalto', 'passed') | list | length }}</strong>
     </div>
   </div>
@@ -184,6 +184,10 @@
           <a class="btn btn-sm btn-ghost" href="{{ url_for('student.exam_review', exam_id=r.exam_id) }}" title="معاينة إجاباتي والصح والخطأ">
             <span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle">visibility</span> معاينة
           </a>
+          {% elif r.get('homework_id') %}
+          <a class="btn btn-sm btn-ghost" href="{{ url_for('student.homework_detail', hw_id=r.homework_id) }}" title="معاينة التكليف">
+            <span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle">visibility</span> معاينة
+          </a>
           {% else %}
           <span class="muted body-sm">—</span>
           {% endif %}
@@ -197,7 +201,10 @@
 <div class="card" style="margin-top:1.5rem;text-align:center;padding:3rem">
   <span class="material-symbols-outlined" style="font-size:48px;color:var(--muted)">assignment</span>
   <p class="body-md muted" style="margin-top:1rem">لا توجد نتائج مرصودة لك حتى الآن.</p>
-  <a class="btn btn-secondary" href="{{ url_for('student.exams') }}" style="margin-top:1rem">استعرض الامتحانات المتاحة</a>
+  <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1rem;flex-wrap:wrap">
+    <a class="btn btn-primary" href="{{ url_for('student.homework') }}">استعرض الواجبات المتاحة</a>
+    <a class="btn btn-secondary" href="{{ url_for('student.exams') }}">استعرض الامتحانات المتاحة</a>
+  </div>
 </div>
 {% endif %}
 {% endblock content %}

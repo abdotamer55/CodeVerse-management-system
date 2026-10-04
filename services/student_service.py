@@ -161,7 +161,7 @@ def get_student_dashboard_stats(student_id):
 
 
 def recalculate_student_overall_grade(student_id: str):
-    """Recalculate and persist overall_grade for a student in DB based on exam results."""
+    """Recalculate and persist overall_grade for a student in DB based on all submitted/graded assessments."""
     if not student_id:
         return 0.0
     if is_db_active():
@@ -169,10 +169,26 @@ def recalculate_student_overall_grade(student_id: str):
             sql = """
                 UPDATE students s
                 SET overall_grade = COALESCE(
-                    (SELECT ROUND(AVG(score_percent), 2)
-                     FROM results r
-                     WHERE CAST(r.student_id AS TEXT) = CAST(s.id AS TEXT)
-                     AND r.status != 'pending_essay_grading'),
+                    (
+                        SELECT ROUND(AVG(score_pct), 1) FROM (
+                            SELECT aa.score * 100.0 / NULLIF(aa.total_score, 0) as score_pct
+                            FROM assessment_attempts aa
+                            WHERE CAST(aa.student_id AS TEXT) = CAST(s.id AS TEXT)
+                            AND aa.status IN ('submitted', 'graded', 'passed', 'repeat')
+                            AND aa.total_score > 0
+                            UNION ALL
+                            SELECT r.score_percent as score_pct
+                            FROM results r
+                            WHERE CAST(r.student_id AS TEXT) = CAST(s.id AS TEXT)
+                            AND r.status != 'pending_essay_grading'
+                            AND NOT EXISTS (
+                                SELECT 1 FROM assessment_attempts aa2 
+                                WHERE CAST(aa2.student_id AS TEXT) = CAST(s.id AS TEXT) 
+                                AND aa2.assessment_type = 'exam' 
+                                AND aa2.assessment_id = r.exam_id
+                            )
+                        ) combined_scores
+                    ),
                     0.00
                 )
                 WHERE CAST(s.id AS TEXT) = %s
