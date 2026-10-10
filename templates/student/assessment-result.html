@@ -40,8 +40,8 @@
     <div>
       <span class="label-sm muted">درجة الأسئلة الموضوعية</span>
       <div class="row" style="align-items:baseline;margin-top:6px">
-        <span class="display-hero success">{{ attempt.mcq_score or attempt.score }}</span>
-        <span class="label-md muted">/ {{ attempt.mcq_total or attempt.total_score }}</span>
+        <span class="display-hero success">{% if attempt.mcq_score is not none %}{{ attempt.mcq_score }}{% else %}{{ attempt.score }}{% endif %}</span>
+        <span class="label-md muted">/ {% if attempt.mcq_total is not none %}{{ attempt.mcq_total }}{% else %}{{ attempt.total_score }}{% endif %}</span>
       </div>
     </div>
   </div>

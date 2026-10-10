@@ -284,12 +284,14 @@ def grade_submission():
 def exams():
     summary = exam_service.get_exams_summary()
     exams_list = exam_service.get_all_exams()
+    students_list = student_service.get_all_students()
     return render_template(
         "admin/exams.html",
         user_role="admin",
         page_id="exams",
         summary=summary,
         exams=exams_list,
+        students=students_list,
     )
 
 
@@ -310,6 +312,8 @@ def create_exam():
             "starts_at": request.form.get("starts_at"),
             "ends_at": request.form.get("ends_at"),
             "status": request.form.get("status", "scheduled"),
+            "target_audience": request.form.get("target_audience", "all"),
+            "target_students": request.form.getlist("target_students"),
         }
         exam = exam_service.create_exam(data)
         flash(f"تم إنشاء قاعة الاختبار ({exam.get('title')}) بنجاح.", "success")
@@ -331,6 +335,8 @@ def edit_exam(exam_id):
             "starts_at": request.form.get("starts_at"),
             "ends_at": request.form.get("ends_at"),
             "status": request.form.get("status"),
+            "target_audience": request.form.get("target_audience", "all"),
+            "target_students": request.form.getlist("target_students"),
         }
         exam_service.update_exam(exam_id, data)
         flash("تم تحديث تفاصيل ومواعيد الاختبار بنجاح.", "success")

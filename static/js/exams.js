@@ -2,13 +2,37 @@
   function bindExam() {
     const timerEl = document.querySelector("[data-exam-timer]");
     if (timerEl) {
-      let remaining = Number(timerEl.dataset.examTimer || 3600);
+      let remaining = Math.max(0, Number(timerEl.dataset.examTimer || 3600));
+      const examForm = document.querySelector("form[data-assessment-submit]");
+      let hasAutoSubmitted = false;
+
       const tick = () => {
         const m = String(Math.floor(remaining / 60)).padStart(2, "0");
         const s = String(remaining % 60).padStart(2, "0");
         timerEl.textContent = `${m}:${s}`;
+
+        if (remaining <= 60) {
+          timerEl.style.color = "var(--red, #ef4444)";
+          timerEl.style.borderColor = "rgba(239, 68, 68, 0.4)";
+        } else if (remaining <= 300) {
+          timerEl.style.color = "var(--warning, #f59e0b)";
+        }
+
         if (remaining <= 0) {
-          window.CVUi && CVUi.toast("انتهى الوقت المحدد للاختبار — يرجى تسليم الإجابات الآن");
+          timerEl.textContent = "00:00";
+          if (examForm && !hasAutoSubmitted) {
+            hasAutoSubmitted = true;
+            if (window.CVUi) {
+              CVUi.toast("انتهى وقت الاختبار المحدد! جاري إرسال وتسليم إجاباتك تلقائياً...");
+            }
+            // Disable all interactive radio/text inputs to freeze state
+            examForm.querySelectorAll("input, textarea").forEach((el) => {
+              el.readOnly = true;
+            });
+            setTimeout(() => {
+              examForm.requestSubmit ? examForm.requestSubmit() : examForm.submit();
+            }, 600);
+          }
           return;
         }
         remaining -= 1;

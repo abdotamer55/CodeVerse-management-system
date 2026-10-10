@@ -13,13 +13,13 @@
       <h1 class="headline-lg" style="margin-top:4px">{{ exam.title }}</h1>
     </div>
   </div>
-  <div class="timer" data-exam-timer="{{ exam.duration_seconds }}" aria-label="مؤقت إرشادي">{{ exam.duration_minutes|default(90) }}:00</div>
+  <div class="timer" data-exam-timer="{{ remaining_seconds|default(exam.duration_seconds) }}" aria-label="مؤقت الاختبار الصارم">{{ (remaining_seconds|default(exam.duration_seconds) // 60) }}:{{ "%02d"|format(remaining_seconds|default(exam.duration_seconds) % 60) }}</div>
 </div>
 
 {% if not attempt %}
 <section class="card" style="margin-top:1.5rem">
   <h2 class="headline-sm">ابدأ محاولة الاختبار</h2>
-  <p class="body-md muted">سيتم فتح الأسئلة وتسجيل المحاولة في النظام. يمكنك مراجعة وتعديل أي إجابة قبل تأكيد التسليم النهائي.</p>
+  <p class="body-md muted">تنبيه: يُسمح بمحاولة <strong>واحدة فقط</strong> لكل طالب. بمجرد الضغط على بدء المحاولة سيبدأ العد التنازلي للوقت المحدد ولن تتمكن من إعادة دخول الاختبار مجدداً بعد انقضاء الوقت.</p>
   <div class="wrap">
     <form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}">
       <button class="btn btn-primary" type="submit">بدء المحاولة الآن</button>
@@ -35,9 +35,11 @@
     <div>
       <strong>تم تسليم هذه المحاولة بنجاح وحفظها في سجلك الأكاديمي.</strong>
       {% if attempt.status == 'pending_essay_grading' %}
-        <p class="body-sm" style="margin-top:4px">تم رصد درجات الأسئلة الموضوعية ({{ attempt.mcq_score or attempt.score }} من إجمالي {{ attempt.mcq_total or attempt.total_score }} درجة)، والأسئلة المقالية قيد المراجعة والتقدير من قِبل المعلم.</p>
+        {% set mcq_s = attempt.mcq_score if attempt.mcq_score is not none else attempt.score %}
+        {% set mcq_tot = attempt.mcq_total if attempt.mcq_total is not none else attempt.total_score %}
+        <p class="body-sm" style="margin-top:4px">تم رصد درجات الأسئلة الموضوعية الاختيارية تلقائياً (<strong>{{ mcq_s }}</strong> من إجمالي <strong>{{ mcq_tot }}</strong> درجة)، والأسئلة المقالية قيد المراجعة والتقدير من قِبل المعلم.</p>
       {% else %}
-        <p class="body-sm" style="margin-top:4px">النتيجة النهائية: {{ attempt.score }} من إجمالي {{ attempt.total_score }} درجة ({{ attempt.percentage|default('') }}%).</p>
+        <p class="body-sm" style="margin-top:4px">النتيجة النهائية المعتمدة: <strong>{{ attempt.score }}</strong> من إجمالي <strong>{{ attempt.total_score }}</strong> درجة ({{ attempt.percentage|default('') }}%).</p>
       {% endif %}
     </div>
   </div>
@@ -55,12 +57,22 @@
 </section>
 
 {% elif attempt.status == 'expired' %}
-<section class="card" style="margin-top:1.5rem">
-  <h2 class="headline-sm">انتهت المحاولة</h2>
-  <p class="body-md muted">انقضى الوقت المحدد للاختبار. يمكنك إعادة بدء المحاولة إذا كانت حالة الاختبار تسمح بذلك.</p>
-  <form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}">
-    <button class="btn btn-secondary" type="submit">إعادة بدء المحاولة</button>
-  </form>
+<section class="card card-lg stack" style="gap:1.5rem;margin-top:1.5rem">
+  <div class="alert" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--text-color,#fff)">
+    <span class="material-symbols-outlined" style="font-size:1.75rem;color:var(--red,#ef4444)">lock_clock</span>
+    <div>
+      <strong style="color:var(--red,#ef4444)">انتهى وقت الاختبار وتم قفل المحاولة نهائياً</strong>
+      <p class="body-sm muted" style="margin-top:4px">انقضى الوقت الزمني المحدد للاختبار ولا يُسمح سوى بمحاولة واحدة فقط. تم قفل المحاولة وحفظ السجل في ملفك الأكاديمي.</p>
+    </div>
+  </div>
+  <div class="wrap">
+    <a class="btn btn-secondary" href="{{ url_for('student.exams') }}">
+      <span class="material-symbols-outlined">arrow_forward</span> العودة لقائمة الامتحانات
+    </a>
+    <a class="btn btn-ghost" href="{{ url_for('student.results') }}">
+      <span class="material-symbols-outlined">insights</span> سجل نتائجي الأكاديمية
+    </a>
+  </div>
 </section>
 
 {% else %}

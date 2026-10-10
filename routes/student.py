@@ -201,7 +201,7 @@ def submit_homework_route():
 @role_required("student")
 def exams():
     user_id = session.get("user_id")
-    exams_list = exam_service.get_published_exams()
+    exams_list = exam_service.get_published_exams(student_id=user_id)
     for e in exams_list:
         can_take, state_code, msg = exam_service.is_exam_available_now(e)
         e["is_available"] = can_take
@@ -224,7 +224,13 @@ def exam_detail(exam_id):
         flash("هذا الاختبار غير منشور أو مغلق.", "error")
         return redirect(url_for("student.exams"))
     user_id = session.get("user_id")
+    if not exam_service.is_student_eligible_for_exam(exam, user_id):
+        flash("هذا الاختبار مخصص لطلاب محددين فقط وغير متاح لحسابك الأكاديمي.", "error")
+        return redirect(url_for("student.exams"))
+
     attempt = exam_service.get_student_attempt(exam_id, user_id)
+    remaining_seconds = exam_service.calculate_attempt_remaining_seconds(attempt, exam)
+
     can_take, state_code, state_msg = exam_service.is_exam_available_now(exam)
     availability = {
         "can_take": can_take,
@@ -237,6 +243,7 @@ def exam_detail(exam_id):
         page_id="exams",
         exam=exam,
         attempt=attempt,
+        remaining_seconds=remaining_seconds,
         availability=availability,
     )
 
@@ -245,13 +252,22 @@ def exam_detail(exam_id):
 @role_required("student")
 def start_exam_attempt(exam_id):
     exam = exam_service.get_exam_by_id(exam_id)
+    if not exam:
+        flash("الاختبار غير موجود.", "error")
+        return redirect(url_for("student.exams"))
+
+    user_id = session.get("user_id")
+    if not exam_service.is_student_eligible_for_exam(exam, user_id):
+        flash("هذا الاختبار مخصص لطلاب محددين فقط وغير متاح لحسابك.", "error")
+        return redirect(url_for("student.exams"))
+
     can_take, state_code, state_msg = exam_service.is_exam_available_now(exam)
     if not can_take:
         flash(state_msg, "error")
         return redirect(url_for("student.exam_detail", exam_id=exam_id))
 
     try:
-        exam_service.start_exam_attempt(exam_id, session.get("user_id"))
+        exam_service.start_exam_attempt(exam_id, user_id)
     except ValueError as error:
         flash(str(error), "error")
     return redirect(url_for("student.exam_detail", exam_id=exam_id))
@@ -262,13 +278,25 @@ def start_exam_attempt(exam_id):
 def submit_exam(exam_id):
     try:
         user_id = session.get("user_id")
+        exam = exam_service.get_exam_by_id(exam_id)
+        if not exam:
+            flash("الاختبار غير موجود.", "error")
+            return redirect(url_for("student.exams"))
+
+        if not exam_service.is_student_eligible_for_exam(exam, user_id):
+            flash("هذا الاختبار غير مخصص لك.", "error")
+            return redirect(url_for("student.exams"))
+
         attempt = exam_service.get_student_attempt(exam_id, user_id)
         if not attempt:
             # If attempt not explicitly started yet, start it automatically so answers are preserved
             attempt = exam_service.start_exam_attempt(exam_id, user_id)
         elif attempt.get("status") in ("submitted", "graded", "pending_essay_grading"):
-            flash("تم تسليم هذا الاختبار مسبقاً وهو مقفل.", "info")
+            flash("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.", "info")
             return redirect(url_for("student.review_exam_attempt", exam_id=exam_id))
+        elif attempt.get("status") == "expired":
+            flash("انتهى وقت الاختبار المحدد مسبقاً ولا يمكن تسليم إجابات جديدة.", "error")
+            return redirect(url_for("student.exam_detail", exam_id=exam_id))
 
         attempt = exam_service.submit_exam(exam_id, user_id, request.form.to_dict())
         flash("تم إرسال وحفظ إجابات الاختبار بنجاح!", "success")

@@ -123,6 +123,75 @@ def is_exam_available_now(exam: dict) -> tuple:
     return True, "open", "الاختبار متاح الآن للبدء والتسليم."
 
 
+def _normalize_target_students(val):
+    if not val:
+        return []
+    if isinstance(val, list):
+        return [str(x).strip() for x in val if str(x).strip()]
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed if str(x).strip()]
+        except Exception:
+            pass
+        return [x.strip() for x in val.split(",") if x.strip()]
+    return []
+
+
+def _normalize_exam(exam: dict) -> dict:
+    if not exam:
+        return exam
+    if not exam.get("target_audience"):
+        exam["target_audience"] = "all"
+    exam["target_students"] = _normalize_target_students(exam.get("target_students"))
+    return exam
+
+
+def is_student_eligible_for_exam(exam: dict, student_id) -> bool:
+    """Check if a student is permitted to view or attempt this exam."""
+    if not exam or not student_id:
+        return True
+    audience = (exam.get("target_audience") or "all").lower()
+    if audience != "specific":
+        return True
+    target_students = exam.get("target_students") or []
+    if isinstance(target_students, str):
+        try:
+            target_students = json.loads(target_students)
+        except Exception:
+            target_students = [x.strip() for x in target_students.split(",") if x.strip()]
+    if not isinstance(target_students, list):
+        target_students = []
+    st_id_str = str(student_id)
+    return any(str(sid) == st_id_str for sid in target_students)
+
+
+def calculate_attempt_remaining_seconds(attempt: dict, exam: dict) -> int:
+    """Calculate the exact remaining seconds for an active attempt."""
+    if not exam:
+        return 3600
+    duration_sec = exam.get("duration_seconds") or (int(exam.get("duration_minutes") or 60) * 60)
+    if not attempt or attempt.get("status") != "in_progress":
+        return duration_sec
+
+    started_at = _parse_iso_datetime(attempt.get("started_at"))
+    if not started_at:
+        return duration_sec
+
+    now = datetime.now(timezone.utc)
+    attempt_dur = attempt.get("duration_seconds") or duration_sec
+    elapsed = (now - started_at).total_seconds()
+    remaining = int(attempt_dur - elapsed)
+
+    ends_at = _parse_iso_datetime(exam.get("ends_at"))
+    if ends_at:
+        remaining_window = int((ends_at - now).total_seconds())
+        remaining = min(remaining, remaining_window)
+
+    return max(0, remaining)
+
+
 def create_exam(data: dict):
     title = (data.get("title") or "").strip()
     if not title:
@@ -133,6 +202,11 @@ def create_exam(data: dict):
     scheduled_date = (data.get("scheduled_date") or "").strip()
     starts_at = _parse_iso_datetime(data.get("starts_at"))
     ends_at = _parse_iso_datetime(data.get("ends_at"))
+    target_audience = (data.get("target_audience") or "all").strip().lower()
+    if target_audience not in ("all", "specific"):
+        target_audience = "all"
+    target_students = _normalize_target_students(data.get("target_students"))
+
     status = (data.get("status") or "scheduled").strip()
     status_map = {
         "active": "جارٍ الآن",
@@ -146,16 +220,17 @@ def create_exam(data: dict):
     if is_db_active():
         try:
             sql = """
-                INSERT INTO exams (title, short_title, duration_minutes, duration_seconds, total_questions, scheduled_date, starts_at, ends_at, status, status_label, progress, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, NOW(), NOW())
+                INSERT INTO exams (title, short_title, duration_minutes, duration_seconds, total_questions, scheduled_date, starts_at, ends_at, status, status_label, target_audience, target_students, progress, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, 0, NOW(), NOW())
                 RETURNING *;
             """
             rows = execute_query(sql, (
                 title, title[:30], duration_minutes, duration_minutes * 60, total_questions,
-                scheduled_date, starts_at, ends_at, status, status_label
+                scheduled_date, starts_at, ends_at, status, status_label,
+                target_audience, json.dumps(target_students)
             ), fetch=True, commit=True)
             if rows:
-                return dict(rows[0])
+                return _normalize_exam(dict(rows[0]))
         except Exception as e:
             logger.error(f"Error creating exam in DB: {e}")
             raise
@@ -172,6 +247,8 @@ def create_exam(data: dict):
         "ends_at": ends_at.isoformat() if ends_at else None,
         "status": status,
         "status_label": status_label,
+        "target_audience": target_audience,
+        "target_students": target_students,
         "progress": 0,
         "questions": [],
     }
@@ -189,6 +266,13 @@ def update_exam(exam_id: int, data: dict):
     scheduled_date = (data.get("scheduled_date") or "").strip() if "scheduled_date" in data else None
     starts_at = _parse_iso_datetime(data.get("starts_at")) if "starts_at" in data else None
     ends_at = _parse_iso_datetime(data.get("ends_at")) if "ends_at" in data else None
+    target_audience = data.get("target_audience")
+    if target_audience:
+        target_audience = target_audience.strip().lower()
+        if target_audience not in ("all", "specific"):
+            target_audience = "all"
+    target_students = _normalize_target_students(data.get("target_students")) if "target_students" in data else None
+
     status = data.get("status")
     status_label = None
     if status:
@@ -215,6 +299,8 @@ def update_exam(exam_id: int, data: dict):
                     ends_at = COALESCE(%s, ends_at),
                     status = COALESCE(%s, status),
                     status_label = COALESCE(%s, status_label),
+                    target_audience = COALESCE(%s, target_audience),
+                    target_students = COALESCE(%s::jsonb, target_students),
                     updated_at = NOW()
                 WHERE id = %s
                 RETURNING *;
@@ -222,10 +308,12 @@ def update_exam(exam_id: int, data: dict):
             rows = execute_query(sql, (
                 title, title[:30] if title else None, duration_minutes, duration_minutes,
                 total_questions, scheduled_date, starts_at, ends_at,
-                status, status_label, int(exam_id)
+                status, status_label, target_audience,
+                json.dumps(target_students) if target_students is not None else None,
+                int(exam_id)
             ), fetch=True, commit=True)
             if rows:
-                return dict(rows[0])
+                return _normalize_exam(dict(rows[0]))
         except Exception as e:
             logger.error(f"Error updating exam in DB: {e}")
             raise
@@ -238,8 +326,10 @@ def update_exam(exam_id: int, data: dict):
             if scheduled_date is not None: e["scheduled_date"] = scheduled_date
             if "starts_at" in data: e["starts_at"] = starts_at.isoformat() if starts_at else None
             if "ends_at" in data: e["ends_at"] = ends_at.isoformat() if ends_at else None
+            if target_audience: e["target_audience"] = target_audience
+            if target_students is not None: e["target_students"] = target_students
             if status: e["status"] = status; e["status_label"] = status_label
-            return e
+            return _normalize_exam(e)
     return None
 
 
@@ -433,8 +523,42 @@ def publish_exam(exam_id: int):
     return exam
 
 
-def get_published_exams():
-    return [exam for exam in get_all_exams() if exam.get("status") in ("active", "published")]
+def get_published_exams(student_id=None):
+    exams = [exam for exam in get_all_exams() if exam.get("status") in ("active", "published")]
+    if not student_id:
+        return exams
+    st_id_str = str(student_id)
+    return [exam for exam in exams if is_student_eligible_for_exam(exam, st_id_str)]
+
+
+def _enrich_attempt_with_mcq_stats(attempt, exam_id):
+    """Ensure mcq_score and mcq_total are always populated even if not in DB table schema."""
+    if not attempt:
+        return attempt
+    try:
+        att_id = attempt.get("id")
+        if att_id and is_db_active():
+            row = execute_query(
+                """SELECT 
+                    COALESCE(SUM(marks_awarded), 0) as mcq_score
+                   FROM student_answers 
+                   WHERE attempt_id = %s AND answer_type != 'essay';""",
+                (int(att_id),), fetch=True
+            )
+            if row and row[0]["mcq_score"] is not None:
+                attempt["mcq_score"] = float(row[0]["mcq_score"])
+        if attempt.get("mcq_score") is None:
+            attempt["mcq_score"] = float(attempt.get("score") or 0.0)
+
+        exam = get_exam_by_id(exam_id)
+        if exam:
+            questions = exam.get("questions") or []
+            mcq_qs = [q for q in questions if q.get("type") != "essay"]
+            attempt["mcq_total"] = float(sum(q.get("points") or 1 for q in mcq_qs))
+            attempt["has_essay"] = any(q.get("type") == "essay" for q in questions)
+    except Exception as e:
+        logger.warning(f"Error enriching attempt with MCQ stats: {e}")
+    return attempt
 
 
 def _attempts_table_available():
@@ -456,34 +580,48 @@ def get_student_attempt(exam_id: int, student_id):
                 "SELECT * FROM assessment_attempts WHERE assessment_type='exam' AND assessment_id=%s AND CAST(student_id AS TEXT)=%s LIMIT 1;",
                 (int(exam_id), str(student_id)), fetch=True
             )
-            return dict(rows[0]) if rows else None
+            if rows:
+                attempt = dict(rows[0])
+                if attempt.get("status") == "in_progress":
+                    exam = get_exam_by_id(exam_id)
+                    remaining = calculate_attempt_remaining_seconds(attempt, exam)
+                    if remaining <= 0:
+                        execute_query(
+                            "UPDATE assessment_attempts SET status='expired', locked=TRUE, expired_at=CURRENT_TIMESTAMP WHERE id=%s;",
+                            (attempt["id"],), fetch=False, commit=True
+                        )
+                        attempt["status"] = "expired"
+                        attempt["locked"] = True
+                _enrich_attempt_with_mcq_stats(attempt, exam_id)
+                return attempt
+            return None
         except Exception as e:
             logger.warning(f"Error in get_student_attempt: {e}")
-    return _ATTEMPTS_DB.get(("exam", int(exam_id), str(student_id)))
+    att = _ATTEMPTS_DB.get(("exam", int(exam_id), str(student_id)))
+    if att:
+        _enrich_attempt_with_mcq_stats(att, exam_id)
+    return att
 
 
 def start_assessment_attempt(assessment_type: str, assessment_id: int, student_id, total_questions: int, duration_seconds: int = 0):
-    """Create one in-progress attempt, or return/update its existing lifecycle row."""
+    """Create one in-progress attempt, or return existing active attempt. Disallows retakes."""
     if assessment_type not in ("exam", "homework"):
         raise ValueError("نوع التقييم غير مدعوم.")
     key = (assessment_type, int(assessment_id), str(student_id))
     if is_db_active() and _attempts_table_available():
         rows = execute_query("""SELECT * FROM assessment_attempts
-            WHERE assessment_type=%s AND assessment_id=%s AND student_id=%s LIMIT 1;""",
-            (assessment_type, assessment_id, student_id), fetch=True)
+            WHERE assessment_type=%s AND assessment_id=%s AND CAST(student_id AS TEXT)=%s LIMIT 1;""",
+            (assessment_type, assessment_id, str(student_id)), fetch=True)
         existing = dict(rows[0]) if rows else None
-        if existing and existing.get("status") == "submitted":
-            raise ValueError("تم تسليم هذا التقييم مسبقاً وهو مقفل.")
-        if existing and existing.get("status") == "in_progress":
-            return existing
-        if existing and existing.get("status") == "expired":
-            rows = execute_query("""UPDATE assessment_attempts
-                SET status='in_progress', locked=FALSE, started_at=CURRENT_TIMESTAMP,
-                    submit_time=NULL, expired_at=NULL, answers='{}'::jsonb,
-                    submitted_answers='{}'::jsonb, score=0, total_score=0,
-                    correct_count=0, total_questions=%s, duration_seconds=%s
-                WHERE id=%s RETURNING *;""", (total_questions, duration_seconds, existing["id"]), fetch=True)
-            return dict(rows[0])
+        if existing:
+            st = existing.get("status")
+            if st in ("submitted", "graded", "pending_essay_grading"):
+                raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل. لا يمكن إعادة المحاولة.")
+            if st == "expired":
+                raise ValueError("انتهى وقت هذا الاختبار مسبقاً وهو مقفل الآن. لا يمكن إعادة المحاولة.")
+            if st == "in_progress":
+                return existing
+
         rows = execute_query("""INSERT INTO assessment_attempts
             (assessment_type, assessment_id, student_id, answers, score, total_score,
              correct_count, total_questions, locked, status, started_at, duration_seconds)
@@ -492,10 +630,14 @@ def start_assessment_attempt(assessment_type: str, assessment_id: int, student_i
         return dict(rows[0])
 
     existing = _ATTEMPTS_DB.get(key)
-    if existing and existing.get("status") == "submitted":
-        raise ValueError("تم تسليم هذا التقييم مسبقاً وهو مقفل.")
-    if existing and existing.get("status") == "in_progress":
-        return existing
+    if existing:
+        st = existing.get("status")
+        if st in ("submitted", "graded", "pending_essay_grading"):
+            raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل. لا يمكن إعادة المحاولة.")
+        if st == "expired":
+            raise ValueError("انتهى وقت هذا الاختبار مسبقاً وهو مقفل الآن. لا يمكن إعادة المحاولة.")
+        if st == "in_progress":
+            return existing
     attempt = {
         "assessment_type": assessment_type, "assessment_id": int(assessment_id),
         "student_id": str(student_id), "answers": {}, "score": 0,
@@ -510,8 +652,13 @@ def start_assessment_attempt(assessment_type: str, assessment_id: int, student_i
 
 def start_exam_attempt(exam_id: int, student_id):
     exam = get_exam_by_id(exam_id)
-    if exam.get("status") not in ("active", "published"):
+    if not exam or exam.get("status") not in ("active", "published"):
         raise ValueError("هذا الاختبار غير منشور للطلاب.")
+    if not is_student_eligible_for_exam(exam, student_id):
+        raise ValueError("هذا الاختبار مخصص لطلاب محددين فقط وغير متاح لحسابك الأكاديمي.")
+    can_take, state_code, state_msg = is_exam_available_now(exam)
+    if not can_take:
+        raise ValueError(state_msg)
     return start_assessment_attempt("exam", exam_id, student_id, len(exam.get("questions", [])), exam.get("duration_seconds", 0))
 
 
@@ -567,11 +714,13 @@ def _save_student_answers(attempt_id, questions, answers):
 def submit_exam(exam_id: int, student_id, answers: dict):
     """Score and lock a single student attempt. The unique DB constraint is the race-safe lock."""
     existing_attempt = get_student_attempt(exam_id, student_id)
-    if existing_attempt and existing_attempt.get("status") in ("submitted", "graded"):
-        raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل.")
+    if existing_attempt and existing_attempt.get("status") in ("submitted", "graded", "pending_essay_grading"):
+        raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.")
     exam = get_exam_by_id(exam_id)
-    if exam.get("status") not in ("active", "published"):
+    if not exam or exam.get("status") not in ("active", "published"):
         raise ValueError("هذا الاختبار غير منشور للطلاب.")
+    if not is_student_eligible_for_exam(exam, student_id):
+        raise ValueError("هذا الاختبار غير مخصص لحسابك الأكاديمي.")
     questions = _validate_questions(exam.get("questions", []))
     has_essay = any(q.get("type") == "essay" for q in questions)
     mcq_questions = [q for q in questions if q.get("type") != "essay"]
@@ -729,11 +878,11 @@ def get_all_exams():
             sql = "SELECT * FROM exams ORDER BY id ASC;"
             rows = execute_query(sql, fetch=True)
             if rows:
-                return [dict(r) for r in rows]
+                return [_normalize_exam(dict(r)) for r in rows]
         except Exception as e:
             logger.warning(f"Error querying exams: {e}")
 
-    return _EXAMS_DB
+    return [_normalize_exam(e) for e in _EXAMS_DB]
 
 
 def get_exam_by_id(exam_id: int):
@@ -757,13 +906,13 @@ def get_exam_by_id(exam_id: int):
                         (exam_id,), fetch=True
                     )
                 exam["questions"] = [dict(q) for q in q_rows]
-                return exam
+                return _normalize_exam(exam)
         except Exception as e:
             logger.warning(f"Error querying exam by ID: {e}")
 
     for e in _EXAMS_DB:
         if e["id"] == exam_id:
-            return e
+            return _normalize_exam(e)
     return None
 
 
