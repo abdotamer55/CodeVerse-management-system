@@ -18,14 +18,27 @@
 
 {% if not attempt %}
 <section class="card" style="margin-top:1.5rem">
-  <h2 class="headline-sm">ابدأ محاولة الاختبار</h2>
-  <p class="body-md muted">تنبيه: يُسمح بمحاولة <strong>واحدة فقط</strong> لكل طالب. بمجرد الضغط على بدء المحاولة سيبدأ العد التنازلي للوقت المحدد ولن تتمكن من إعادة دخول الاختبار مجدداً بعد انقضاء الوقت.</p>
-  <div class="wrap">
-    <form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}">
-      <button class="btn btn-primary" type="submit">بدء المحاولة الآن</button>
-    </form>
-    <a class="btn btn-ghost" href="{{ url_for('student.exams') }}">إلغاء والعودة</a>
-  </div>
+  <h2 class="headline-sm">محاولة الاختبار</h2>
+  {% if availability and not availability.can_take %}
+    <div class="alert" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--text-color,#fff);margin-top:1rem">
+      <span class="material-symbols-outlined" style="font-size:1.5rem;color:var(--red,#ef4444)">schedule</span>
+      <div>
+        <strong style="color:var(--red,#ef4444)">{{ availability.message }}</strong>
+        <p class="body-sm muted" style="margin-top:4px">لا يمكنك بدء أو دخول هذا الاختبار حالياً نظراً لانتهاء أو عدم بدء وقته الزمني المحدد.</p>
+      </div>
+    </div>
+    <div class="wrap" style="margin-top:1rem">
+      <a class="btn btn-secondary" href="{{ url_for('student.exams') }}">العودة لقائمة الامتحانات</a>
+    </div>
+  {% else %}
+    <p class="body-md muted">تنبيه: يُسمح بمحاولة <strong>واحدة فقط</strong> لكل طالب. بمجرد الضغط على بدء المحاولة سيبدأ العد التنازلي للوقت المحدد ولن تتمكن من إعادة دخول الاختبار مجدداً بعد انقضاء الوقت.</p>
+    <div class="wrap">
+      <form method="POST" action="{{ url_for('student.start_exam_attempt', exam_id=exam.id) }}">
+        <button class="btn btn-primary" type="submit">بدء المحاولة الآن</button>
+      </form>
+      <a class="btn btn-ghost" href="{{ url_for('student.exams') }}">إلغاء والعودة</a>
+    </div>
+  {% endif %}
 </section>
 
 {% elif attempt.status in ('submitted', 'pending_essay_grading', 'graded') %}

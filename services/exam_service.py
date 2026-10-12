@@ -163,8 +163,24 @@ def is_student_eligible_for_exam(exam: dict, student_id) -> bool:
             target_students = [x.strip() for x in target_students.split(",") if x.strip()]
     if not isinstance(target_students, list):
         target_students = []
-    st_id_str = str(student_id)
-    return any(str(sid) == st_id_str for sid in target_students)
+    st_id_str = str(student_id).strip().lower()
+    target_set = {str(sid).strip().lower() for sid in target_students}
+    if st_id_str in target_set:
+        return True
+
+    # Check if student's code or id in database matches
+    try:
+        from services import student_service
+        st = student_service.get_student_by_id(student_id)
+        if st:
+            code = str(st.get("student_code") or st.get("code") or "").strip().lower()
+            sid = str(st.get("id") or "").strip().lower()
+            if (code and code in target_set) or (sid and sid in target_set):
+                return True
+    except Exception:
+        pass
+
+    return False
 
 
 def calculate_attempt_remaining_seconds(attempt: dict, exam: dict) -> int:
@@ -266,12 +282,11 @@ def update_exam(exam_id: int, data: dict):
     scheduled_date = (data.get("scheduled_date") or "").strip() if "scheduled_date" in data else None
     starts_at = _parse_iso_datetime(data.get("starts_at")) if "starts_at" in data else None
     ends_at = _parse_iso_datetime(data.get("ends_at")) if "ends_at" in data else None
-    target_audience = data.get("target_audience")
-    if target_audience:
-        target_audience = target_audience.strip().lower()
-        if target_audience not in ("all", "specific"):
-            target_audience = "all"
-    target_students = _normalize_target_students(data.get("target_students")) if "target_students" in data else None
+    target_audience = (data.get("target_audience") or "all").strip().lower()
+    if target_audience not in ("all", "specific"):
+        target_audience = "all"
+    # Always normalize target_students from form; empty list is valid (means "all students")
+    target_students = _normalize_target_students(data.get("target_students") or [])
 
     status = data.get("status")
     status_label = None
@@ -287,6 +302,8 @@ def update_exam(exam_id: int, data: dict):
 
     if is_db_active():
         try:
+            # Use direct SET for target_audience and target_students (not COALESCE)
+            # so that switching between 'all' and 'specific' always persists correctly
             sql = """
                 UPDATE exams
                 SET title = COALESCE(NULLIF(%s, ''), title),
@@ -299,8 +316,8 @@ def update_exam(exam_id: int, data: dict):
                     ends_at = COALESCE(%s, ends_at),
                     status = COALESCE(%s, status),
                     status_label = COALESCE(%s, status_label),
-                    target_audience = COALESCE(%s, target_audience),
-                    target_students = COALESCE(%s::jsonb, target_students),
+                    target_audience = %s,
+                    target_students = %s::jsonb,
                     updated_at = NOW()
                 WHERE id = %s
                 RETURNING *;
@@ -308,12 +325,15 @@ def update_exam(exam_id: int, data: dict):
             rows = execute_query(sql, (
                 title, title[:30] if title else None, duration_minutes, duration_minutes,
                 total_questions, scheduled_date, starts_at, ends_at,
-                status, status_label, target_audience,
-                json.dumps(target_students) if target_students is not None else None,
+                status, status_label,
+                target_audience,
+                json.dumps(target_students),
                 int(exam_id)
             ), fetch=True, commit=True)
             if rows:
-                return _normalize_exam(dict(rows[0]))
+                result = _normalize_exam(dict(rows[0]))
+                logger.info(f"Exam {exam_id} updated: target_audience={result.get('target_audience')}, target_students_count={len(result.get('target_students', []))}")
+                return result
         except Exception as e:
             logger.error(f"Error updating exam in DB: {e}")
             raise
@@ -326,8 +346,8 @@ def update_exam(exam_id: int, data: dict):
             if scheduled_date is not None: e["scheduled_date"] = scheduled_date
             if "starts_at" in data: e["starts_at"] = starts_at.isoformat() if starts_at else None
             if "ends_at" in data: e["ends_at"] = ends_at.isoformat() if ends_at else None
-            if target_audience: e["target_audience"] = target_audience
-            if target_students is not None: e["target_students"] = target_students
+            e["target_audience"] = target_audience  # always set directly
+            e["target_students"] = target_students   # always set directly
             if status: e["status"] = status; e["status_label"] = status_label
             return _normalize_exam(e)
     return None
@@ -599,6 +619,11 @@ def get_student_attempt(exam_id: int, student_id):
             logger.warning(f"Error in get_student_attempt: {e}")
     att = _ATTEMPTS_DB.get(("exam", int(exam_id), str(student_id)))
     if att:
+        if att.get("status") == "in_progress":
+            exam = get_exam_by_id(exam_id)
+            if exam and calculate_attempt_remaining_seconds(att, exam) <= 0:
+                att["status"] = "expired"
+                att["locked"] = True
         _enrich_attempt_with_mcq_stats(att, exam_id)
     return att
 
@@ -716,6 +741,8 @@ def submit_exam(exam_id: int, student_id, answers: dict):
     existing_attempt = get_student_attempt(exam_id, student_id)
     if existing_attempt and existing_attempt.get("status") in ("submitted", "graded", "pending_essay_grading"):
         raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.")
+    if existing_attempt and existing_attempt.get("status") == "expired":
+        raise ValueError("انتهى وقت هذا الاختبار مسبقاً وهو مقفل الآن ولا يمكن تسليم إجابات جديدة.")
     exam = get_exam_by_id(exam_id)
     if not exam or exam.get("status") not in ("active", "published"):
         raise ValueError("هذا الاختبار غير منشور للطلاب.")
@@ -1186,119 +1213,3 @@ def delete_question(question_id: int):
         deleted = True
     return deleted
 
-
-def create_exam(data: dict):
-    """Create a new exam."""
-    title = (data.get("title") or "").strip()
-    if not title:
-        raise ValueError("عنوان الاختبار مطلوب.")
-
-    short_title = title[:50]
-    duration_minutes = int(data.get("duration_minutes") or 90)
-    duration_seconds = duration_minutes * 60
-    total_questions = int(data.get("total_questions") or 10)
-    scheduled_date = (data.get("scheduled_date") or "مجدول قريباً").strip()
-    status = data.get("status", "scheduled")
-    status_label = "جارٍ الآن" if status == "active" else "مجدول"
-
-    if is_db_active():
-        try:
-            sql = """
-                INSERT INTO exams (title, short_title, duration_minutes, duration_seconds, total_questions, scheduled_date, status, status_label, progress)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
-                RETURNING *;
-            """
-            rows = execute_query(
-                sql,
-                (title, short_title, duration_minutes, duration_seconds, total_questions, scheduled_date, status, status_label),
-                fetch=True
-            )
-            if rows:
-                return dict(rows[0])
-        except Exception as e:
-            logger.error(f"Error creating exam in DB: {e}")
-            raise
-
-    new_exam = {
-        "id": max([e["id"] for e in _EXAMS_DB], default=10) + 1,
-        "title": title,
-        "short_title": short_title,
-        "duration_minutes": duration_minutes,
-        "duration_seconds": duration_seconds,
-        "total_questions": total_questions,
-        "scheduled_date": scheduled_date,
-        "status": status,
-        "status_label": status_label,
-        "progress": 0,
-        "questions": [],
-    }
-    _EXAMS_DB.append(new_exam)
-    return new_exam
-
-
-def update_exam(exam_id: int, data: dict):
-    """Update exam details."""
-    title = (data.get("title") or "").strip()
-    duration_minutes = int(data.get("duration_minutes") or 90)
-    total_questions = int(data.get("total_questions") or 10)
-    scheduled_date = (data.get("scheduled_date") or "").strip()
-    status = data.get("status", "scheduled")
-    status_label = "جارٍ الآن" if status == "active" else "مجدول"
-
-    if is_db_active():
-        try:
-            sql = """
-                UPDATE exams
-                SET title = COALESCE(NULLIF(%s, ''), title),
-                    duration_minutes = %s,
-                    duration_seconds = %s,
-                    total_questions = %s,
-                    scheduled_date = COALESCE(NULLIF(%s, ''), scheduled_date),
-                    status = %s,
-                    status_label = %s
-                WHERE id = %s
-                RETURNING *;
-            """
-            rows = execute_query(
-                sql,
-                (title, duration_minutes, duration_minutes * 60, total_questions, scheduled_date, status, status_label, int(exam_id)),
-                fetch=True
-            )
-            if rows:
-                return dict(rows[0])
-        except Exception as e:
-            logger.error(f"Error updating exam in DB: {e}")
-            raise
-
-    for e in _EXAMS_DB:
-        if e["id"] == int(exam_id):
-            if title: e["title"] = title
-            e["duration_minutes"] = duration_minutes
-            e["total_questions"] = total_questions
-            if scheduled_date: e["scheduled_date"] = scheduled_date
-            e["status"] = status
-            e["status_label"] = status_label
-            return e
-    return None
-
-
-def delete_exam(exam_id: int):
-    """Delete an exam."""
-    if not exam_id:
-        raise ValueError("معرّف الاختبار مطلوب للحذف.")
-
-    deleted = False
-    if is_db_active():
-        try:
-            execute_query("DELETE FROM exams WHERE id = %s;", (int(exam_id),), fetch=False)
-            deleted = True
-        except Exception as e:
-            logger.error(f"Error deleting exam from DB: {e}")
-            raise
-
-    global _EXAMS_DB
-    before = len(_EXAMS_DB)
-    _EXAMS_DB = [e for e in _EXAMS_DB if e["id"] != int(exam_id)]
-    if len(_EXAMS_DB) < before:
-        deleted = True
-    return deleted

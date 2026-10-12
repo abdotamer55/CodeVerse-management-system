@@ -394,14 +394,23 @@ def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, f
             )
             final_score = float(score_rows[0]["final_score"]) if score_rows else float(marks_awarded)
 
-            # 3. Update attempt record (percentage is computed in python, not in DB column)
+            # 3. Check if all essay questions for this attempt have been graded
+            pending_rows = execute_query(
+                "SELECT COUNT(*) as pending_cnt FROM student_answers WHERE attempt_id = %s AND answer_type = 'essay' AND marks_awarded IS NULL;",
+                (int(attempt_id),),
+                fetch=True
+            )
+            has_pending_essays = bool(pending_rows and pending_rows[0]["pending_cnt"] > 0)
+            target_status = "pending_essay_grading" if has_pending_essays else "graded"
+
+            # 4. Update attempt record
             att_rows = execute_query(
                 """UPDATE assessment_attempts
                    SET score = %s,
-                       status = 'graded'
+                       status = %s
                    WHERE id = %s
                    RETURNING assessment_id, student_id, score, total_score;""",
-                (final_score, int(attempt_id)),
+                (final_score, target_status, int(attempt_id)),
                 fetch=True, commit=True
             )
 
@@ -409,9 +418,14 @@ def grade_essay_attempt(attempt_id: int, answer_id: int, marks_awarded: float, f
                 att = att_rows[0]
                 total = float(att["total_score"] or 100)
                 percentage = round((final_score / total) * 100, 2) if total > 0 else 0.0
-                status_val = "passed" if percentage >= 50 else "repeat"
-                grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 65 else ("مقبول" if percentage >= 50 else "فرصة إعادة")))
-                grade_badge = "badge-success" if percentage >= 50 else "badge-danger"
+                if has_pending_essays:
+                    status_val = "pending_essay_grading"
+                    grade_label = "بانتظار تصحيح باقي المقالي"
+                    grade_badge = "badge-warn"
+                else:
+                    status_val = "passed" if percentage >= 50 else "repeat"
+                    grade_label = "ممتاز" if percentage >= 90 else ("جيد جداً" if percentage >= 80 else ("جيد" if percentage >= 65 else ("مقبول" if percentage >= 50 else "فرصة إعادة")))
+                    grade_badge = "badge-success" if percentage >= 50 else "badge-danger"
 
                 # Get exam and student details
                 exam_rows = execute_query("SELECT title FROM exams WHERE id = %s;", (att["assessment_id"],), fetch=True)
@@ -558,6 +572,13 @@ def grade_attempt_all_essays(attempt_id: int, grades: list, overall_feedback: st
                             att["assessment_id"], exam_title, percentage, score_disp,
                             status_val, grade_badge, grade_label, overall_feedback
                         ), fetch=False, commit=True)
+
+                    # Recalculate student's cumulative GPA / overall_grade
+                    try:
+                        from services import student_service
+                        student_service.recalculate_student_overall_grade(st_id)
+                    except Exception as gpa_err:
+                        logger.warning(f"Could not update overall grade: {gpa_err}")
 
                     # Send notification
                     try:

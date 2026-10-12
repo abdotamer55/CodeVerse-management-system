@@ -316,6 +316,7 @@ def submit_exam(exam_id):
 
 
 @student_bp.route("/exams/<int:exam_id>/review")
+@student_bp.route("/exams/<int:exam_id>/review", endpoint="exam_review")
 @role_required("student")
 def review_exam_attempt(exam_id):
     user_id = session.get("user_id")
