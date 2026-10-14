@@ -135,13 +135,29 @@
         {% if e.status == 'active' %}
           <div class="progress"><span style="width:{{ e.progress }}%"></span></div>
           <a class="btn btn-primary" href="{{ url_for('admin.results') }}">رصد النتائج الحية</a>
+          <!-- Close Now -->
+          <form method="POST" action="{{ url_for('admin.close_exam_now', exam_id=e.id) }}" style="display:inline"
+                onsubmit="return confirm('إيقاف الاختبار الآن؟ لن يستطيع الطلاب الدخول بعد ذلك.')">
+            <button class="btn btn-ghost" type="submit" style="color:var(--red,#ef4444)" title="إغلاق الاختبار فوراً">
+              <span class="material-symbols-outlined">lock</span> إيقاف الآن
+            </button>
+          </form>
+        {% endif %}
+        {% if e.status == 'scheduled' %}
+          <!-- Activate Now -->
+          <form method="POST" action="{{ url_for('admin.activate_exam_now', exam_id=e.id) }}" style="display:inline"
+                onsubmit="return confirm('بدء الاختبار الآن فوراً للطلاب؟')">
+            <button class="btn btn-primary" type="submit" title="تفعيل الاختبار وفتحه للطلاب الآن">
+              <span class="material-symbols-outlined">play_arrow</span> بدء الآن
+            </button>
+          </form>
         {% endif %}
         {% if e.status in ('completed', 'closed') %}
-        <form method="POST" action="{{ url_for('admin.republish_exam', exam_id=e.id) }}" style="display:inline">
-          <button class="btn btn-secondary" type="submit" title="إعادة نشر وتفعيل الاختبار">
-            <span class="material-symbols-outlined">replay</span> إعادة نشر
-          </button>
-        </form>
+          <form method="POST" action="{{ url_for('admin.republish_exam', exam_id=e.id) }}" style="display:inline">
+            <button class="btn btn-secondary" type="submit" title="إعادة نشر وتفعيل الاختبار">
+              <span class="material-symbols-outlined">replay</span> إعادة نشر
+            </button>
+          </form>
         {% endif %}
         <a class="btn btn-secondary" href="{{ url_for('admin.exam_builder', exam_id=e.id) }}">إدارة الأسئلة</a>
         <a class="btn btn-ghost" href="{{ url_for('admin.preview_exam', exam_id=e.id) }}" title="معاينة الاختبار كما يراه الطالب">

@@ -384,6 +384,64 @@ def republish_exam(exam_id: int):
     return None
 
 
+def activate_exam_now(exam_id: int):
+    """Immediately open a scheduled exam: set status=active, starts_at=NOW(), keep ends_at unchanged."""
+    if not exam_id:
+        raise ValueError("معرّف الاختبار مطلوب.")
+    if is_db_active():
+        try:
+            sql = """
+                UPDATE exams
+                SET status = 'active',
+                    status_label = 'جارٍ الآن',
+                    starts_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING *;
+            """
+            rows = execute_query(sql, (int(exam_id),), fetch=True, commit=True)
+            if rows:
+                return _normalize_exam(dict(rows[0]))
+        except Exception as e:
+            logger.error(f"Error activating exam now in DB: {e}")
+            raise
+    for e in _EXAMS_DB:
+        if e["id"] == int(exam_id):
+            e["status"] = "active"
+            e["status_label"] = "جارٍ الآن"
+            return e
+    return None
+
+
+def close_exam_now(exam_id: int):
+    """Immediately close an active exam: set status=completed, ends_at=NOW()."""
+    if not exam_id:
+        raise ValueError("معرّف الاختبار مطلوب.")
+    if is_db_active():
+        try:
+            sql = """
+                UPDATE exams
+                SET status = 'completed',
+                    status_label = 'منتهي ومغلق',
+                    ends_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING *;
+            """
+            rows = execute_query(sql, (int(exam_id),), fetch=True, commit=True)
+            if rows:
+                return _normalize_exam(dict(rows[0]))
+        except Exception as e:
+            logger.error(f"Error closing exam now in DB: {e}")
+            raise
+    for e in _EXAMS_DB:
+        if e["id"] == int(exam_id):
+            e["status"] = "completed"
+            e["status_label"] = "منتهي ومغلق"
+            return e
+    return None
+
+
 def delete_exam(exam_id: int):
     """Delete an exam and its associated questions relations."""
     if not exam_id:

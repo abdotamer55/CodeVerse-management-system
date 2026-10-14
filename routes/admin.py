@@ -358,6 +358,28 @@ def republish_exam(exam_id):
     return redirect(url_for("admin.exams"))
 
 
+@admin_bp.route("/exams/<int:exam_id>/activate-now", methods=["POST"])
+@role_required("admin")
+def activate_exam_now(exam_id):
+    try:
+        exam_service.activate_exam_now(exam_id)
+        flash("تم تفعيل الاختبار الآن — أصبح مفتوحاً للطلاب فوراً.", "success")
+    except Exception as e:
+        flash(f"فشل تفعيل الاختبار: {e}", "error")
+    return redirect(url_for("admin.exams"))
+
+
+@admin_bp.route("/exams/<int:exam_id>/close-now", methods=["POST"])
+@role_required("admin")
+def close_exam_now(exam_id):
+    try:
+        exam_service.close_exam_now(exam_id)
+        flash("تم إغلاق الاختبار الآن — لم يعد متاحاً للطلاب.", "success")
+    except Exception as e:
+        flash(f"فشل إغلاق الاختبار: {e}", "error")
+    return redirect(url_for("admin.exams"))
+
+
 @admin_bp.route("/exams/<int:exam_id>/delete", methods=["POST"])
 @role_required("admin")
 def delete_exam(exam_id):

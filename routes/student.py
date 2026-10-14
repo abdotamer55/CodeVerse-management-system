@@ -208,6 +208,14 @@ def exams():
         e["state_code"] = state_code
         e["availability_message"] = msg
         e["my_attempt"] = exam_service.get_student_attempt(e["id"], user_id)
+        # Convert datetime objects to ISO strings for JS countdown
+        for field in ("starts_at", "ends_at"):
+            val = e.get(field)
+            if val and not isinstance(val, str):
+                try:
+                    e[field] = val.isoformat()
+                except Exception:
+                    e[field] = str(val)
     return render_template(
         "student/exams.html",
         user_role="student",

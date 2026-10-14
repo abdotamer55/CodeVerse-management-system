@@ -20,7 +20,8 @@
           {% elif e.state_code == 'upcoming' %}badge-info
           {% elif e.state_code == 'expired' %}badge-neutral
           {% else %}badge-neutral
-          {% endif %}">
+          {% endif %}"
+          {% if e.state_code == 'upcoming' %}id="badge-exam-{{ e.id }}"{% endif %}>
           {% if e.state_code == 'open' %}
             <span class="material-symbols-outlined" style="font-size:0.85rem;vertical-align:middle">radio_button_checked</span>
             جارٍ الآن
@@ -40,16 +41,25 @@
       <h3 class="headline-sm">{{ e.title }}</h3>
       <p class="body-sm muted">{{ e.scheduled_date or '' }} · {{ e.total_questions }} سؤالاً</p>
 
-      <!-- Scheduling message -->
-      {% if e.state_code in ('upcoming', 'expired') and e.availability_message %}
-      <div class="row" style="gap:0.4rem;align-items:center;margin-top:6px;padding:0.5rem 0.75rem;background:{% if e.state_code == 'upcoming' %}rgba(99,102,241,0.07){% else %}rgba(100,116,139,0.08){% endif %};border-radius:var(--radius-sm)">
-        <span class="material-symbols-outlined" style="font-size:0.9rem;color:{% if e.state_code == 'upcoming' %}var(--accent,#6366f1){% else %}var(--muted){% endif %}">
-          {% if e.state_code == 'upcoming' %}event{% else %}lock_clock{% endif %}
-        </span>
-        <span class="body-sm" style="color:{% if e.state_code == 'upcoming' %}var(--accent,#6366f1){% else %}var(--muted){% endif %}">
-          {{ e.availability_message }}
+      <!-- Scheduling message / live countdown -->
+      {% if e.state_code == 'upcoming' and e.starts_at %}
+      <div class="row" id="countdown-box-{{ e.id }}" style="gap:0.4rem;align-items:center;margin-top:6px;padding:0.5rem 0.75rem;background:rgba(99,102,241,0.07);border-radius:var(--radius-sm)">
+        <span class="material-symbols-outlined" style="font-size:0.9rem;color:var(--accent,#6366f1)">event</span>
+        <span class="body-sm" style="color:var(--accent,#6366f1)">
+          يبدأ خلال: <strong id="countdown-{{ e.id }}">...</strong>
         </span>
       </div>
+      <span style="display:none" id="starts-at-{{ e.id }}" data-utc="{{ e.starts_at | string | truncate(19,True,'') }}Z"></span>
+      {% elif e.state_code == 'expired' and e.availability_message %}
+      <div class="row" style="gap:0.4rem;align-items:center;margin-top:6px;padding:0.5rem 0.75rem;background:rgba(100,116,139,0.08);border-radius:var(--radius-sm)">
+        <span class="material-symbols-outlined" style="font-size:0.9rem;color:var(--muted)">lock_clock</span>
+        <span class="body-sm" style="color:var(--muted)">{{ e.availability_message }}</span>
+      </div>
+      {% endif %}
+
+      <!-- ends_at live watcher: reload when exam closes -->
+      {% if e.state_code == 'open' and e.ends_at %}
+      <span style="display:none" id="ends-at-{{ e.id }}" data-utc="{{ e.ends_at | string | truncate(19,True,'') }}Z"></span>
       {% endif %}
 
       <div class="wrap" style="margin-top:10px">
@@ -66,7 +76,7 @@
             <span class="material-symbols-outlined">play_arrow</span> دخول قاعة الاختبار
           </a>
         {% elif e.state_code == 'upcoming' %}
-          <button class="btn btn-secondary" type="button" disabled title="{{ e.availability_message }}">
+          <button class="btn btn-secondary" id="btn-exam-{{ e.id }}" type="button" disabled>
             <span class="material-symbols-outlined">schedule</span> يبدأ في موعده
           </button>
         {% elif e.state_code == 'expired' %}
@@ -89,3 +99,80 @@
   {% endif %}
 </div>
 {% endblock content %}
+
+{% block scripts %}
+<script>
+/**
+ * Exam Countdown & Auto-Reload System
+ * - Counts down to starts_at for upcoming exams → reloads page when time arrives
+ * - Watches ends_at for open exams → reloads page when exam closes
+ */
+(function() {
+  function formatCountdown(seconds) {
+    if (seconds <= 0) return '00:00:00';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function parseUTC(el) {
+    if (!el) return null;
+    const raw = el.getAttribute('data-utc');
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Upcoming: countdown to starts_at
+  document.querySelectorAll('[id^="starts-at-"]').forEach(function(el) {
+    const examId = el.id.replace('starts-at-', '');
+    const opensAt = parseUTC(el);
+    if (!opensAt) return;
+
+    const countdownEl = document.getElementById('countdown-' + examId);
+    if (!countdownEl) return;
+
+    function tick() {
+      const now = new Date();
+      const diffSec = Math.floor((opensAt - now) / 1000);
+
+      if (diffSec <= 0) {
+        // Time has come — reload so server recalculates state
+        countdownEl.textContent = 'يُفتح الآن…';
+        setTimeout(function() { window.location.reload(); }, 800);
+        return;
+      }
+
+      countdownEl.textContent = formatCountdown(diffSec);
+      setTimeout(tick, 1000);
+    }
+    tick();
+  });
+
+  // Open: watch ends_at and reload when exam closes
+  document.querySelectorAll('[id^="ends-at-"]').forEach(function(el) {
+    const endsAt = parseUTC(el);
+    if (!endsAt) return;
+
+    function watchEnd() {
+      const now = new Date();
+      const diffSec = Math.floor((endsAt - now) / 1000);
+      if (diffSec <= 0) {
+        window.location.reload();
+        return;
+      }
+      // Check every 5 seconds (no need to render, just watch)
+      setTimeout(watchEnd, 5000);
+    }
+    watchEnd();
+  });
+
+  // Also: periodic poll every 60s as safety net (catches manual admin changes)
+  setTimeout(function() { window.location.reload(); }, 60000);
+})();
+</script>
+{% endblock %}
