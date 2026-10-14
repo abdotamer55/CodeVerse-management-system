@@ -544,7 +544,12 @@ def publish_exam(exam_id: int):
 
 
 def get_published_exams(student_id=None):
-    exams = [exam for exam in get_all_exams() if exam.get("status") in ("active", "published")]
+    """Return exams visible to students: active, published, or scheduled (upcoming).
+    Scheduled exams appear as 'upcoming' in the student portal — is_exam_available_now
+    enforces the actual time window so students cannot start them early.
+    """
+    visible_statuses = ("active", "published", "scheduled")
+    exams = [exam for exam in get_all_exams() if exam.get("status") in visible_statuses]
     if not student_id:
         return exams
     st_id_str = str(student_id)
@@ -677,7 +682,8 @@ def start_assessment_attempt(assessment_type: str, assessment_id: int, student_i
 
 def start_exam_attempt(exam_id: int, student_id):
     exam = get_exam_by_id(exam_id)
-    if not exam or exam.get("status") not in ("active", "published"):
+    # Accept active, published, and scheduled — is_exam_available_now enforces the time window
+    if not exam or exam.get("status") not in ("active", "published", "scheduled"):
         raise ValueError("هذا الاختبار غير منشور للطلاب.")
     if not is_student_eligible_for_exam(exam, student_id):
         raise ValueError("هذا الاختبار مخصص لطلاب محددين فقط وغير متاح لحسابك الأكاديمي.")
@@ -744,7 +750,8 @@ def submit_exam(exam_id: int, student_id, answers: dict):
     if existing_attempt and existing_attempt.get("status") == "expired":
         raise ValueError("انتهى وقت هذا الاختبار مسبقاً وهو مقفل الآن ولا يمكن تسليم إجابات جديدة.")
     exam = get_exam_by_id(exam_id)
-    if not exam or exam.get("status") not in ("active", "published"):
+    # Accept active, published, and scheduled — time window is enforced by is_exam_available_now at start
+    if not exam or exam.get("status") not in ("active", "published", "scheduled"):
         raise ValueError("هذا الاختبار غير منشور للطلاب.")
     if not is_student_eligible_for_exam(exam, student_id):
         raise ValueError("هذا الاختبار غير مخصص لحسابك الأكاديمي.")

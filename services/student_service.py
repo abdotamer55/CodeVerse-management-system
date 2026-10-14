@@ -114,7 +114,7 @@ def get_student_dashboard_stats(student_id):
                     s.total_homework,
                     s.overall_grade,
                     (SELECT COUNT(*) FROM lessons) AS real_total_lessons,
-                    (SELECT COUNT(*) FROM exams WHERE status IN ('active','published')) AS active_exams,
+                    (SELECT COUNT(*) FROM exams WHERE status IN ('active','published','scheduled')) AS active_exams,
                     (SELECT COUNT(DISTINCT hw_id) FROM (
                         SELECT sub.homework_id as hw_id FROM submissions sub WHERE (CAST(sub.student_id AS TEXT) = CAST(s.id AS TEXT) OR sub.student_code = s.student_code) AND sub.status IN ('submitted', 'graded')
                         UNION

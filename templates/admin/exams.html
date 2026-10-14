@@ -157,6 +157,12 @@
           </button>
         </form>
       </div>
+      {% if e.total_questions == 0 %}
+      <div class="alert" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:0.6rem 0.9rem;border-radius:var(--radius-sm);margin-top:10px;display:flex;align-items:center;gap:0.5rem">
+        <span class="material-symbols-outlined" style="font-size:1.1rem;color:var(--red,#ef4444)">warning</span>
+        <span class="body-sm" style="color:var(--red,#ef4444)">تحذير: هذا الاختبار لا يحتوي على أسئلة. أضف الأسئلة من <a href="{{ url_for('admin.exam_builder', exam_id=e.id) }}" style="color:inherit;text-decoration:underline">مدير الأسئلة</a> قبل أن يراه الطلاب.</span>
+      </div>
+      {% endif %}
     </div>
   </article>
   {% endfor %}
