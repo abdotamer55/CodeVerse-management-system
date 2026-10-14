@@ -302,9 +302,9 @@ def submit_exam(exam_id):
         elif attempt.get("status") in ("submitted", "graded", "pending_essay_grading"):
             flash("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.", "info")
             return redirect(url_for("student.review_exam_attempt", exam_id=exam_id))
-        elif attempt.get("status") == "expired":
-            flash("انتهى وقت الاختبار المحدد مسبقاً ولا يمكن تسليم إجابات جديدة.", "error")
-            return redirect(url_for("student.exam_detail", exam_id=exam_id))
+        elif attempt.get("status") == "expired" and attempt.get("submitted_at"):
+            flash("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.", "info")
+            return redirect(url_for("student.review_exam_attempt", exam_id=exam_id))
 
         attempt = exam_service.submit_exam(exam_id, user_id, request.form.to_dict())
         flash("تم إرسال وحفظ إجابات الاختبار بنجاح!", "success")

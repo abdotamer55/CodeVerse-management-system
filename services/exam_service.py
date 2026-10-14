@@ -208,6 +208,25 @@ def calculate_attempt_remaining_seconds(attempt: dict, exam: dict) -> int:
     return max(0, remaining)
 
 
+def is_attempt_expired(attempt: dict, exam: dict, grace_seconds: int = 60) -> bool:
+    """Return True if the attempt has exceeded its allowed duration plus network grace period."""
+    if not attempt or not exam:
+        return False
+    started_at = _parse_iso_datetime(attempt.get("started_at"))
+    if not started_at:
+        return False
+    duration_sec = exam.get("duration_seconds") or (int(exam.get("duration_minutes") or 60) * 60)
+    attempt_dur = attempt.get("duration_seconds") or duration_sec
+    now = datetime.now(timezone.utc)
+    elapsed = (now - started_at).total_seconds()
+    if elapsed > (attempt_dur + grace_seconds):
+        return True
+    ends_at = _parse_iso_datetime(exam.get("ends_at"))
+    if ends_at and (now - ends_at).total_seconds() > grace_seconds:
+        return True
+    return False
+
+
 def create_exam(data: dict):
     title = (data.get("title") or "").strip()
     if not title:
@@ -667,8 +686,7 @@ def get_student_attempt(exam_id: int, student_id):
                 attempt = dict(rows[0])
                 if attempt.get("status") == "in_progress":
                     exam = get_exam_by_id(exam_id)
-                    remaining = calculate_attempt_remaining_seconds(attempt, exam)
-                    if remaining <= 0:
+                    if is_attempt_expired(attempt, exam, grace_seconds=90):
                         execute_query(
                             "UPDATE assessment_attempts SET status='expired', locked=TRUE, expired_at=CURRENT_TIMESTAMP WHERE id=%s;",
                             (attempt["id"],), fetch=False, commit=True
@@ -684,7 +702,7 @@ def get_student_attempt(exam_id: int, student_id):
     if att:
         if att.get("status") == "in_progress":
             exam = get_exam_by_id(exam_id)
-            if exam and calculate_attempt_remaining_seconds(att, exam) <= 0:
+            if exam and is_attempt_expired(att, exam, grace_seconds=90):
                 att["status"] = "expired"
                 att["locked"] = True
         _enrich_attempt_with_mcq_stats(att, exam_id)
@@ -806,7 +824,12 @@ def submit_exam(exam_id: int, student_id, answers: dict):
     if existing_attempt and existing_attempt.get("status") in ("submitted", "graded", "pending_essay_grading"):
         raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.")
     if existing_attempt and existing_attempt.get("status") == "expired":
-        raise ValueError("انتهى وقت هذا الاختبار مسبقاً وهو مقفل الآن ولا يمكن تسليم إجابات جديدة.")
+        if existing_attempt.get("submitted_at"):
+            raise ValueError("تم تسليم هذا الاختبار مسبقاً وهو مقفل ولا يُسمح سوى بمحاولة واحدة فقط.")
+        expired_at = _parse_iso_datetime(existing_attempt.get("expired_at") or existing_attempt.get("started_at"))
+        now = datetime.now(timezone.utc)
+        if expired_at and (now - expired_at).total_seconds() > 180:
+            raise ValueError("انتهى وقت هذا الاختبار مسبقاً وهو مقفل الآن ولا يمكن تسليم إجابات جديدة.")
     exam = get_exam_by_id(exam_id)
     # Accept active, published, and scheduled — time window is enforced by is_exam_available_now at start
     if not exam or exam.get("status") not in ("active", "published", "scheduled"):

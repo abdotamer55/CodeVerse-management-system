@@ -25,8 +25,9 @@
             if (window.CVUi) {
               CVUi.toast("انتهى وقت الاختبار المحدد! جاري إرسال وتسليم إجاباتك تلقائياً...");
             }
-            // Disable all interactive radio/text inputs to freeze state
-            examForm.querySelectorAll("input, textarea").forEach((el) => {
+            // Disable all interactive radio/text inputs and click events to freeze state
+            examForm.style.pointerEvents = "none";
+            examForm.querySelectorAll("input, textarea, button").forEach((el) => {
               el.readOnly = true;
             });
             setTimeout(() => {
